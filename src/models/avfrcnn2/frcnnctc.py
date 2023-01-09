@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from nichang.layers.normalizations import get as get_norm
-from nichang.layers import (
+from ...layers.normalizations import get as get_norm
+from ...layers import (
     normalizations,
     activations,
     Conv1DBlock,
@@ -17,12 +17,7 @@ from nichang.layers import (
 
 
 def cal_padding(input_size, kernel_size=1, stride=1, dilation=1):
-    return (
-        kernel_size
-        - input_size
-        + (kernel_size - 1) * (dilation - 1)
-        + stride * (input_size - 1)
-    ) // 2
+    return (kernel_size - input_size + (kernel_size - 1) * (dilation - 1) + stride * (input_size - 1)) // 2
 
 
 class CTCBlock(nn.Module):
@@ -58,17 +53,11 @@ class CTCBlock(nn.Module):
             padding=((kernel_size - 1) // 2) * 1,
             norm_type=norm_type,
         )
-        self.current_fusion = ConvNormAct(
-            in_chan * 2, in_chan, 1, 1, norm_type=norm_type, act_type=act_type
-        )
-        self.lastout = ConvNormAct(
-            in_chan, in_chan, 1, 1, norm_type=norm_type, act_type=act_type
-        )
+        self.current_fusion = ConvNormAct(in_chan * 2, in_chan, 1, 1, norm_type=norm_type, act_type=act_type)
+        self.lastout = ConvNormAct(in_chan, in_chan, 1, 1, norm_type=norm_type, act_type=act_type)
 
         if num_idx != 0:
-            self.fusion = ConvNormAct(
-                in_chan * 2, in_chan, 1, 1, norm_type=norm_type, act_type=act_type
-            )
+            self.fusion = ConvNormAct(in_chan * 2, in_chan, 1, 1, norm_type=norm_type, act_type=act_type)
 
         if num_idx == 0:
             self.current = ConvNorm(
@@ -126,12 +115,7 @@ class FRCNNBlock(nn.Module):
         )
         self.depth = upsampling_depth
         self.spp_dw = nn.ModuleList(
-            [
-                CTCBlock(
-                    out_chan, upsampling_depth, norm_type, act_type, kernel_size, i
-                )
-                for i in range(upsampling_depth)
-            ]
+            [CTCBlock(out_chan, upsampling_depth, norm_type, act_type, kernel_size, i) for i in range(upsampling_depth)]
         )
 
         self.res_conv = nn.Conv1d(out_chan, in_chan, 1)
@@ -254,9 +238,7 @@ class FRCNNCTC(nn.Module):
             for _ in range(self.iter - 1):
                 out.append(
                     nn.Sequential(
-                        nn.Conv1d(
-                            self.in_chan, self.in_chan, 1, 1, groups=self.in_chan
-                        ),
+                        nn.Conv1d(self.in_chan, self.in_chan, 1, 1, groups=self.in_chan),
                         nn.PReLU(),
                     )
                 )

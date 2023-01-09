@@ -36,15 +36,8 @@ from src.videomodels import FRCNNVideoModel, update_frcnn_parameter
 # By default train.py will use all available GPUs. The `id` option in run.sh
 # will limit the number of available GPUs for train.py .
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-e", "--exp_dir", default="exp/tmp", help="Full path to save best validation model"
-)
-parser.add_argument(
-    "-c",
-    "--conf_dir",
-    default="local/conf.yml",
-    help="Full path to save best validation model",
-)
+parser.add_argument("-e", "--exp_dir", default="../experiments")
+parser.add_argument("-c", "--conf_dir", default="config/lrs2_conf_64_64_3_adamw_1e-1_blocks8_pretrain.yml")
 parser.add_argument("-n", "--name", default=None, help="Experiment name")
 parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -118,7 +111,7 @@ def main(conf):
         scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.5, patience=10)
 
     # Just after instantiating, save the args. Easy loading in the future.
-    conf["main_args"]["exp_dir"] = os.path.join("exp", conf["log"]["exp_name"])
+    conf["main_args"]["exp_dir"] = os.path.join("experiments", conf["log"]["exp_name"])
     exp_dir = conf["main_args"]["exp_dir"]
     os.makedirs(exp_dir, exist_ok=True)
     conf_path = os.path.join(exp_dir, "conf.yml")
@@ -156,9 +149,7 @@ def main(conf):
     )
     callbacks.append(checkpoint)
     if conf["training"]["early_stop"]:
-        callbacks.append(
-            EarlyStopping(monitor="val_loss", mode="min", patience=15, verbose=True)
-        )
+        callbacks.append(EarlyStopping(monitor="val_loss", mode="min", patience=15, verbose=True))
 
     # Don't ask GPU if they are not available.
     gpus = conf["training"]["gpus"] if torch.cuda.is_available() else None

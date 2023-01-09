@@ -23,17 +23,11 @@ def get_mouth_path(in_mouth_dir, wav_file, out_filename, data_type):
     #         in_mouth_dir, data_type, "{}_{}.npz".format(wav_file[3], wav_file[4])
     #     )
     if out_filename == "s1":
-        file_path = os.path.join(
-            in_mouth_dir, "{}_{}.npz".format(wav_file[0], wav_file[1])
-        )
+        file_path = os.path.join(in_mouth_dir, "{}_{}.npz".format(wav_file[0], wav_file[1]))
     if out_filename == "s2":
-        file_path = os.path.join(
-            in_mouth_dir, "{}_{}.npz".format(wav_file[3], wav_file[4])
-        )
+        file_path = os.path.join(in_mouth_dir, "{}_{}.npz".format(wav_file[3], wav_file[4]))
     if out_filename == "s3":
-        file_path = os.path.join(
-            in_mouth_dir, "{}_{}.npz".format(wav_file[6], wav_file[7])
-        )
+        file_path = os.path.join(in_mouth_dir, "{}_{}.npz".format(wav_file[6], wav_file[7]))
     return file_path
 
 
@@ -83,17 +77,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_audio_dir",
         type=str,
-        default=None,
+        default="/home/likai/data4/lrs2_rebuild/audio/wav16k/min",
         help="Directory path of audio including tr, cv and tt",
     )
     parser.add_argument(
         "--in_mouth_dir",
         type=str,
-        default=None,
+        default="/home/likai/data4/lrs2_rebuild/mouths",
         help="Directory path of video including tr, cv and tt",
     )
     parser.add_argument(
-        "--out_dir", type=str, default=None, help="Directory path to put output files"
+        "--out_dir",
+        type=str,
+        default="LRS2",
+        help="Directory path to put output files",
     )
     args = parser.parse_args()
     print(args)

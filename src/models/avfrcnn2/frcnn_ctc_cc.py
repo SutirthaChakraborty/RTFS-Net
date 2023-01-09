@@ -7,8 +7,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from nichang.layers.normalizations import get as get_norm
-from nichang.layers import (
+from ...layers.normalizations import get as get_norm
+from ...layers import (
     normalizations,
     activations,
     Conv1DBlock,

@@ -4,7 +4,7 @@ videonet:
     relu_type: prelu
     width_mult: 1.0
     # pretrain: ../../pretrain_zoo/lrw_resnet18_mstcn_adamw_s3.pth.tar
-    pretrain: ./pretrain_zoo/frcnn_128_512.backbone.pth.tar
+    pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
     # sample_rate: 16000
     # filterbank
@@ -13,21 +13,18 @@ audionet:
     stride: 10
     # masknet
     n_src: 1
-    n_blocks: 8
-    an_repeats: 3
-    fn_repeats: 5
+    an_repeats: 1
+    fn_repeats: 2
     mask_act: relu
     act_type: prelu
     norm_type: gLN
-    bn_chan: 512
-    hid_chan: 512
+    bn_chan: 128     
+    hid_chan: 128  
     # video
-    vin_chan: 512
-    vout_chan: 512
+    vout_chan: 512  
     vconv_kernel_size: 3
-    vn_repeats: 5
     # fusion
-    fout_chan: 512
+    fout_chan: 128
     # video frcnn
     video_frcnn:
         in_chan: 64
@@ -41,9 +38,9 @@ audionet:
     # pretrain: ../../pretrain_zoo/frcnn_128_512.pth.tar
 # Training config
 training:
-    gpus: [0,1]
+    gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 3
+    batch_size: 4
     num_workers: 8
     half_lr: yes
     early_stop: yes
@@ -60,8 +57,8 @@ sche:
     factor: 0.5
 # Data config
 data:
-    train_dir: local/LRS2/tr/
-    valid_dir: local/LRS2/cv/
+    train_dir: data-preprocess/LRS2/tr
+    valid_dir: data-preprocess/LRS2/cv
     nondefault_nsrc: 1
     sample_rate: 16000
     segment: 2.0

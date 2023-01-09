@@ -2,8 +2,8 @@ import torch
 import copy
 import torch.nn as nn
 import torch.nn.functional as F
-from nichang.layers.normalizations import get as get_norm
-from nichang.layers.activations import get as get_act
+from ...layers.normalizations import get as get_norm
+from ...layers.activations import get as get_act
 
 def cal_padding(input_size, kernel_size=1, stride=1, dilation=1):
     return (kernel_size - input_size + (kernel_size-1)*(dilation-1) \

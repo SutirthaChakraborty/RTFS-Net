@@ -130,3 +130,5 @@ dmypy.json
 
 # My Ignores
 /experiments/
+/data-preprocess/LRS2/
+/logs/
