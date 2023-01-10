@@ -203,8 +203,6 @@ class AudioVisual(nn.Module):
         vout_chan=256,
         vconv_kernel_size=3,
         vn_repeats=5,
-        # fusion
-        fout_chan=256,
         # video frcnn
         video_frcnn=dict(),
         pretrain=None,
@@ -230,8 +228,6 @@ class AudioVisual(nn.Module):
         self.vout_chan = vout_chan
         self.vconv_kernel_size = vconv_kernel_size
         self.vn_repeats = vn_repeats
-        # fusion part
-        self.fout_chan = fout_chan
 
         self.fusion_shared = fusion_shared
         self.fusion_levels = fusion_levels if fusion_levels is not None \
@@ -242,12 +238,12 @@ class AudioVisual(nn.Module):
         self.pre_a = nn.Sequential(normalizations.get(norm_type)(in_chan), nn.Conv1d(in_chan, bn_chan, 1, 1))
         self.pre_v = nn.Conv1d(self.vout_chan, video_frcnn["in_chan"], kernel_size=3, padding=1)
         self.post = nn.Sequential(nn.PReLU(), 
-                        nn.Conv1d(fout_chan, n_src * in_chan, 1, 1),
+                        nn.Conv1d(bn_chan, n_src * in_chan, 1, 1), # TODO: change 
                         activations.get(mask_act)())
         # main modules
         self.video_frcnn = VideoFRCNN(**video_frcnn)
         self.audio_frcnn = FRCNNBlock(bn_chan, hid_chan, upsampling_depth, norm_type, act_type)
-        self.audio_concat = nn.Sequential(nn.Conv1d(bn_chan, hid_chan, 1, 1, groups=bn_chan), nn.PReLU())
+        self.audio_concat = nn.Sequential(nn.Conv1d(bn_chan, bn_chan, 1, 1, groups=bn_chan), nn.PReLU()) # TODO: Change
         # self.audio_frcnn = nn.ModuleList([
         #     FRCNNBlock(bn_chan, hid_chan, upsampling_depth, norm_type, act_type)
         #     for _ in range(self.an_repeats + 1)])
@@ -387,7 +383,6 @@ class AudioVisual(nn.Module):
             "vout_chan": self.vout_chan,
             "vconv_kernel_size": self.vconv_kernel_size,
             "vn_repeats": self.vn_repeats,
-            "fout_chan": self.fout_chan,
         }
         return config
 
@@ -418,8 +413,6 @@ class AVFRCNN2(BaseAVEncoderMaskerDecoder):
         vout_chan=256,
         vconv_kernel_size=3,
         vn_repeats=5,
-        # fusion
-        fout_chan=256,
         # enc_dec
         fb_name="free",
         kernel_size=16,
@@ -464,8 +457,6 @@ class AVFRCNN2(BaseAVEncoderMaskerDecoder):
             vout_chan=vout_chan,
             vconv_kernel_size=vconv_kernel_size,
             vn_repeats=vn_repeats,
-            # fusion
-            fout_chan=fout_chan,
             video_frcnn=video_frcnn,
             pretrain=pretrain,
             fusion_levels=fusion_levels,

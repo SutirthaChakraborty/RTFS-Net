@@ -14,17 +14,18 @@ audionet:
     # masknet
     n_src: 1
     an_repeats: 1
-    fn_repeats: 2
+    fn_repeats: 3
     mask_act: relu
     act_type: prelu
     norm_type: gLN
-    bn_chan: 128     
-    hid_chan: 128  
+    bn_chan: 512
+    hid_chan: 512
     # video
-    vout_chan: 512  
+    vin_chan: 512
+    vout_chan: 512
     vconv_kernel_size: 3
     # fusion
-    fout_chan: 128
+    fout_chan: 512
     # video frcnn
     video_frcnn:
         in_chan: 64
