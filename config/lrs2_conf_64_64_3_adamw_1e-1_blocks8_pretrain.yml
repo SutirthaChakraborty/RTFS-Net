@@ -66,5 +66,5 @@ data:
     normalize_audio: false
 log:
     path: log/tmp
-    pro_name: nichang_avproject
-    exp_name: frcnn2_64_64_3_adamw_1e-1_blocks8_pretrain
+    pro_name: project
+    exp_name: ctcnet_pretrain_baseline_1_3

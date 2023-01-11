@@ -189,7 +189,6 @@ class AudioVisual(nn.Module):
         self,
         in_chan,
         n_src,
-        out_chan=None,
         an_repeats=4,
         fn_repeats=4,
         bn_chan=128,
@@ -213,8 +212,6 @@ class AudioVisual(nn.Module):
         super().__init__()
         self.in_chan = in_chan
         self.n_src = n_src
-        out_chan = out_chan if out_chan else in_chan
-        self.out_chan = out_chan
         self.an_repeats = an_repeats
         self.fn_repeats = fn_repeats
         self.bn_chan = bn_chan
@@ -235,37 +232,25 @@ class AudioVisual(nn.Module):
         self.fusion_type = fusion_type
 
         # pre and post processing layers
-        self.pre_a = nn.Sequential(normalizations.get(norm_type)(in_chan), nn.Conv1d(in_chan, bn_chan, 1, 1))
-        self.pre_v = nn.Conv1d(self.vout_chan, video_frcnn["in_chan"], kernel_size=3, padding=1)
+        self.audio_bottleneck = nn.Sequential(normalizations.get(norm_type)(in_chan), nn.Conv1d(in_chan, bn_chan, 1, 1))
+        self.video_bottleneck = nn.Conv1d(self.vout_chan, video_frcnn["in_chan"], kernel_size=3, padding=1)
         self.post = nn.Sequential(nn.PReLU(), 
-                        nn.Conv1d(bn_chan, n_src * in_chan, 1, 1), # TODO: change 
+                        nn.Conv1d(bn_chan, n_src * in_chan, 1, 1),  
                         activations.get(mask_act)())
+        
         # main modules
         self.video_frcnn = VideoFRCNN(**video_frcnn)
         self.audio_frcnn = FRCNNBlock(bn_chan, hid_chan, upsampling_depth, norm_type, act_type)
-        self.audio_concat = nn.Sequential(nn.Conv1d(bn_chan, bn_chan, 1, 1, groups=bn_chan), nn.PReLU()) # TODO: Change
-        # self.audio_frcnn = nn.ModuleList([
-        #     FRCNNBlock(bn_chan, hid_chan, upsampling_depth, norm_type, act_type)
-        #     for _ in range(self.an_repeats + 1)])
-        # self.audio_concat = nn.ModuleList([
-        #     nn.Sequential(nn.Conv1d(bn_chan, hid_chan, 1, 1, groups=bn_chan), nn.PReLU())
-        #     for _ in range(self.an_repeats + 1)])
-        # self.avconcat = Attention_block(bn_chan, video_frcnn["in_chan"])
-        # self.crossmodal_fusion = nn.ModuleList(
-        #     [CrossModalAttention(512, 128, 3280, 50) for _ in range(self.an_repeats)])
-        # self.crossmodal_fusion = nn.ModuleList([
-        #     Attention_block(512, 128) for _ in range(self.an_repeats)])
-        # self.crossmodal_fusion = Attention_block(512, 128)
-        # self.crossmodal_fusion = ChannelAttention(512, 128)
+        self.audio_concat = nn.Sequential(nn.Conv1d(bn_chan, bn_chan, 1, 1, groups=bn_chan), nn.PReLU()) 
+        
         self.crossmodal_fusion = self._build_crossmodal_fusion(bn_chan, video_frcnn["in_chan"])
         self.init_from(pretrain)
 
-        print("Fusion levels", self.fusion_levels, type(self.fusion_levels))
 
 
     def _build_crossmodal_fusion(self, ain_chan, vin_chan):
         module = globals()[self.fusion_type]
-        print("Using fusion:\n", module)
+        
         if self.fusion_shared:
             return module(ain_chan, vin_chan)
         else:
@@ -284,7 +269,6 @@ class AudioVisual(nn.Module):
     def init_from(self, pretrain):
         if pretrain is None:
             return 
-        print("Init pre_v and video_frcnn from", pretrain)
         state_dict = torch.load(pretrain, map_location="cpu")["model_state_dict"]
 
         frcnn_state_dict = dict()
@@ -296,7 +280,7 @@ class AudioVisual(nn.Module):
         pre_v_state_dict = dict(
             weight = state_dict["module.head.proj.weight"],
             bias = state_dict["module.head.proj.bias"])
-        self.pre_v.load_state_dict(pre_v_state_dict)
+        self.video_bottleneck.load_state_dict(pre_v_state_dict)
 
 
     def fuse(self, a, v):
@@ -315,7 +299,6 @@ class AudioVisual(nn.Module):
         a = self.audio_frcnn(a)
         v = self.video_frcnn.get_frcnn_block(0)(v)
         if 0 in self.fusion_levels:
-            # print("fusion", 0)
             a, v = self.get_crossmodal_fusion(0)(a, v)
 
         # iter 1 ~ self.an_repeats
@@ -327,50 +310,25 @@ class AudioVisual(nn.Module):
             concat_block = self.video_frcnn.get_concat_block(i)
             v = frcnn(concat_block(res_v + v))
             if i in self.fusion_levels:
-                # print("fusion", i)
                 a, v = self.get_crossmodal_fusion(i)(a, v)
-
-        # audio decoder
         for _ in range(self.fn_repeats):
             a = self.audio_frcnn(self.audio_concat(res_a + a))
         return a
 
-        # # audio
-        # res_a = a
-        # a = self.audio_frcnn(a)
-        # for _ in range(self.an_repeats-1):
-        #     a = self.audio_frcnn(self.audio_concat(res_a + a))
-
-        # # video
-        # res_v = v
-        # v = self.video_frcnn.frcnn[0](v)
-        # for i in range(1, self.video_frcnn.iter):
-        #     frcnn = self.video_frcnn.frcnn[i]
-        #     concat_block = self.video_frcnn.concat_block[i]
-        #     v = frcnn(concat_block(res_v + v))
-
-        # # fusion
-        # a = self.avconcat(a, v)
-        # for _ in range(self.fn_repeats):
-        #     a = self.audio_frcnn(self.audio_concat(res_a + a))
-        # return a
-
-
     def forward(self, a, v):
         # a: [4, 512, 3280], v: [4, 512, 50]
-        B, _, T = a.size()
-        a = self.pre_a(a)
-        v = self.pre_v(v)
+        batch_size, _, _ = a.size()
+        a = self.audio_bottleneck(a)
+        v = self.video_bottleneck(v)
         a = self.fuse(a, v)
         a = self.post(a)
-        return a.view(B, self.n_src, self.out_chan, T)
+        return a.view(batch_size, self.n_src, self.in_chan, -1)
 
 
     def get_config(self):
         config = {
             "in_chan": self.in_chan,
             "n_src": self.n_src,
-            "out_chan": self.out_chan,
             "an_repeats": self.an_repeats,
             "fn_repeats": self.fn_repeats,
             "bn_chan": self.bn_chan,
@@ -399,7 +357,6 @@ class AVFRCNN2(BaseAVEncoderMaskerDecoder):
     def __init__(
         self,
         n_src=1,
-        out_chan=None,
         an_repeats=4,
         fn_repeats=4,
         bn_chan=128,
@@ -414,36 +371,41 @@ class AVFRCNN2(BaseAVEncoderMaskerDecoder):
         vconv_kernel_size=3,
         vn_repeats=5,
         # enc_dec
-        fb_name="free",
         kernel_size=16,
         n_filters=512,
         stride=8,
         encoder_activation=None,
-        sample_rate=8000,
         video_frcnn=dict(),
         pretrain=None,
         fusion_levels=None,
         fusion_type="ConcatFC2",
         **fb_kwargs,
     ):
-        encoder, decoder = make_enc_dec(
-            fb_name,
-            kernel_size=kernel_size,
-            n_filters=n_filters,
-            stride=stride,
-            sample_rate=sample_rate,
-            padding=kernel_size // 2,
+        # encoder
+        encoder = nn.Conv1d(in_channels=1, out_channels=n_filters,
+                                 kernel_size=kernel_size,
+                                 stride=stride,
+                                 padding=kernel_size//2,
+                                 bias=False)
+        torch.nn.init.xavier_uniform_(encoder.weight)
+        
+        # decoder
+        decoder = nn.ConvTranspose1d(
+            in_channels=n_filters * n_src,
+            out_channels=n_src,
             output_padding=(kernel_size // 2) - 1,
-            **fb_kwargs,
-        )
-        n_feats = encoder.n_feats_out
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=kernel_size // 2,
+            groups=1, bias=False)
+        torch.nn.init.xavier_uniform_(decoder.weight)
+
         encoder = _Padder(encoder, upsampling_depth=upsampling_depth, kernel_size=kernel_size)
         
         # Update in_chan
         masker = AudioVisual(
-            n_feats,
+            n_filters,
             n_src,
-            out_chan=out_chan,
             an_repeats=an_repeats,
             fn_repeats=fn_repeats,
             bn_chan=bn_chan,
@@ -464,12 +426,6 @@ class AVFRCNN2(BaseAVEncoderMaskerDecoder):
         )
         super().__init__(encoder, masker, decoder, encoder_activation=encoder_activation)
 
-    # def train(self, mode=True):
-    #     super().train(mode)
-    #     if mode:    # freeze BN stats
-    #         for m in self.modules():
-    #             if isinstance(m, _BatchNorm):
-    #                 m.eval()
 
 
 
@@ -485,9 +441,6 @@ class _Padder(nn.Module):
             self.kernel_size // 2, 2 ** self.upsampling_depth
         )
 
-        # For serialize
-        self.filterbank = self.encoder.filterbank
-        self.sample_rate = getattr(self.encoder.filterbank, "sample_rate", None)
 
     def forward(self, x):
         x = pad(x, self.lcm)

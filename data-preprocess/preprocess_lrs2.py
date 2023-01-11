@@ -77,13 +77,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_audio_dir",
         type=str,
-        default="/home/likai/data4/lrs2_rebuild/audio/wav16k/min",
+        default="/ssd/likai/lrs2_rebuild/audio/wav16k/min",
         help="Directory path of audio including tr, cv and tt",
     )
     parser.add_argument(
         "--in_mouth_dir",
         type=str,
-        default="/home/likai/data4/lrs2_rebuild/mouths",
+        default="/ssd/likai/lrs2_rebuild/mouths",
         help="Directory path of video including tr, cv and tt",
     )
     parser.add_argument(

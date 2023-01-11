@@ -27,8 +27,7 @@ def pad_to_appropriate_length(x, lcm):
     if values_to_pad:
         appropriate_shape = x.shape
         padded_x = torch.zeros(
-            list(appropriate_shape[:-1])
-            + [appropriate_shape[-1] + lcm - values_to_pad],
+            list(appropriate_shape[:-1]) + [appropriate_shape[-1] + lcm - values_to_pad],
             dtype=torch.float32,
         ).to(x.device)
         padded_x[..., : x.shape[-1]] = x
@@ -119,24 +118,28 @@ class BaseAVEncoderMaskerDecoder(BaseAVModel):
     def forward(self, wav, mouth_emb):
         shape = wav.shape
         wav = _unsqueeze_to_3d(wav)
-
         enc_w = self.forward_encoder(wav)
+        B, _, T = enc_w.shape
         masks = self.forward_masker(enc_w, mouth_emb)
-        ests_wav = self.forward_decoder(masks)
+        ests_wav = self.forward_decoder(masks.view(B, -1, T))
 
         reconstructed = pad_x_to_y(ests_wav, wav)
         return shape_reconstructed(reconstructed, shape)
 
     def forward_encoder(self, wav):
-        lcm = abs(
-            self.masker.in_chan // 2 * 2**self.masker.upsampling_depth
-        ) // math.gcd(self.encoder.kernel_size // 2, 2**self.masker.upsampling_depth)
+        lcm = abs(self.masker.in_chan // 2 * 2**self.masker.upsampling_depth) // math.gcd(
+            self.encoder.kernel_size // 2, 2**self.masker.upsampling_depth
+        )
         wav = pad_to_appropriate_length(wav, lcm)
         enc_w = self.encoder(wav)
         return self.enc_activation(enc_w)
 
     def forward_masker(self, enc_w, mouth_emb):
-        return self.apply_masks(enc_w, self.masker(enc_w, mouth_emb))
+
+        estimated_masks = self.masker(enc_w, mouth_emb)
+        output = self.apply_masks(enc_w, estimated_masks)
+
+        return output
 
     def forward_decoder(self, masks):
         return self.decoder(masks)
@@ -146,16 +149,10 @@ class BaseAVEncoderMaskerDecoder(BaseAVModel):
 
     def get_model_args(self):
         """Arguments needed to re-instantiate the model."""
-        fb_config = self.encoder.filterbank.get_config()
         masknet_config = self.masker.get_config()
-        # Assert both dict are disjoint
-        if not all(k not in fb_config for k in masknet_config):
-            raise AssertionError(
-                "Filterbank and Mask network config share common keys. Merging them is not safe."
-            )
+
         # Merge all args under model_args.
         model_args = {
-            **fb_config,
             **masknet_config,
             "encoder_activation": self.encoder_activation,
         }
