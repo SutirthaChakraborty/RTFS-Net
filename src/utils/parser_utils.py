@@ -5,6 +5,7 @@
 # LastEditTime: 2021-06-20 00:48:50
 ###
 
+import sys
 import argparse
 
 
@@ -143,12 +144,12 @@ def parse_args_as_dict(parser, return_plain_args=False, args=None):
     for group in parser._action_groups:
         group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
         args_dic[group.title] = group_dict
-    if args_dic.get("optional arguments", False):
+    if sys.version_info.minor == 10:
+        args_dic["main_args"] = args_dic["positional arguments"]
+        del args_dic["positional arguments"]
+    else:
         args_dic["main_args"] = args_dic["optional arguments"]
         del args_dic["optional arguments"]
-    else:
-        args_dic["main_args"] = args_dic["options"]
-        del args_dic["options"]
     if return_plain_args:
         return args_dic, args
     return args_dic
