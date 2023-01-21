@@ -4,90 +4,35 @@
 # LastEditors: Kai Li
 # LastEditTime: 2021-09-05 22:34:03
 ###
+import os
+import yaml
+import torch
+import argparse
+import warnings
 
-import re
+from tqdm import tqdm
 from typing import OrderedDict
+
 from src.utils import tensors_to_device
-from src.videomodels import FRCNNVideoModel, update_frcnn_parameter
+from src.metrics import ALLMetricsTracker
+from src.videomodels import FRCNNVideoModel
 from src.models.avfrcnn2 import AVFRCNN2CTC
+from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
 
-# from src.metrics import MetricsTracker
-from src.metrics import ALLMetricsTracker
-import os
-import os.path as osp
-import random
-import soundfile as sf
-import torch
-import yaml
-import json
-import argparse
-import numpy as np
-import pandas as pd
-from tqdm import tqdm
-from pprint import pprint
-import warnings
 
 warnings.filterwarnings("ignore")
 
-# from src.models.avfrcnn_videofrcnn import AVFRCNNVideoFRCNN
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-t",
-    "--test_dir",
-    type=str,
-    required=True,
-    help="Test directory including the json files",
-)
-parser.add_argument(
-    "-c",
-    "--conf_dir",
-    default="local/lrs2_conf.yml",
-    help="Full path to save best validation model",
-)
-parser.add_argument(
-    "-s", "--save_dir", default=None, help="Full path to save the results wav"
-)
-parser.add_argument("--exp_dir", default="exp/tmp", help="Experiment root")
-parser.add_argument(
-    "--n_save_ex",
-    type=int,
-    default=-1,
-    help="Number of audio examples to save, -1 means all",
-)
-
-
-compute_metrics = ["si_sdr", "sdr"]
-
-
-def load_ckpt(path, submodule=None):
-    _state_dict = torch.load(path, map_location="cpu")["state_dict"]
-    if submodule is None:
-        return _state_dict
-
-    state_dict = OrderedDict()
-    for k, v in _state_dict.items():
-        if submodule in k:
-            L = len(submodule)
-            state_dict[k[L + 1 :]] = v
-    return state_dict
-
 
 def main(conf):
-    conf["exp_dir"] = os.path.join("exp", conf["log"]["exp_name"])
-    conf["audionet"].update({"n_src": 1})
-
+    conf["exp_dir"] = os.path.join("../av-experiments", conf["log"]["exp_name"])
+    # conf["audionet"].update({"n_src": 1})
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
-    print(model_path)
-    # model_path = "/home/chenhang/ssd2/src-avdomain/egs/frcnn2/exp/frcnn2_128_128_3/checkpoints/epoch=123-val_loss=-11.66.ckpt"
+
     sample_rate = conf["data"]["sample_rate"]
-    audiomodel = AVFRCNN2CTC.from_pretrain(
-        model_path, sample_rate=sample_rate, **conf["audionet"]
-    )
-    # ckpt = load_ckpt(model_path, "audio_model")
-    # audiomodel.load_state_dict(ckpt)
+    audiomodel: torch.nn.Module = AVFRCNN2CTC.from_pretrain(model_path, sample_rate=sample_rate, **conf["audionet"])
+
     videomodel = FRCNNVideoModel(**conf["videonet"])
 
     # Handle device placement
@@ -119,14 +64,10 @@ def main(conf):
     pbar = tqdm(range(len(test_set)))
     for idx in pbar:
         # Forward the network on the mixture.
-        mix, sources, target_mouths, key, src_path = tensors_to_device(
-            test_set[idx], device=model_device
-        )
+        mix, sources, target_mouths, key, src_path = tensors_to_device(test_set[idx], device=model_device)
         mouth_emb = videomodel(target_mouths.unsqueeze(0).float())
         est_sources = audiomodel(mix[None, None], mouth_emb)
-        loss, reordered_sources = loss_func(
-            est_sources, sources[None, None], return_ests=True
-        )
+        loss, reordered_sources = loss_func(est_sources, sources[None, None], return_ests=True)
         mix_np = mix
         sources_np = sources[None]
         est_sources_np = reordered_sources.squeeze(0)
@@ -184,7 +125,28 @@ def main(conf):
 
 
 if __name__ == "__main__":
-    from src.utils.parser_utils import prepare_parser_from_dict, parse_args_as_dict
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-t",
+        "--test-dir",
+        type=str,
+        default="data-preprocess/LRS2/tt",
+        help="Test directory including the json files",
+    )
+    parser.add_argument(
+        "-c",
+        "--conf-dir",
+        type=str,
+        default="/home/anxihao/data2/av-experiments/ctcnet_pretrain_baseline_1_3/conf.yml",
+        help="Full path to save best validation model",
+    )
+    parser.add_argument(
+        "--n-save-ex",
+        type=int,
+        default=-1,
+        help="Number of audio examples to save, -1 means all",
+    )
+    # parser.add_argument("-s", "--save-dir", default=None, help="Full path to save the results wav")
 
     args = parser.parse_args()
 
@@ -193,4 +155,5 @@ if __name__ == "__main__":
 
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic["main_args"])
+
     main(def_conf)

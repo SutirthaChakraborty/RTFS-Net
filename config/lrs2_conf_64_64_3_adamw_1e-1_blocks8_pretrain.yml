@@ -14,7 +14,7 @@ audionet:
     # masknet
     n_src: 1
     an_repeats: 1
-    fn_repeats: 3
+    fn_repeats: 2
     mask_act: relu
     act_type: prelu
     norm_type: gLN
@@ -24,8 +24,6 @@ audionet:
     vin_chan: 512
     vout_chan: 512
     vconv_kernel_size: 3
-    # fusion
-    fout_chan: 512
     # video frcnn
     video_frcnn:
         in_chan: 64
@@ -67,4 +65,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_pretrain_baseline_1_3
+    exp_name: ctcnet_pretrain_baseline_1_2
