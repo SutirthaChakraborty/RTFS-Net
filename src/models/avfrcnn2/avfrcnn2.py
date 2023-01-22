@@ -248,15 +248,13 @@ class AudioVisual(nn.Module):
 
 
 
-    def _build_crossmodal_fusion(self, ain_chan, vin_chan):
+    def _build_crossmodal_fusion(self, bn_chan, vin_chan):
         module = globals()[self.fusion_type]
         
         if self.fusion_shared:
-            return module(ain_chan, vin_chan)
+            return module(bn_chan, vin_chan)
         else:
-            return nn.ModuleList([
-                module(ain_chan, vin_chan) \
-                    for _ in range(self.an_repeats)])
+            return nn.ModuleList([module(bn_chan, vin_chan) for _ in range(self.an_repeats)])
 
 
     def get_crossmodal_fusion(self, i):

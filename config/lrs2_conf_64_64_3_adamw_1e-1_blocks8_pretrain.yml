@@ -14,15 +14,15 @@ audionet:
     # masknet
     n_src: 1
     an_repeats: 1
-    fn_repeats: 2
+    fn_repeats: 3
     mask_act: relu
     act_type: prelu
     norm_type: gLN
-    bn_chan: 512
-    hid_chan: 512
+    bn_chan: 128 # bottleneck
+    hid_chan: 256 # FRCNN hidden channels
     # video
-    vin_chan: 512
-    vout_chan: 512
+    vin_chan: 128 # video bottleneck 
+    vout_chan: 512 # output from pretrained model
     vconv_kernel_size: 3
     # video frcnn
     video_frcnn:
@@ -65,4 +65,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_pretrain_baseline_1_2
+    exp_name: ctcnet_pretrain_1_3_bn128_vin128_hidden256
