@@ -44,9 +44,7 @@ class BaseAVModel(nn.Module):
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
-    def sample_rate(
-        self,
-    ):
+    def sample_rate(self):
         return self._sample_rate
 
     def separate(self, *args, **kwargs):

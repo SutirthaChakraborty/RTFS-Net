@@ -3,27 +3,30 @@ videonet:
     backbone_type: resnet
     relu_type: prelu
     width_mult: 1.0
-    # pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
+    # pretrain: ../../pretrain_zoo/lrw_resnet18_mstcn_adamw_s3.pth.tar
+    pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
     # sample_rate: 16000
     # filterbank
-    in_chan: 512
+    n_filters: 512
     kernel_size: 21
     stride: 10
     # masknet
     n_src: 1
-    fusion_repeats: 1
-    audio_repeats: 3
+    an_repeats: 1
+    fn_repeats: 3
     mask_act: relu
     act_type: prelu
     norm_type: gLN
-    audio_bn_chan: 128 # bottleneck
+    bn_chan: 128 # bottleneck
     hid_chan: 256 # FRCNN hidden channels
     # video
+    vin_chan: 128 # video bottleneck 
+    vout_chan: 512 # output from pretrained model
+    vconv_kernel_size: 3
     # video frcnn
     video_frcnn:
-        vout_chan: 512 # output from pretrained model
-        in_chan: 64 # video bottleneck 
+        in_chan: 64
         out_chan: 64
         depth: 4
         iter: 3
@@ -31,6 +34,7 @@ audionet:
         norm_type: "BatchNorm1d"
         act_type: "prelu"
         kernel_size: 3
+    # pretrain: ../../pretrain_zoo/frcnn_128_512.pth.tar
 # Training config
 training:
     gpus: [0,1,2,3,4,5,6,7]
