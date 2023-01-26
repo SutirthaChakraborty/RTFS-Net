@@ -106,7 +106,7 @@ class CTCNet(BaseAVModel):
         audio_mixture_embedding = self.encoder(audio_mixture)
         masks = self.masker(audio_mixture_embedding, mouth_embedding)
         separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)
-        separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape[-1])
+        separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)
 
         return separated_audio
 
