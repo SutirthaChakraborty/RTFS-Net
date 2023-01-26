@@ -7,8 +7,8 @@
 import torch
 import torch.nn as nn
 import math
-from ..utils.separator import Separator, separate
-from ..layers import activations, normalizations
+from ..utils.separator import separate
+from ..layers import activations
 from ..utils.torch_utils import shape_reconstructed, pad_x_to_y
 
 

@@ -10,30 +10,21 @@
 # LastEditors: Please set LastEditors
 # LastEditTime: 2021-11-07 23:17:39
 ###
-
-import re
-from typing import OrderedDict
-from src.utils import tensors_to_device
-from src.videomodels import FRCNNVideoModel
-from src.models.avfrcnn2 import AVFRCNN2
-from src.datas.avspeech_dataset import AVSpeechDataset
-from src.losses import PITLossWrapper, pairwise_neg_sisdr
-from src.metrics import MetricsTracker
-from src.datas.transform import get_preprocessing_pipelines
 import os
-import os.path as osp
-import random
-import soundfile as sf
-import torch
 import yaml
-import json
+import torch
+import warnings
 import argparse
 import numpy as np
-import pandas as pd
-from tqdm import tqdm
-from pprint import pprint
+import soundfile as sf
+
 from torch.utils import data
-import warnings
+from typing import OrderedDict
+
+from src.videomodels import FRCNNVideoModel
+from src.models.avfrcnn2 import AVFRCNN2
+from src.losses import PITLossWrapper, pairwise_neg_sisdr
+from src.datas.transform import get_preprocessing_pipelines
 
 warnings.filterwarnings("ignore")
 
@@ -59,14 +50,10 @@ class EvalDataset(data.Dataset):
         mouth_path = "/home/likai/data3/lrs2_asr/mouths/{}_{}.npz".format(mp1, mp2)
         # print(mouth_path)
         # import pdb; pdb.set_trace()
-        s1_mouth = source_mouth = self.lipreading_preprocessing_func(
-            np.load(mouth_path)["data"]
-        )
+        s1_mouth = source_mouth = self.lipreading_preprocessing_func(np.load(mouth_path)["data"])
         s1_mouth = torch.from_numpy(s1_mouth)
         return mixture, s1_mouth, self.audio_path[index]
 
-
-# from src.models.avfrcnn_videofrcnn import AVFRCNNVideoFRCNN
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -97,14 +84,11 @@ def main(conf):
     conf["audionet"].update({"n_src": 1})
 
     model_path = os.path.join(conf["exp_dir"], "checkpoints/last.ckpt")
-    model_path = "/data/home/scv1134/run/chenhang/src-avdomain/egs/frcnn2_para/exp/vox2_10w_frcnn2_64_64_3_adamw_1e-1_blocks16_pretrain/checkpoints/epoch=129-val_loss=-12.12.ckpt"
-    #     model_path = "/home/likai/data2/src-chenhang/egs/frcnn2_para/exp/lrs3_frcnn2_64_64_3_adamw_1e-1_blocks16_pretrain/checkpoints/epoch=139-val_loss=-17.33.ckpt"
-    #     model_path = "/home/likai/data2/src-chenhang/egs/frcnn2_para/exp/frcnn2_64_64_3_adamw_1e-1_blocks16_pretrain/checkpoints/epoch=149-val_loss=-14.12.ckpt"
     sample_rate = conf["data"]["sample_rate"]
+    videomodel = FRCNNVideoModel(**conf["videonet"])
     audiomodel = AVFRCNN2(sample_rate=sample_rate, **conf["audionet"])
     ckpt = load_ckpt(model_path, "audio_model")
     audiomodel.load_state_dict(ckpt)
-    videomodel = FRCNNVideoModel(**conf["videonet"])
 
     # Handle device placement
     audiomodel.eval()
@@ -127,11 +111,9 @@ def main(conf):
             dtype="float32",
         )
         mouth = get_preprocessing_pipelines()["val"](
-            np.load(
-                "/data/home/scv1134/run/likai/av-separation-with-context/test_videos/interview/mouthroi/speaker{}.npz".format(
-                    idx
-                )
-            )["data"]
+            np.load("/data/home/scv1134/run/likai/av-separation-with-context/test_videos/interview/mouthroi/speaker{}.npz".format(idx))[
+                "data"
+            ]
         )
         key = "spk{}".format(idx)
 

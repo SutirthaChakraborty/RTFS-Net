@@ -2,12 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-try:
-    from ...layers import normalizations, FRCNNBlock
-    from .frcnn import FRCNN as VideoFRCNN
-except:
-    from layers import normalizations, FRCNNBlock
-    from frcnn import FRCNN as VideoFRCNN
+from ...layers import normalizations, FRCNNBlock
+from .frcnn import FRCNN as VideoFRCNN
 
 
 class ConvNorm(nn.Module):
@@ -88,8 +84,6 @@ class Multi_Modal_Fusion(nn.Module):
         self,
         audio_bn_chan: int,
         video_bn_chan: int,
-        audio_frcnn: FRCNNBlock,
-        video_frcnn: VideoFRCNN,
         fusion_repeats: int = 3,
         audio_repeats: int = 3,
         fusion_type: str = "Concat_Fusion",
@@ -98,8 +92,6 @@ class Multi_Modal_Fusion(nn.Module):
         super(Multi_Modal_Fusion, self).__init__()
         self.audio_bn_chan = audio_bn_chan
         self.video_bn_chan = video_bn_chan
-        self.audio_frcnn = audio_frcnn
-        self.video_frcnn = video_frcnn
         self.fusion_repeats = fusion_repeats
         self.audio_repeats = audio_repeats
         self.fusion_type = fusion_type
@@ -120,21 +112,21 @@ class Multi_Modal_Fusion(nn.Module):
         else:
             return self.fusion_module[i]
 
-    def forward(self, audio, video):
+    def forward(self, audio, video, audio_frcnn: FRCNNBlock, video_frcnn: VideoFRCNN):
         audio_residual = audio
         video_residual = video
 
         for i in range(self.fusion_repeats):
             if i == 0:
-                audio = self.audio_frcnn(audio)
-                video = self.video_frcnn.get_frcnn_block(i)(video)
+                audio = audio_frcnn(audio)
+                video = video_frcnn.get_frcnn_block(i)(video)
                 audio_fused, video_fused = self.__get_crossmodal_fusion(i)(audio, video)
             else:
-                audio_fused = self.audio_frcnn(self.audio_concat(audio_fused + audio_residual))
-                video_fused = self.video_frcnn.get_frcnn_block(i)(self.video_frcnn.get_concat_block(i)(video_fused + video_residual))
+                audio_fused = audio_frcnn(self.audio_concat(audio_fused + audio_residual))
+                video_fused = video_frcnn.get_frcnn_block(i)(video_frcnn.get_concat_block(i)(video_fused + video_residual))
                 audio_fused, video_fused = self.__get_crossmodal_fusion(i)(audio_fused, video_fused)
 
         for i in range(self.audio_repeats):
-            audio_fused = self.audio_frcnn(self.audio_concat(audio_fused + audio_residual))
+            audio_fused = audio_frcnn(self.audio_concat(audio_fused + audio_residual))
 
         return audio_fused

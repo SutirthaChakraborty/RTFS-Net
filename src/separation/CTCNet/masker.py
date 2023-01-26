@@ -66,8 +66,6 @@ class Masker(nn.Module):
         self.crossmodal_fusion = Multi_Modal_Fusion(
             audio_bn_chan=self.audio_bn_chan,
             video_bn_chan=self.video_bn_chan,
-            audio_frcnn=self.audio_frcnn,
-            video_frcnn=self.video_frcnn,
             fusion_repeats=self.fusion_repeats,
             audio_repeats=self.audio_repeats,
             fusion_type=self.fusion_type,
@@ -92,7 +90,7 @@ class Masker(nn.Module):
         audio = self.audio_bottleneck(audio)
         video = self.video_bottleneck(video)
 
-        audio_fused = self.crossmodal_fusion(audio, video)
+        audio_fused = self.crossmodal_fusion(audio, video,self.audio_frcnn, self.video_frcnn)
         masks = self.mask_generator(audio_fused).view(batch_size, self.n_src, self.in_chan, -1)
 
         return masks
