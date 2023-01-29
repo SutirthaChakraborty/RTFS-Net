@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-from ..layers import ConvNormAct
-from .frcnn import FRCNN
+from ..layers import ConvNormAct, FRCNN
 
 
 class FusionBasemodule(nn.Module):

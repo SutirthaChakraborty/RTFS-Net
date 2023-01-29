@@ -2,11 +2,8 @@ import torch
 import inspect
 import torch.nn as nn
 
-from .frcnn import FRCNN
 from .fusion import MultiModalFusion
-from ..layers import normalizations, activations, FRCNNBlock
-
-from ...layers import FRCNNBlock as oldFRCNNBlock
+from ..layers import normalizations, activations, FRCNN
 
 
 class Masker(nn.Module):

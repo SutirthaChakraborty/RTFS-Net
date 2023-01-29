@@ -1,11 +1,7 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
 from ..base_av_model import BaseAVModel
 from ..encoder import ConvolutionalEncoder, PaddedEncoder
-from .masker import Masker
 from ..decoder import ConvolutionalDecoder
+from .masker import Masker
 
 
 class CTCNet(BaseAVModel):
