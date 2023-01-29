@@ -2,38 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ...layers import normalizations, FRCNNBlock
+from ..layers import ConvNorm, FRCNNBlock
 from .frcnn import FRCNN as VideoFRCNN
 
 
-class ConvNorm(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        out_chan: int,
-        kernel_size: int,
-        stride: int = 1,
-        groups: int = 1,
-        dilation: int = 1,
-        padding: int = 0,
-        norm_type: str = "gLN",
-    ):
-        super(ConvNorm, self).__init__()
-        self.conv = nn.Conv1d(in_chan, out_chan, kernel_size, stride, padding, dilation, bias=True, groups=groups)
-        self.norm = normalizations.get(norm_type)(out_chan)
-
-    def forward(self, x):
-        output = self.conv(x)
-        return self.norm(output)
-
-
-class Fusion_Base_module(nn.Module):
+class FusionBasemodule(nn.Module):
     def __init__(
         self,
         ain_chan: int = 128,
         vin_chan: int = 128,
     ):
-        super(Fusion_Base_module, self).__init__()
+        super(FusionBasemodule, self).__init__()
         self.ain_chan = ain_chan
         self.vin_chan = vin_chan
 
@@ -41,13 +20,13 @@ class Fusion_Base_module(nn.Module):
         raise NotImplementedError
 
 
-class Concat_Fusion(Fusion_Base_module):
+class ConcatFusion(FusionBasemodule):
     def __init__(
         self,
         ain_chan: int = 128,
         vin_chan: int = 128,
     ):
-        super(Concat_Fusion, self).__init__(ain_chan, vin_chan)
+        super(ConcatFusion, self).__init__(ain_chan, vin_chan)
         self.audio_conv = ConvNorm(ain_chan + vin_chan, ain_chan, 1, 1)
         self.video_conv = ConvNorm(ain_chan + vin_chan, vin_chan, 1, 1)
 
@@ -63,9 +42,9 @@ class Concat_Fusion(Fusion_Base_module):
         return audio_fused, video_fused
 
 
-class Sum_Fusion(Fusion_Base_module):
+class SumFusion(FusionBasemodule):
     def __init__(self, ain_chan: int = 128, vin_chan: int = 128):
-        super(Sum_Fusion, self).__init__(ain_chan, vin_chan)
+        super(SumFusion, self).__init__(ain_chan, vin_chan)
         self.audio_conv = ConvNorm(vin_chan, ain_chan, 1, 1)
         self.video_conv = ConvNorm(ain_chan, vin_chan, 1, 1)
 
@@ -79,17 +58,17 @@ class Sum_Fusion(Fusion_Base_module):
         return audio_fused, video_fused
 
 
-class Multi_Modal_Fusion(nn.Module):
+class MultiModalFusion(nn.Module):
     def __init__(
         self,
         audio_bn_chan: int,
         video_bn_chan: int,
         fusion_repeats: int = 3,
         audio_repeats: int = 3,
-        fusion_type: str = "Concat_Fusion",
+        fusion_type: str = "ConcatFusion",
         fusion_shared: bool = False,
     ):
-        super(Multi_Modal_Fusion, self).__init__()
+        super(MultiModalFusion, self).__init__()
         self.audio_bn_chan = audio_bn_chan
         self.video_bn_chan = video_bn_chan
         self.fusion_repeats = fusion_repeats
@@ -99,7 +78,7 @@ class Multi_Modal_Fusion(nn.Module):
 
         self.audio_concat = nn.Sequential(nn.Conv1d(self.audio_bn_chan, self.audio_bn_chan, 1, groups=self.audio_bn_chan), nn.PReLU())
 
-        fusion_class: Fusion_Base_module = globals()[self.fusion_type]
+        fusion_class: FusionBasemodule = globals()[self.fusion_type]
 
         if self.fusion_shared:
             self.fusion_module = fusion_class(self.audio_bn_chan, self.video_bn_chan)

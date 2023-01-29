@@ -4,15 +4,15 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..layers import activations
+from .layers import activations
 
 
-class Base_Encoder(nn.Module):
+class BaseEncoder(nn.Module):
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
 
-class Convolutional_Encoder(Base_Encoder):
+class ConvolutionalEncoder(BaseEncoder):
     def __init__(
         self,
         in_channels: int,
@@ -23,7 +23,7 @@ class Convolutional_Encoder(Base_Encoder):
         bias: bool = False,
         encoder_activation: str = None,
     ):
-        super(Convolutional_Encoder, self).__init__()
+        super(ConvolutionalEncoder, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -61,15 +61,15 @@ class Convolutional_Encoder(Base_Encoder):
         return encoder_args
 
 
-class Padded_Encoder(nn.Module):
+class PaddedEncoder(nn.Module):
     def __init__(
         self,
-        encoder: Base_Encoder,
+        encoder: BaseEncoder,
         in_chan: int,
         upsampling_depth: int = 4,
         kernel_size: int = 21,
     ):
-        super(Padded_Encoder, self).__init__()
+        super(PaddedEncoder, self).__init__()
         self.encoder = encoder
         self.in_chan = in_chan
         self.upsampling_depth = upsampling_depth
@@ -113,4 +113,3 @@ class Padded_Encoder(nn.Module):
 
     def get_config(self):
         return self.encoder.get_config()
-

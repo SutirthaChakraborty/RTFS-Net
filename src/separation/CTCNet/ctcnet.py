@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..base_av_model import BaseAVModel
-from ..encoder import Convolutional_Encoder, Padded_Encoder
+from ..encoder import ConvolutionalEncoder, PaddedEncoder
 from .masker import Masker
-from ..decoder import Convolutional_Decoder
+from ..decoder import ConvolutionalDecoder
 
 
 class CTCNet(BaseAVModel):
@@ -51,7 +51,7 @@ class CTCNet(BaseAVModel):
         self.fusion_type = fusion_type
         self.encoder_activation = encoder_activation
 
-        encoder = Convolutional_Encoder(
+        encoder = ConvolutionalEncoder(
             in_channels=1,
             out_channels=self.in_chan,
             kernel_size=self.kernel_size,
@@ -61,7 +61,7 @@ class CTCNet(BaseAVModel):
             encoder_activation=self.encoder_activation,
         )
 
-        self.encoder = Padded_Encoder(
+        self.encoder = PaddedEncoder(
             encoder=encoder,
             in_chan=self.in_chan,
             upsampling_depth=self.upsampling_depth,
@@ -85,7 +85,7 @@ class CTCNet(BaseAVModel):
             fusion_type=self.fusion_type,
         )
 
-        self.decoder = Convolutional_Decoder(
+        self.decoder = ConvolutionalDecoder(
             in_channels=self.in_chan * self.n_src,
             out_channels=self.n_src,
             kernel_size=self.kernel_size,

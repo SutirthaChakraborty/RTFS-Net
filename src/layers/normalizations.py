@@ -73,16 +73,12 @@ class BatchNorm(_BatchNorm):
 
     def _check_input_dim(self, input):
         if input.dim() < 2 or input.dim() > 4:
-            raise ValueError(
-                "expected 4D or 3D input (got {}D input)".format(input.dim())
-            )
+            raise ValueError("expected 4D or 3D input (got {}D input)".format(input.dim()))
 
 
 class CumulativeLayerNorm(nn.LayerNorm):
     def __init__(self, dim, elementwise_affine=True):
-        super(CumulativeLayerNorm, self).__init__(
-            dim, elementwise_affine=elementwise_affine
-        )
+        super(CumulativeLayerNorm, self).__init__(dim, elementwise_affine=elementwise_affine)
 
     def forward(self, x):
         # x: N x C x L
@@ -121,11 +117,7 @@ def get(identifier):
     elif isinstance(identifier, str):
         cls = globals().get(identifier)
         if cls is None:
-            raise ValueError(
-                "Could not interpret normalization identifier: " + str(identifier)
-            )
+            raise ValueError("Could not interpret normalization identifier: " + str(identifier))
         return cls
     else:
-        raise ValueError(
-            "Could not interpret normalization identifier: " + str(identifier)
-        )
+        raise ValueError("Could not interpret normalization identifier: " + str(identifier))

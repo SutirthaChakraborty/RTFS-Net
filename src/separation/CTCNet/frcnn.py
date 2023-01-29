@@ -2,10 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-try:
-    from ...layers.normalizations import get as get_norm
-except:
-    from layers.normalizations import get as get_norm
+from ...layers.normalizations import get as get_norm
 
 def cal_padding(input_size, kernel_size=1, stride=1, dilation=1):
     return (kernel_size - input_size + (kernel_size-1)*(dilation-1) \
@@ -56,25 +53,6 @@ class ConvNormAct(nn.Module):
 
 
 class FRCNNBlock(nn.Module):
-    """[summary]
-
-                   [spp_dw_3] --------\        ...-->\ 
-                        /              \             \ 
-                   [spp_dw_2] --------> [c] -PC.N.A->\ 
-                        /              /             \ 
-                   [spp_dw_1] -DC.N.--/        ...-->\ 
-                        /                            \ 
-    x -> [proj] -> [spp_dw_0]                  ...--> [c] -PC.N.A.PC--[(dropout)]--> 
-     \                                                                           / 
-      \-------------------------------------------------------------------------/
-
-    Args:
-        in_chan (int, optional): [description]. Defaults to 128.
-        out_chan (int, optional): [description]. Defaults to 512.
-        depth (int, optional): [description]. Defaults to 4.
-        norm_type (str, optional): [description]. Defaults to "BatchNorm1d".
-        act_type (str, optional): [description]. Defaults to "PReLU".
-    """
     def __init__(
             self, 
             in_chan=128, 

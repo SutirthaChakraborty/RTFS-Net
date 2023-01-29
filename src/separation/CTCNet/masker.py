@@ -3,7 +3,7 @@ import inspect
 import torch.nn as nn
 
 from .frcnn import FRCNN as VideoFRCNN
-from .fusion import Multi_Modal_Fusion
+from .fusion import MultiModalFusion
 from ...layers import normalizations, activations, FRCNNBlock
 
 
@@ -63,7 +63,7 @@ class Masker(nn.Module):
             act_type=self.act_type,
         )
 
-        self.crossmodal_fusion = Multi_Modal_Fusion(
+        self.crossmodal_fusion = MultiModalFusion(
             audio_bn_chan=self.audio_bn_chan,
             video_bn_chan=self.video_bn_chan,
             fusion_repeats=self.fusion_repeats,
@@ -90,7 +90,7 @@ class Masker(nn.Module):
         audio = self.audio_bottleneck(audio)
         video = self.video_bottleneck(video)
 
-        audio_fused = self.crossmodal_fusion(audio, video,self.audio_frcnn, self.video_frcnn)
+        audio_fused = self.crossmodal_fusion(audio, video, self.audio_frcnn, self.video_frcnn)
         masks = self.mask_generator(audio_fused).view(batch_size, self.n_src, self.in_chan, -1)
 
         return masks

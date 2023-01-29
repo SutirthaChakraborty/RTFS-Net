@@ -3,7 +3,7 @@ import inspect
 import torch.nn as nn
 
 
-class Convolutional_Decoder(nn.Module):
+class ConvolutionalDecoder(nn.Module):
     def __init__(
         self,
         in_channels,
@@ -15,7 +15,7 @@ class Convolutional_Decoder(nn.Module):
         groups,
         bias=False,
     ):
-        super(Convolutional_Decoder, self).__init__()
+        super(ConvolutionalDecoder, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
