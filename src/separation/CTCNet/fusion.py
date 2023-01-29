@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 from ..layers import ConvNormAct, FRCNNBlock
-from .frcnn import FRCNN as VideoFRCNN
+from .frcnn import FRCNN
 
 
 class FusionBasemodule(nn.Module):
@@ -79,7 +79,7 @@ class MultiModalFusion(nn.Module):
 
         self.audio_concat = ConvNormAct(self.audio_bn_chan, self.audio_bn_chan, 1, groups=self.audio_bn_chan, act_type="PReLU")
 
-        fusion_class: FusionBasemodule = globals()[self.fusion_type]
+        fusion_class = globals().get(self.fusion_type)
 
         if self.fusion_shared:
             self.fusion_module = fusion_class(self.audio_bn_chan, self.video_bn_chan)
@@ -92,7 +92,7 @@ class MultiModalFusion(nn.Module):
         else:
             return self.fusion_module[i]
 
-    def forward(self, audio, video, audio_frcnn: FRCNNBlock, video_frcnn: VideoFRCNN):
+    def forward(self, audio, video, audio_frcnn: FRCNNBlock, video_frcnn: FRCNN):
         audio_residual = audio
         video_residual = video
 

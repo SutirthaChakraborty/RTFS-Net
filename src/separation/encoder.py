@@ -4,7 +4,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .layers import activations
+from .layers import ConvNormAct
 
 
 class BaseEncoder(nn.Module):
@@ -31,19 +31,18 @@ class ConvolutionalEncoder(BaseEncoder):
         self.stride = stride
         self.padding = padding
         self.bias = bias
-        self.encoder_activation = encoder_activation or "linear"
+        self.encoder_activation = encoder_activation
 
-        self.conv = nn.Conv1d(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
+        self.encoder = ConvNormAct(
+            in_chan=self.in_channels,
+            out_chan=self.out_channels,
             kernel_size=self.kernel_size,
             stride=self.stride,
             padding=self.padding,
+            act_type=self.encoder_activation,
+            xavier_init=True,
             bias=self.bias,
         )
-        torch.nn.init.xavier_uniform_(self.conv.weight)
-
-        self.encoder = nn.Sequential(self.conv, activations.get(self.encoder_activation)())
 
     def forward(self, x):
         feature_map = self.encoder(x)

@@ -2,9 +2,11 @@ import torch
 import inspect
 import torch.nn as nn
 
-from .frcnn import FRCNN as VideoFRCNN
+from .frcnn import FRCNN
 from .fusion import MultiModalFusion
-from ...layers import normalizations, activations, FRCNNBlock
+from ..layers import normalizations, activations, FRCNNBlock
+
+from ...layers import FRCNNBlock as oldFRCNNBlock
 
 
 class Masker(nn.Module):
@@ -18,12 +20,12 @@ class Masker(nn.Module):
         audio_repeats: int = 3,
         upsampling_depth: int = 5,
         norm_type: str = "gLN",
-        mask_act: str = "relu",
-        act_type: str = "prelu",
+        mask_act: str = "ReLU",
+        act_type: str = "PReLU",
         video_frcnn: dict = dict(),
         pretrain: str = None,
         fusion_shared: bool = False,
-        fusion_type: str = "Concat_Fusion",
+        fusion_type: str = "ConcatFusion",
     ):
         super(Masker, self).__init__()
         self.n_src = n_src
@@ -54,13 +56,13 @@ class Masker(nn.Module):
         )
 
         # main modules
-        self.video_frcnn = VideoFRCNN(**video_frcnn)
+        self.video_frcnn = FRCNN(**video_frcnn)
         self.audio_frcnn = FRCNNBlock(
             in_chan=self.audio_bn_chan,
             out_chan=self.hid_chan,
-            upsampling_depth=self.upsampling_depth,
             norm_type=self.norm_type,
             act_type=self.act_type,
+            depth=self.upsampling_depth,
         )
 
         self.crossmodal_fusion = MultiModalFusion(
