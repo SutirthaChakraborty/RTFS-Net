@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-from ..layers import ConvNormAct, FRCNNBlock
+from ..layers import ConvNormAct
 from .frcnn import FRCNN
 
 
@@ -77,8 +77,6 @@ class MultiModalFusion(nn.Module):
         self.fusion_type = fusion_type
         self.fusion_shared = fusion_shared
 
-        self.audio_concat = ConvNormAct(self.audio_bn_chan, self.audio_bn_chan, 1, groups=self.audio_bn_chan, act_type="PReLU")
-
         fusion_class = globals().get(self.fusion_type)
 
         if self.fusion_shared:
@@ -92,21 +90,22 @@ class MultiModalFusion(nn.Module):
         else:
             return self.fusion_module[i]
 
-    def forward(self, audio, video, audio_frcnn: FRCNNBlock, video_frcnn: FRCNN):
+    def forward(self, audio, video, audio_frcnn: FRCNN, video_frcnn: FRCNN):
         audio_residual = audio
         video_residual = video
 
         for i in range(self.fusion_repeats):
             if i == 0:
-                audio = audio_frcnn(audio)
+                audio = audio_frcnn.get_frcnn_block(i)(audio)
                 video = video_frcnn.get_frcnn_block(i)(video)
                 audio_fused, video_fused = self.__get_crossmodal_fusion(i)(audio, video)
             else:
-                audio_fused = audio_frcnn(self.audio_concat(audio_fused + audio_residual))
+                audio_fused = audio_frcnn.get_frcnn_block(i)(audio_frcnn.get_concat_block(i)(audio_fused + audio_residual))
                 video_fused = video_frcnn.get_frcnn_block(i)(video_frcnn.get_concat_block(i)(video_fused + video_residual))
                 audio_fused, video_fused = self.__get_crossmodal_fusion(i)(audio_fused, video_fused)
 
         for i in range(self.audio_repeats):
-            audio_fused = audio_frcnn(self.audio_concat(audio_fused + audio_residual))
+            j = i + self.fusion_repeats
+            audio_fused = audio_frcnn.get_frcnn_block(j)(audio_frcnn.get_concat_block(j)(audio_fused + audio_residual))
 
         return audio_fused

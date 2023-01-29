@@ -13,19 +13,19 @@ audionet:
     audio_bn_chan: 128                  # bottleneck
     fusion_repeats: 1
     audio_repeats: 3
-    mask_act: relu
-    act_type: prelu
+    mask_act: ReLU
+    act_type: PReLU
     norm_type: gLN
     # video frcnn
     video_frcnn:
         vout_chan: 512                  # output from pretrained model
         in_chan: 64                     # video bottleneck 
         out_chan: 64
-        depth: 4
-        iter: 3
+        upsampling_depth: 4
+        repeats: 3
         shared: False
         norm_type: "BatchNorm1d"
-        act_type: "prelu"
+        act_type: "PReLU"
         kernel_size: 3
 # Training config
 training:

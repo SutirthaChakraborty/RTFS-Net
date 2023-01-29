@@ -24,6 +24,7 @@ class Masker(nn.Module):
         act_type: str = "PReLU",
         video_frcnn: dict = dict(),
         pretrain: str = None,
+        audio_shared: bool = True,
         fusion_shared: bool = False,
         fusion_type: str = "ConcatFusion",
     ):
@@ -41,6 +42,7 @@ class Masker(nn.Module):
         self.mask_act = mask_act
         self.act_type = act_type
         self.pretrain = pretrain
+        self.audio_shared = audio_shared
         self.fusion_shared = fusion_shared
         self.fusion_type = fusion_type
 
@@ -57,12 +59,14 @@ class Masker(nn.Module):
 
         # main modules
         self.video_frcnn = FRCNN(**video_frcnn)
-        self.audio_frcnn = FRCNNBlock(
+        self.audio_frcnn = FRCNN(
             in_chan=self.audio_bn_chan,
             out_chan=self.hid_chan,
+            upsampling_depth=self.upsampling_depth,
+            repeats=self.audio_repeats + self.fusion_repeats,
+            shared=self.audio_shared,
             norm_type=self.norm_type,
             act_type=self.act_type,
-            depth=self.upsampling_depth,
         )
 
         self.crossmodal_fusion = MultiModalFusion(

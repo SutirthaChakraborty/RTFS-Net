@@ -64,7 +64,7 @@ class FRCNNBlock(nn.Module):
         kernel_size: int = 5,
         norm_type: str = "BatchNorm1d",
         act_type: str = "PReLU",
-        depth: int = 4,
+        upsampling_depth: int = 4,
         dropout: int = -1,
     ):
         super(FRCNNBlock, self).__init__()
@@ -73,7 +73,7 @@ class FRCNNBlock(nn.Module):
         self.kernel_size = kernel_size
         self.norm_type = norm_type
         self.act_type = act_type
-        self.depth = depth
+        self.upsampling_depth = upsampling_depth
         self.dropout = dropout
 
         self.proj = ConvNormAct(self.in_chan, self.out_chan, kernel_size=1, norm_type=self.norm_type, act_type=self.act_type)
@@ -81,7 +81,9 @@ class FRCNNBlock(nn.Module):
         self.fuse_layers = self._build_fusion_layers()
         self.concat_layer = self._build_concat_layers()
         self.last = nn.Sequential(
-            ConvNormAct(self.out_chan * self.depth, self.out_chan, kernel_size=1, norm_type=self.norm_type, act_type=self.act_type),
+            ConvNormAct(
+                self.out_chan * self.upsampling_depth, self.out_chan, kernel_size=1, norm_type=self.norm_type, act_type=self.act_type
+            ),
             nn.Conv1d(self.out_chan, self.in_chan, 1),
         )
         self.dropout_layer = nn.Dropout(self.dropout) if self.dropout > 0 else nn.Identity()
@@ -100,7 +102,7 @@ class FRCNNBlock(nn.Module):
             )
         )
         # ----------Down Sample Layer----------
-        for _ in range(1, self.depth):
+        for _ in range(1, self.upsampling_depth):
             out.append(
                 ConvNormAct(
                     self.out_chan,
@@ -117,9 +119,9 @@ class FRCNNBlock(nn.Module):
 
     def _build_fusion_layers(self):
         out = nn.ModuleList()
-        for i in range(self.depth):
+        for i in range(self.upsampling_depth):
             fuse_layer = nn.ModuleList()
-            for j in range(self.depth):
+            for j in range(self.upsampling_depth):
                 if i == j or (j - i == 1):
                     fuse_layer.append(None)
                 elif i - j == 1:
@@ -140,8 +142,8 @@ class FRCNNBlock(nn.Module):
 
     def _build_concat_layers(self):
         out = nn.ModuleList()
-        for i in range(self.depth):
-            if i == 0 or i == self.depth - 1:
+        for i in range(self.upsampling_depth):
+            if i == 0 or i == self.upsampling_depth - 1:
                 out.append(
                     ConvNormAct(
                         self.out_chan * 2,
@@ -170,19 +172,19 @@ class FRCNNBlock(nn.Module):
 
         # bottom-up
         output = [self.spp_dw[0](x)]
-        for k in range(1, self.depth):
+        for k in range(1, self.upsampling_depth):
             out_k = self.spp_dw[k](output[-1])
             output.append(out_k)
 
         # lateral connection
         x_fuse = []
-        for i in range(self.depth):
+        for i in range(self.upsampling_depth):
             T = output[i].shape[-1]
             y = torch.cat(
                 (
                     self.fuse_layers[i][0](output[i - 1]) if i - 1 >= 0 else torch.Tensor().to(x.device),
                     output[i],
-                    F.interpolate(output[i + 1], size=T, mode="nearest") if i + 1 < self.depth else torch.Tensor().to(x.device),
+                    F.interpolate(output[i + 1], size=T, mode="nearest") if i + 1 < self.upsampling_depth else torch.Tensor().to(x.device),
                 ),
                 dim=1,
             )

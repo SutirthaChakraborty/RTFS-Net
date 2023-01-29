@@ -26,8 +26,9 @@ class CTCNet(BaseAVModel):
         act_type: str = "prelu",
         video_frcnn: dict = dict(),
         pretrain: str = None,
+        audio_shared: bool = True,
         fusion_shared: bool = False,
-        fusion_type: str = "Concat_Fusion",
+        fusion_type: str = "ConcatFusion",
         *args,
         **kwargs
     ):
@@ -47,6 +48,7 @@ class CTCNet(BaseAVModel):
         self.act_type = act_type
         self.video_frcnn = video_frcnn
         self.pretrain = pretrain
+        self.audio_shared = audio_shared
         self.fusion_shared = fusion_shared
         self.fusion_type = fusion_type
         self.encoder_activation = encoder_activation
@@ -81,6 +83,7 @@ class CTCNet(BaseAVModel):
             act_type=self.act_type,
             video_frcnn=self.video_frcnn,
             pretrain=self.pretrain,
+            audio_shared=self.audio_shared,
             fusion_shared=self.fusion_shared,
             fusion_type=self.fusion_type,
         )

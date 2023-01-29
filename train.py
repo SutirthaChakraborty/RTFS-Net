@@ -63,12 +63,14 @@ def build_dataloaders(conf):
 
 def main(conf):
 
-    train_loader, val_loader = build_dataloaders(conf)
+    # train_loader, val_loader = build_dataloaders(conf)
 
     # Define model and optimizer
     videomodel = FRCNNVideoModel(**conf["videonet"])
     audiomodel = CTCNet(**conf["audionet"])
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
+
+    exit()
 
     # Define scheduler
     scheduler = None
