@@ -2,54 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ...layers.normalizations import get as get_norm
+from ..layers import ConvNormAct
+
 
 def cal_padding(input_size, kernel_size=1, stride=1, dilation=1):
     return (kernel_size - input_size + (kernel_size-1)*(dilation-1) \
         + stride*(input_size-1)) // 2
 
-
-class ConvNormAct(nn.Module):
-    def __init__(
-            self,
-            in_chan,
-            out_chan,
-            kernel_size,
-            stride=1,
-            groups=1,
-            dilation=1,
-            padding=0,
-            norm_type="BatchNorm1d",
-            act_type=None,
-        ):
-        super(ConvNormAct, self).__init__()
-        self.conv = nn.Conv1d(
-            in_chan,
-            out_chan,
-            kernel_size,
-            stride=stride,
-            dilation=dilation,
-            padding=padding,
-            bias=True,
-            groups=groups,
-        )
-        # self.norm = getattr(nn, norm_type)(out_chan)
-        if hasattr(nn, norm_type):
-            self.norm = getattr(nn, norm_type)(out_chan)
-        else:
-            self.norm = get_norm(norm_type)(out_chan)
-        if act_type != None:
-            self.act = nn.PReLU()
-        else:
-            self.act = None
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.norm(x)
-        if self.act != None:
-            return self.act(x)
-        else:
-            return x
 
 
 class FRCNNBlock(nn.Module):

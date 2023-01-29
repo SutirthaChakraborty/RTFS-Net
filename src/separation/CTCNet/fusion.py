@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..layers import ConvNorm, FRCNNBlock
+
+from ..layers import ConvNormAct, FRCNNBlock
 from .frcnn import FRCNN as VideoFRCNN
 
 
@@ -27,8 +28,8 @@ class ConcatFusion(FusionBasemodule):
         vin_chan: int = 128,
     ):
         super(ConcatFusion, self).__init__(ain_chan, vin_chan)
-        self.audio_conv = ConvNorm(ain_chan + vin_chan, ain_chan, 1, 1)
-        self.video_conv = ConvNorm(ain_chan + vin_chan, vin_chan, 1, 1)
+        self.audio_conv = ConvNormAct(ain_chan + vin_chan, ain_chan, 1, 1, norm_type="gLN")
+        self.video_conv = ConvNormAct(ain_chan + vin_chan, vin_chan, 1, 1, norm_type="gLN")
 
     def forward(self, audio, video):
         video_interp = F.interpolate(video, size=audio.shape[-1], mode="nearest")
@@ -45,8 +46,8 @@ class ConcatFusion(FusionBasemodule):
 class SumFusion(FusionBasemodule):
     def __init__(self, ain_chan: int = 128, vin_chan: int = 128):
         super(SumFusion, self).__init__(ain_chan, vin_chan)
-        self.audio_conv = ConvNorm(vin_chan, ain_chan, 1, 1)
-        self.video_conv = ConvNorm(ain_chan, vin_chan, 1, 1)
+        self.audio_conv = ConvNormAct(vin_chan, ain_chan, 1, 1, norm_type="gLN")
+        self.video_conv = ConvNormAct(ain_chan, vin_chan, 1, 1, norm_type="gLN")
 
     def forward(self, audio, video):
         audio_interp = F.interpolate(audio, size=video.shape[-1], mode="nearest")
@@ -76,7 +77,7 @@ class MultiModalFusion(nn.Module):
         self.fusion_type = fusion_type
         self.fusion_shared = fusion_shared
 
-        self.audio_concat = nn.Sequential(nn.Conv1d(self.audio_bn_chan, self.audio_bn_chan, 1, groups=self.audio_bn_chan), nn.PReLU())
+        self.audio_concat = ConvNormAct(self.audio_bn_chan, self.audio_bn_chan, 1, groups=self.audio_bn_chan, act_type="PReLU")
 
         fusion_class: FusionBasemodule = globals()[self.fusion_type]
 

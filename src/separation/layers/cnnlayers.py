@@ -15,8 +15,8 @@ class ConvNormAct(nn.Module):
         groups: int = 1,
         dilation: int = 1,
         padding: int = 0,
-        norm_type="gLN",
-        act_type="PReLU",
+        norm_type=None,
+        act_type=None,
         xavier_init=False,
     ):
         super(ConvNormAct, self).__init__()

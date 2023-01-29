@@ -1,1 +1,1 @@
-from .cnnlayers import ConvNorm, ConvNormAct, FRCNNBlock
+from .cnnlayers import ConvNormAct, FRCNNBlock
