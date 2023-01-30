@@ -89,11 +89,27 @@ class Masker(nn.Module):
 
     def forward(self, audio, video):
         batch_size = audio.shape[0]
-
+        
         audio = self.audio_bottleneck(audio)
         video = self.video_bottleneck(video)
 
-        audio_fused = self.crossmodal_fusion(audio, video, self.audio_frcnn, self.video_frcnn)
+        audio_residual = audio
+        video_residual = video
+
+        for i in range(self.fusion_repeats):
+            if i == 0:
+                audio = self.audio_frcnn.get_frcnn_block(i)(audio)
+                video = self.video_frcnn.get_frcnn_block(i)(video)
+                audio_fused, video_fused = self.crossmodal_fusion.get_fusion_block(i)(audio, video)
+            else:
+                audio_fused = self.audio_frcnn.get_frcnn_block(i)(self.audio_frcnn.get_concat_block(i)(audio_fused + audio_residual))
+                video_fused = self.video_frcnn.get_frcnn_block(i)(self.video_frcnn.get_concat_block(i)(video_fused + video_residual))
+                audio_fused, video_fused = self.crossmodal_fusion.get_fusion_block(i)(audio_fused, video_fused)
+
+        for i in range(self.audio_repeats):
+            j = i + self.fusion_repeats
+            audio_fused = self.audio_frcnn.get_frcnn_block(j)(self.audio_frcnn.get_concat_block(j)(audio_fused + audio_residual))
+
         masks = self.mask_generator(audio_fused).view(batch_size, self.n_src, self.in_chan, -1)
 
         return masks
