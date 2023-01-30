@@ -76,14 +76,20 @@ class MultiModalFusion(nn.Module):
         self.fusion_type = fusion_type
         self.fusion_shared = fusion_shared
 
+        self.fusion_module = self.__build_fusion_module()
+
+    def __build_fusion_module(self):
         fusion_class = globals().get(self.fusion_type)
-
         if self.fusion_shared:
-            self.fusion_module = fusion_class(self.audio_bn_chan, self.video_bn_chan)
+            out = fusion_class(self.audio_bn_chan, self.video_bn_chan)
         else:
-            self.fusion_module = nn.ModuleList([fusion_class(self.audio_bn_chan, self.video_bn_chan) for _ in range(self.fusion_repeats)])
+            out = nn.ModuleList()
+            for _ in range(self.fusion_repeats):
+                out.append(fusion_class(self.audio_bn_chan, self.video_bn_chan))
 
-    def __get_crossmodal_fusion(self, i):
+        return out
+
+    def get_fusion_block(self, i):
         if self.fusion_shared:
             return self.fusion_module
         else:
@@ -97,11 +103,11 @@ class MultiModalFusion(nn.Module):
             if i == 0:
                 audio = audio_frcnn.get_frcnn_block(i)(audio)
                 video = video_frcnn.get_frcnn_block(i)(video)
-                audio_fused, video_fused = self.__get_crossmodal_fusion(i)(audio, video)
+                audio_fused, video_fused = self.get_fusion_block(i)(audio, video)
             else:
                 audio_fused = audio_frcnn.get_frcnn_block(i)(audio_frcnn.get_concat_block(i)(audio_fused + audio_residual))
                 video_fused = video_frcnn.get_frcnn_block(i)(video_frcnn.get_concat_block(i)(video_fused + video_residual))
-                audio_fused, video_fused = self.__get_crossmodal_fusion(i)(audio_fused, video_fused)
+                audio_fused, video_fused = self.get_fusion_block(i)(audio_fused, video_fused)
 
         for i in range(self.audio_repeats):
             j = i + self.fusion_repeats

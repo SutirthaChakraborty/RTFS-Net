@@ -76,19 +76,17 @@ class FRCNNBlock(nn.Module):
         self.upsampling_depth = upsampling_depth
         self.dropout = dropout
 
-        self.proj = ConvNormAct(self.in_chan, self.out_chan, kernel_size=1, norm_type=self.norm_type, act_type=self.act_type)
-        self.spp_dw = self._build_downsample_layers()
-        self.fuse_layers = self._build_fusion_layers()
-        self.concat_layer = self._build_concat_layers()
+        self.proj = ConvNormAct(self.in_chan, self.out_chan, 1, norm_type=self.norm_type, act_type=self.act_type)
+        self.spp_dw = self.__build_downsample_layers()
+        self.fuse_layers = self.__build_fusion_layers()
+        self.concat_layer = self.__build_concat_layers()
         self.last = nn.Sequential(
-            ConvNormAct(
-                self.out_chan * self.upsampling_depth, self.out_chan, kernel_size=1, norm_type=self.norm_type, act_type=self.act_type
-            ),
+            ConvNormAct(self.out_chan * self.upsampling_depth, self.out_chan, 1, norm_type=self.norm_type, act_type=self.act_type),
             nn.Conv1d(self.out_chan, self.in_chan, 1),
         )
         self.dropout_layer = nn.Dropout(self.dropout) if self.dropout > 0 else nn.Identity()
 
-    def _build_downsample_layers(self):
+    def __build_downsample_layers(self):
         out = nn.ModuleList()
         out.append(
             ConvNormAct(
@@ -117,7 +115,7 @@ class FRCNNBlock(nn.Module):
             )
         return out
 
-    def _build_fusion_layers(self):
+    def __build_fusion_layers(self):
         out = nn.ModuleList()
         for i in range(self.upsampling_depth):
             fuse_layer = nn.ModuleList()
@@ -140,7 +138,7 @@ class FRCNNBlock(nn.Module):
             out.append(fuse_layer)
         return out
 
-    def _build_concat_layers(self):
+    def __build_concat_layers(self):
         out = nn.ModuleList()
         for i in range(self.upsampling_depth):
             if i == 0 or i == self.upsampling_depth - 1:
@@ -229,12 +227,12 @@ class FRCNN(nn.Module):
         self.act_type = act_type
         self.kernel_size = kernel_size
 
-        self.frcnn = self._build_frcnn()
-        self.concat_block = self._build_concat_block()
+        self.frcnn = self.__build_frcnn()
+        self.concat_block = self.__build_concat_block()
 
-    def _build_frcnn(self):
+    def __build_frcnn(self):
         if self.shared:
-            return FRCNNBlock(
+            out = FRCNNBlock(
                 in_chan=self.in_chan,
                 out_chan=self.out_chan,
                 kernel_size=self.kernel_size,
@@ -257,16 +255,18 @@ class FRCNN(nn.Module):
                         dropout=self.dropout,
                     )
                 )
-            return out
 
-    def _build_concat_block(self):
+        return out
+
+    def __build_concat_block(self):
         if self.shared:
-            return ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type="PReLU")
+            out = ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type="PReLU")
         else:
             out = nn.ModuleList([None])
             for _ in range(self.repeats - 1):
                 out.append(ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type="PReLU"))
-            return out
+
+        return out
 
     def get_frcnn_block(self, i):
         if self.shared:
