@@ -20,7 +20,8 @@ class CTCNet(BaseAVModel):
         norm_type: str = "gLN",
         mask_act: str = "sigmoid",
         act_type: str = "prelu",
-        video_frcnn: dict = dict(),
+        audio_net: str = "FRCNN",
+        video_params: dict = dict(),
         pretrain: str = None,
         audio_shared: bool = True,
         fusion_shared: bool = False,
@@ -39,10 +40,11 @@ class CTCNet(BaseAVModel):
         self.fusion_repeats = fusion_repeats
         self.audio_repeats = audio_repeats
         self.upsampling_depth = upsampling_depth
+        self.audio_net = audio_net
         self.norm_type = norm_type
         self.mask_act = mask_act
         self.act_type = act_type
-        self.video_frcnn = video_frcnn
+        self.video_params = video_params
         self.pretrain = pretrain
         self.audio_shared = audio_shared
         self.fusion_shared = fusion_shared
@@ -74,10 +76,11 @@ class CTCNet(BaseAVModel):
             fusion_repeats=self.fusion_repeats,
             audio_repeats=self.audio_repeats,
             upsampling_depth=self.upsampling_depth,
+            audio_net=self.audio_net,
             norm_type=self.norm_type,
             mask_act=self.mask_act,
             act_type=self.act_type,
-            video_frcnn=self.video_frcnn,
+            video_params=self.video_params,
             pretrain=self.pretrain,
             audio_shared=self.audio_shared,
             fusion_shared=self.fusion_shared,

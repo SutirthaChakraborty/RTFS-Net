@@ -5,6 +5,7 @@ videonet:
     width_mult: 1.0
     pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
+    audio_net: FCRNN
     n_src: 1
     in_chan: 512
     kernel_size: 21
@@ -17,7 +18,8 @@ audionet:
     act_type: PReLU
     norm_type: gLN
     # video frcnn
-    video_frcnn:
+    video_params:
+        video_net: FCRNN
         vout_chan: 512                  # output from pretrained model
         in_chan: 64                     # video bottleneck 
         hid_chan: 64

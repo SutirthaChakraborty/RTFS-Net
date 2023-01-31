@@ -2,65 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import normalizations, activations
-
-
-class ConvNormAct(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        out_chan: int,
-        kernel_size: int,
-        stride: int = 1,
-        groups: int = 1,
-        dilation: int = 1,
-        padding: int = 0,
-        norm_type: str = None,
-        act_type: str = None,
-        xavier_init: bool = False,
-        bias: bool = True,
-    ):
-        super(ConvNormAct, self).__init__()
-        self.in_chan = in_chan
-        self.out_chan = out_chan
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.groups = groups
-        self.dilation = dilation
-        self.padding = padding
-        self.norm_type = norm_type
-        self.act_type = act_type
-        self.xavier_init = xavier_init
-        self.bias = bias
-
-        self.conv = nn.Conv1d(
-            in_channels=self.in_chan,
-            out_channels=self.out_chan,
-            kernel_size=self.kernel_size,
-            stride=self.stride,
-            padding=self.padding,
-            dilation=self.dilation,
-            groups=self.groups,
-            bias=self.bias,
-        )
-        if self.xavier_init:
-            nn.init.xavier_uniform_(self.conv.weight)
-
-        self.norm = normalizations.get(self.norm_type)(self.out_chan)
-        self.act = activations.get(self.act_type)()
-
-    def forward(self, x):
-        output = self.conv(x)
-        output = self.norm(output)
-        output = self.act(output)
-        return output
+from .cnn_layers import ConvNormAct
 
 
 class FRCNNBlock(nn.Module):
     def __init__(
         self,
         in_chan: int,
-        out_chan: int,
+        hid_chan: int,
         kernel_size: int = 5,
         norm_type: str = "BatchNorm1d",
         act_type: str = "PReLU",
@@ -69,20 +18,20 @@ class FRCNNBlock(nn.Module):
     ):
         super(FRCNNBlock, self).__init__()
         self.in_chan = in_chan
-        self.out_chan = out_chan
+        self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
         self.dropout = dropout
 
-        self.proj = ConvNormAct(self.in_chan, self.out_chan, 1, norm_type=self.norm_type, act_type=self.act_type)
-        self.spp_dw = self.__build_downsample_layers()
-        self.fuse_layers = self.__build_fusion_layers()
-        self.concat_layer = self.__build_concat_layers()
-        self.last = nn.Sequential(
-            ConvNormAct(self.out_chan * self.upsampling_depth, self.out_chan, 1, norm_type=self.norm_type, act_type=self.act_type),
-            nn.Conv1d(self.out_chan, self.in_chan, 1),
+        self.projection = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, act_type=self.act_type)
+        self.downsample_layers = self.__build_downsample_layers()
+        self.fusion_layers = self.__build_fusion_layers()
+        self.concat_layers = self.__build_concat_layers()
+        self.residual_conv = nn.Sequential(
+            ConvNormAct(self.hid_chan * self.upsampling_depth, self.hid_chan, 1, norm_type=self.norm_type, act_type=self.act_type),
+            nn.Conv1d(self.hid_chan, self.in_chan, 1),
         )
         self.dropout_layer = nn.Dropout(self.dropout) if self.dropout > 0 else nn.Identity()
 
@@ -90,11 +39,11 @@ class FRCNNBlock(nn.Module):
         out = nn.ModuleList()
         out.append(
             ConvNormAct(
-                self.out_chan,
-                self.out_chan,
+                self.hid_chan,
+                self.hid_chan,
                 kernel_size=self.kernel_size,
-                groups=self.out_chan,
-                padding=((self.kernel_size - 1) // 2) * 1,
+                groups=self.hid_chan,
+                padding=(self.kernel_size - 1) // 2,
                 norm_type=self.norm_type,
                 act_type=None,
             )
@@ -103,12 +52,12 @@ class FRCNNBlock(nn.Module):
         for _ in range(1, self.upsampling_depth):
             out.append(
                 ConvNormAct(
-                    self.out_chan,
-                    self.out_chan,
+                    self.hid_chan,
+                    self.hid_chan,
                     kernel_size=self.kernel_size,
                     stride=2,
-                    groups=self.out_chan,
-                    padding=((self.kernel_size - 1) // 2) * 1,
+                    groups=self.hid_chan,
+                    padding=(self.kernel_size - 1) // 2,
                     norm_type=self.norm_type,
                     act_type=None,
                 )
@@ -125,12 +74,12 @@ class FRCNNBlock(nn.Module):
                 elif i - j == 1:
                     fuse_layer.append(
                         ConvNormAct(
-                            self.out_chan,
-                            self.out_chan,
+                            self.hid_chan,
+                            self.hid_chan,
                             kernel_size=self.kernel_size,
                             stride=2,
-                            groups=self.out_chan,
-                            padding=((self.kernel_size - 1) // 2) * 1,
+                            groups=self.hid_chan,
+                            padding=(self.kernel_size - 1) // 2,
                             norm_type=self.norm_type,
                             act_type=None,
                         )
@@ -144,8 +93,8 @@ class FRCNNBlock(nn.Module):
             if i == 0 or i == self.upsampling_depth - 1:
                 out.append(
                     ConvNormAct(
-                        self.out_chan * 2,
-                        self.out_chan,
+                        self.hid_chan * 2,
+                        self.hid_chan,
                         kernel_size=1,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
@@ -154,8 +103,8 @@ class FRCNNBlock(nn.Module):
             else:
                 out.append(
                     ConvNormAct(
-                        self.out_chan * 3,
-                        self.out_chan,
+                        self.hid_chan * 3,
+                        self.hid_chan,
                         kernel_size=1,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
@@ -166,12 +115,12 @@ class FRCNNBlock(nn.Module):
     def forward(self, x):
         # x: shape (B, C, T)
         res = x
-        x = self.proj(x)
+        x = self.projection(x)
 
         # bottom-up
-        output = [self.spp_dw[0](x)]
+        output = [self.downsample_layers[0](x)]
         for k in range(1, self.upsampling_depth):
-            out_k = self.spp_dw[k](output[-1])
+            out_k = self.downsample_layers[k](output[-1])
             output.append(out_k)
 
         # lateral connection
@@ -180,13 +129,13 @@ class FRCNNBlock(nn.Module):
             T = output[i].shape[-1]
             y = torch.cat(
                 (
-                    self.fuse_layers[i][0](output[i - 1]) if i - 1 >= 0 else torch.Tensor().to(x.device),
+                    self.fusion_layers[i][0](output[i - 1]) if i - 1 >= 0 else torch.Tensor().to(x.device),
                     output[i],
                     F.interpolate(output[i + 1], size=T, mode="nearest") if i + 1 < self.upsampling_depth else torch.Tensor().to(x.device),
                 ),
                 dim=1,
             )
-            x_fuse.append(self.concat_layer[i](y))
+            x_fuse.append(self.concat_layers[i](y))
 
         # resize to T
         T = output[0].shape[-1]
@@ -194,7 +143,7 @@ class FRCNNBlock(nn.Module):
             x_fuse[i] = F.interpolate(x_fuse[i], size=T, mode="nearest")
 
         # concat and shortcut
-        x = self.last(torch.cat(x_fuse, dim=1))
+        x = self.residual_conv(torch.cat(x_fuse, dim=1))
         # dropout
         x = self.dropout_layer(x)
 
@@ -205,20 +154,18 @@ class FRCNN(nn.Module):
     def __init__(
         self,
         in_chan: int,
-        out_chan: int,
-        upsampling_depth: int = 4,
-        repeats: int = 4,
-        shared: bool = False,
-        dropout: float = -1,
+        hid_chan: int,
+        kernel_size: int = 5,
         norm_type: str = "BatchNorm1d",
         act_type: str = "PReLU",
-        kernel_size: int = 5,
-        *args,
-        **kwargs
+        upsampling_depth: int = 4,
+        dropout: float = -1,
+        repeats: int = 4,
+        shared: bool = False,
     ):
         super(FRCNN, self).__init__()
         self.in_chan = in_chan
-        self.out_chan = out_chan
+        self.hid_chan = hid_chan
         self.upsampling_depth = upsampling_depth
         self.repeats = repeats
         self.shared = shared
@@ -234,7 +181,7 @@ class FRCNN(nn.Module):
         if self.shared:
             out = FRCNNBlock(
                 in_chan=self.in_chan,
-                out_chan=self.out_chan,
+                hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
                 norm_type=self.norm_type,
                 act_type=self.act_type,
@@ -247,7 +194,7 @@ class FRCNN(nn.Module):
                 out.append(
                     FRCNNBlock(
                         in_chan=self.in_chan,
-                        out_chan=self.out_chan,
+                        hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
