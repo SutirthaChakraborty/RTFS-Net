@@ -15,7 +15,7 @@ from tqdm import tqdm
 from src.utils import tensors_to_device
 from src.metrics import ALLMetricsTracker
 from src.videomodels import FRCNNVideoModel
-from src.models.avfrcnn2 import AVFRCNN2CTC
+from src.models import CTCNet
 from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
@@ -30,7 +30,7 @@ def main(conf):
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
 
     sample_rate = conf["data"]["sample_rate"]
-    audiomodel: torch.nn.Module = AVFRCNN2CTC.from_pretrain(model_path, sample_rate=sample_rate, **conf["audionet"])
+    audiomodel: torch.nn.Module = CTCNet.from_pretrain(model_path, sample_rate=sample_rate, **conf["audionet"])
 
     videomodel = FRCNNVideoModel(**conf["videonet"])
 
