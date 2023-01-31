@@ -58,4 +58,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_pretrain_1_3_bn128_hid256_31_1_2023
+    exp_name: ctcnet_small_fcrnn
