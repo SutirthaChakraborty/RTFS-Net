@@ -76,7 +76,7 @@ def main(conf):
         scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.5, patience=10)
 
     # Just after instantiating, save the args. Easy loading in the future.
-    conf["main_args"]["exp_dir"] = os.path.join("../av-experiments", conf["log"]["exp_name"])
+    conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
     exp_dir = conf["main_args"]["exp_dir"]
     os.makedirs(exp_dir, exist_ok=True)
     conf_path = os.path.join(exp_dir, "conf.yml")
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     # By default train.py will use all available GPUs. The `id` option in run.sh
     # will limit the number of available GPUs for train.py .
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_64_64_3_adamw_1e-1_blocks8_pretrain.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_fcrnn.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
