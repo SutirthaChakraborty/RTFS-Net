@@ -59,7 +59,7 @@ class Masker(nn.Module):
         )
 
         # main modules
-        self.video_net = layers.get(self.video_net_name)(**video_params)
+        self.video_net = layers.get(self.video_net_name)(**video_params, repats=self.fusion_repeats)
         self.audio_net = layers.get(self.audio_net_name)(
             in_chan=self.audio_bn_chan,
             hid_chan=self.hid_chan,
