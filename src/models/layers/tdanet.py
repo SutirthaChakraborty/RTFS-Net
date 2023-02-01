@@ -149,7 +149,7 @@ class TDANetBlock(nn.Module):
         shape = downsampled_outputs[-1].shape
         global_features = torch.zeros(shape, requires_grad=True, device=x_enc.device)
         for features in downsampled_outputs:
-            global_features += F.adaptive_avg_pool1d(features, output_size=shape[-1])
+            global_features = global_features + F.adaptive_avg_pool1d(features, output_size=shape[-1])
         global_features = self.globalatt(global_features)  # [B, N, T]
 
         x_fused = []
