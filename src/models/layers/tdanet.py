@@ -158,7 +158,7 @@ class TDANetBlock(nn.Module):
             local_features = downsampled_outputs[i]
             x_fused.append(self.fusion_layers[i](local_features, global_features))
 
-        expanded = self.concat_layers[i](x_fused[-2], x_fused[-1])
+        expanded = self.concat_layers[-1](x_fused[-2], x_fused[-1])
         for i in range(self.upsampling_depth - 3, -1, -1):
             expanded = self.concat_layers[i](x_fused[i], expanded)
 
