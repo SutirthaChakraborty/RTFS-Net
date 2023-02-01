@@ -162,8 +162,13 @@ class FRCNN(nn.Module):
         dropout: float = -1,
         repeats: int = 4,
         shared: bool = False,
+        *args,
+        **kwargs,
     ):
         super(FRCNN, self).__init__()
+        print("Unused args: ", args)
+        print("Unused kwargs: ", kwargs)
+
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.upsampling_depth = upsampling_depth
