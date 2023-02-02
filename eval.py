@@ -136,7 +136,7 @@ if __name__ == "__main__":
         "-c",
         "--conf-dir",
         type=str,
-        default="/home/anxihao/data2/av-experiments/ctcnet_pretrain_baseline_1_3/conf.yml",
+        default="/ssd2/anxihao/experiments/audio-visual/ctcnet_small_tdanet/conf.yml",
         help="Full path to save best validation model",
     )
     parser.add_argument(
