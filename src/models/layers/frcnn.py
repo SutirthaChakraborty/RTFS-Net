@@ -166,9 +166,6 @@ class FRCNN(nn.Module):
         **kwargs,
     ):
         super(FRCNN, self).__init__()
-        print("Unused args: ", args)
-        print("Unused kwargs: ", kwargs)
-
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.upsampling_depth = upsampling_depth

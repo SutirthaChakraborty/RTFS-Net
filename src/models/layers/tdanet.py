@@ -184,8 +184,6 @@ class TDANet(nn.Module):
         **kwargs,
     ):
         super(TDANet, self).__init__()
-        print("Unused args: ", args)
-        print("Unused kwargs: ", kwargs)
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
