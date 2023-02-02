@@ -11,6 +11,7 @@ class FRCNNBlock(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
+        stride: int = 2,
         norm_type: str = "BatchNorm1d",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
@@ -20,6 +21,7 @@ class FRCNNBlock(nn.Module):
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
+        self.stride = stride
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
@@ -37,25 +39,14 @@ class FRCNNBlock(nn.Module):
 
     def __build_downsample_layers(self):
         out = nn.ModuleList()
-        out.append(
-            ConvNormAct(
-                self.hid_chan,
-                self.hid_chan,
-                kernel_size=self.kernel_size,
-                groups=self.hid_chan,
-                padding=(self.kernel_size - 1) // 2,
-                norm_type=self.norm_type,
-                act_type=None,
-            )
-        )
-        # ----------Down Sample Layer----------
-        for _ in range(1, self.upsampling_depth):
+        for i in range(self.upsampling_depth):
+            stride = 1 if i == 0 else self.stride
             out.append(
                 ConvNormAct(
                     self.hid_chan,
                     self.hid_chan,
                     kernel_size=self.kernel_size,
-                    stride=2,
+                    stride=stride,
                     groups=self.hid_chan,
                     padding=(self.kernel_size - 1) // 2,
                     norm_type=self.norm_type,

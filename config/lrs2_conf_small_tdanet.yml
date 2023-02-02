@@ -5,27 +5,33 @@ videonet:
     width_mult: 1.0
     pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
-    audio_net: TDANet
     n_src: 1
     in_chan: 512
     kernel_size: 21
     stride: 10
-    hid_chan: 256                       # FRCNN hidden channels
-    audio_bn_chan: 128                  # bottleneck
-    fusion_repeats: 1
-    audio_repeats: 3
+    hid_chan: 512                       # FRCNN hidden channels
+    audio_bn_chan: 512                  # bottleneck
     mask_act: ReLU
     act_type: PReLU
     norm_type: gLN
-    # video frcnn
+    upsampling_depth: 5
+    audio_repeats: 3
+    audio_net: TDANet
+    audio_shared: True
+    # fusion params
+    fusion_repeats: 1
+    fusion_type: ConcatFusion
+    fusion_shared: True
+    # video TDANet
     video_params:
         video_net: TDANet
         vout_chan: 512                  # output from pretrained model
         in_chan: 64                     # video bottleneck 
         hid_chan: 64
-        upsampling_depth: 5
-        shared: False
-        kernel_size: 5
+        upsampling_depth: 4
+        shared: True
+        kernel_size: 3
+        stride: 2
 # Training config
 training:
     gpus: [0,1,2,3,4,5,6]

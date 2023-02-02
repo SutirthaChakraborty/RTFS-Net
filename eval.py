@@ -26,12 +26,9 @@ warnings.filterwarnings("ignore")
 
 def main(conf):
     conf["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
-    # conf["audionet"].update({"n_src": 1})
+
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
-
-    sample_rate = conf["data"]["sample_rate"]
     audiomodel: torch.nn.Module = CTCNet.from_pretrain(model_path, **conf["audionet"])
-
     videomodel = FRCNNVideoModel(**conf["videonet"])
 
     # Handle device placement
