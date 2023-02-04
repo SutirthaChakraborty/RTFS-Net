@@ -30,6 +30,8 @@ audionet:
         hid_chan: 64
         upsampling_depth: 4
         shared: True
+        norm_type: "BatchNorm1d"
+        act_type: "PReLU"
         kernel_size: 3
         stride: 2
 # Training config
@@ -62,4 +64,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet
+    exp_name: ctcnet_small_tdanet_vidbatchnorm

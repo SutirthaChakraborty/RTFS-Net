@@ -12,11 +12,13 @@ class InjectionMultiSum(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int,
+        norm_type: str = "gLN",
     ):
         super(InjectionMultiSum, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
+        self.norm_type = norm_type
 
         self.groups = in_chan if in_chan == hid_chan else 1
 
@@ -26,7 +28,7 @@ class InjectionMultiSum(nn.Module):
             kernel_size=self.kernel_size,
             groups=self.groups,
             padding=((self.kernel_size - 1) // 2),
-            norm_type="gLN",
+            norm_type=self.norm_type,
             bias=False,
         )
         self.global_embedding = ConvNormAct(
@@ -35,7 +37,7 @@ class InjectionMultiSum(nn.Module):
             kernel_size=self.kernel_size,
             groups=self.groups,
             padding=((self.kernel_size - 1) // 2),
-            norm_type="gLN",
+            norm_type=self.norm_type,
             bias=False,
         )
         self.global_gate = ConvNormAct(
@@ -44,7 +46,7 @@ class InjectionMultiSum(nn.Module):
             kernel_size=self.kernel_size,
             groups=self.groups,
             padding=((self.kernel_size - 1) // 2),
-            norm_type="gLN",
+            norm_type=self.norm_type,
             act_type="Sigmoid",
             bias=False,
         )
@@ -74,6 +76,8 @@ class TDANetBlock(nn.Module):
         hid_chan: int,
         kernel_size: int = 5,
         stride: int = 2,
+        norm_type: str = "gLN",
+        act_type: str = "PReLU",
         upsampling_depth: int = 4,
         n_head: int = 8,
         dropout: int = 0.1,
@@ -84,16 +88,18 @@ class TDANetBlock(nn.Module):
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.stride = stride
+        self.norm_type = norm_type
+        self.act_type = act_type
         self.upsampling_depth = upsampling_depth
         self.n_head = n_head
         self.dropout = dropout
         self.drop_path = drop_path
 
-        self.projection = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type="gLN", act_type="PReLU")
+        self.projection = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, act_type=self.act_type)
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
-        self.residual_conv = nn.Conv1d(hid_chan, in_chan, 1)
+        self.residual_conv = nn.Conv1d(self.hid_chan, self.in_chan, 1)
 
         self.globalatt = GlobalAttention(
             in_chan=self.hid_chan,
@@ -115,7 +121,7 @@ class TDANetBlock(nn.Module):
                     stride=stride,
                     groups=self.hid_chan,
                     padding=(self.kernel_size - 1) // 2,
-                    norm_type="gLN",
+                    norm_type=self.norm_type,
                 )
             )
 
@@ -124,14 +130,14 @@ class TDANetBlock(nn.Module):
     def __build_fusion_layers(self):
         out = nn.ModuleList([])
         for _ in range(self.upsampling_depth):
-            out.append(InjectionMultiSum(self.hid_chan, self.hid_chan, 1))
+            out.append(InjectionMultiSum(self.hid_chan, self.hid_chan, 1, self.norm_type))
 
         return out
 
     def __build_concat_layers(self):
         out = nn.ModuleList([])
         for _ in range(self.upsampling_depth - 1):
-            out.append(InjectionMultiSum(self.hid_chan, self.hid_chan, self.kernel_size))
+            out.append(InjectionMultiSum(self.hid_chan, self.hid_chan, self.kernel_size, self.norm_type))
 
         return out
 
@@ -174,6 +180,8 @@ class TDANet(nn.Module):
         hid_chan: int,
         kernel_size: int = 5,
         stride: int = 2,
+        norm_type: str = "gLN",
+        act_type: str = "PReLU",
         upsampling_depth: int = 4,
         n_head: int = 8,
         dropout: float = 0.1,
@@ -188,6 +196,8 @@ class TDANet(nn.Module):
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.stride = stride
+        self.norm_type = norm_type
+        self.act_type = act_type
         self.upsampling_depth = upsampling_depth
         self.n_head = n_head
         self.dropout = dropout
@@ -205,6 +215,8 @@ class TDANet(nn.Module):
                 hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
                 stride=self.stride,
+                norm_type=self.norm_type,
+                act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
                 n_head=self.n_head,
                 dropout=self.dropout,
@@ -219,6 +231,8 @@ class TDANet(nn.Module):
                         hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
                         stride=self.stride,
+                        norm_type=self.norm_type,
+                        act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
                         n_head=self.n_head,
                         dropout=self.dropout,
@@ -230,11 +244,13 @@ class TDANet(nn.Module):
 
     def __build_concat_block(self):
         if self.shared:
-            out = ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type="PReLU")
+            out = ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type=self.act_type)
         else:
             out = nn.ModuleList([None])
             for _ in range(self.repeats - 1):
-                out.append(ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type="PReLU"))
+                out.append(
+                    ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type=self.act_type)
+                )
 
         return out
 
