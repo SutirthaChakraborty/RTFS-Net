@@ -11,12 +11,11 @@ import argparse
 import warnings
 
 from tqdm import tqdm
-from typing import OrderedDict
 
 from src.utils import tensors_to_device
 from src.metrics import ALLMetricsTracker
 from src.videomodels import FRCNNVideoModel
-from src.models.avfrcnn2 import AVFRCNN2
+from src.models import CTCNet
 from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
@@ -26,13 +25,10 @@ warnings.filterwarnings("ignore")
 
 
 def main(conf):
-    conf["exp_dir"] = os.path.join("../av-experiments", conf["log"]["exp_name"])
-    # conf["audionet"].update({"n_src": 1})
+    conf["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
+
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
-
-    sample_rate = conf["data"]["sample_rate"]
-    audiomodel: torch.nn.Module = AVFRCNN2.from_pretrain(model_path, sample_rate=sample_rate, **conf["audionet"])
-
+    audiomodel: torch.nn.Module = CTCNet.from_pretrain(model_path, **conf["audionet"])
     videomodel = FRCNNVideoModel(**conf["videonet"])
 
     # Handle device placement
@@ -137,7 +133,7 @@ if __name__ == "__main__":
         "-c",
         "--conf-dir",
         type=str,
-        default="/home/anxihao/data2/av-experiments/ctcnet_pretrain_1_3_bn128_vin128_hidden256/conf.yml",
+        default="/ssd2/anxihao/experiments/audio-visual/ctcnet_small_tdanet/conf.yml",
         help="Full path to save best validation model",
     )
     parser.add_argument(

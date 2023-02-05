@@ -5,10 +5,10 @@
 # LastEditTime: 2021-09-13 18:37:23
 ###
 
-from .CTCNet import CTCNet
+from .avfrcnn2.avfrcnn2 import AVFRCNN2
 
 __all__ = [
-    "CTCNet",
+    "AVFRCNN2",
 ]
 
 
@@ -19,8 +19,13 @@ def register_model(custom_model):
         custom_model: Custom model to register.
 
     """
-    if custom_model.__name__ in globals().keys() or custom_model.__name__.lower() in globals().keys():
-        raise ValueError(f"Model {custom_model.__name__} already exists. Choose another name.")
+    if (
+        custom_model.__name__ in globals().keys()
+        or custom_model.__name__.lower() in globals().keys()
+    ):
+        raise ValueError(
+            f"Model {custom_model.__name__} already exists. Choose another name."
+        )
     globals().update({custom_model.__name__: custom_model})
 
 

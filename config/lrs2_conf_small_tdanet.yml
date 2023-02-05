@@ -9,27 +9,34 @@ audionet:
     in_chan: 512
     kernel_size: 21
     stride: 10
-    hid_chan: 256                       # FRCNN hidden channels
-    audio_bn_chan: 128                  # bottleneck
-    fusion_repeats: 1
-    audio_repeats: 3
+    hid_chan: 512                       # FRCNN hidden channels
+    audio_bn_chan: 512                  # bottleneck
     mask_act: ReLU
     act_type: PReLU
     norm_type: gLN
-    # video frcnn
-    video_frcnn:
+    upsampling_depth: 5
+    audio_repeats: 3
+    audio_net: TDANet
+    audio_shared: True
+    # fusion params
+    fusion_repeats: 1
+    fusion_type: ConcatFusion
+    fusion_shared: True
+    # video TDANet
+    video_params:
+        video_net: TDANet
         vout_chan: 512                  # output from pretrained model
         in_chan: 64                     # video bottleneck 
         hid_chan: 64
         upsampling_depth: 4
-        repeats: 3
-        shared: False
+        shared: True
         norm_type: "BatchNorm1d"
         act_type: "PReLU"
         kernel_size: 3
+        stride: 2
 # Training config
 training:
-    gpus: [0,1,2,3,4,5,6,7]
+    gpus: [0,1,2,3,4,5,6]
     epochs: 200
     batch_size: 4
     num_workers: 8
@@ -57,4 +64,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_pretrain_1_3_bn128_hid256_31_1_2023
+    exp_name: ctcnet_small_tdanet_vidbatchnorm
