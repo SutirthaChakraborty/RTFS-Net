@@ -1,12 +1,9 @@
 import math
 import torch.nn as nn
-import pdb
 
 
 def conv3x3(in_planes, out_planes, stride=1):
-    return nn.Conv2d(
-        in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False
-    )
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
 def downsample_basic_block(inplanes, outplanes, stride):
@@ -18,9 +15,7 @@ def downsample_basic_block(inplanes, outplanes, stride):
 
 def downsample_basic_block_v2(inplanes, outplanes, stride):
     return nn.Sequential(
-        nn.AvgPool2d(
-            kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False
-        ),
+        nn.AvgPool2d(kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False),
         nn.Conv2d(inplanes, outplanes, kernel_size=1, stride=1, bias=False),
         nn.BatchNorm2d(outplanes),
     )
@@ -83,9 +78,7 @@ class ResNet(nn.Module):
         self.inplanes = 64
         self.relu_type = relu_type
         self.gamma_zero = gamma_zero
-        self.downsample_block = (
-            downsample_basic_block_v2 if avg_pool_downsample else downsample_basic_block
-        )
+        self.downsample_block = downsample_basic_block_v2 if avg_pool_downsample else downsample_basic_block
 
         super(ResNet, self).__init__()
         self.layer1 = self._make_layer(block, 64, layers[0])
@@ -121,9 +114,7 @@ class ResNet(nn.Module):
             )
 
         layers = []
-        layers.append(
-            block(self.inplanes, planes, stride, downsample, relu_type=self.relu_type)
-        )
+        layers.append(block(self.inplanes, planes, stride, downsample, relu_type=self.relu_type))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes, relu_type=self.relu_type))

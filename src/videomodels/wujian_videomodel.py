@@ -5,9 +5,9 @@
 # LastEditTime: 2021-08-30 20:03:24
 ###
 
-import torch.nn as nn
 import math
 import torch
+import torch.nn as nn
 
 
 def conv3x3(in_channels, out_channels, stride=1):

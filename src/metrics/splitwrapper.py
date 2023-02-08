@@ -6,16 +6,10 @@
 ###
 import csv
 import torch
-import numpy as np
 import logging
+import numpy as np
 
-# from torch_mir_eval.separation import bss_eval_sources
-from ..losses import (
-    PITLossWrapper,
-    pairwise_neg_sisdr,
-    pairwise_neg_snr,
-    singlesrc_neg_sisdr,
-)
+from ..losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
 logger = logging.getLogger(__name__)
 
@@ -48,34 +42,20 @@ class SPlitMetricsTracker:
         self.pit_snr = PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx")
 
     def __call__(self, mix, clean, estimate, key):
-        _, ests_np = self.pit_snr(
-            estimate.unsqueeze(0), clean.unsqueeze(0), return_ests=True
-        )
+        _, ests_np = self.pit_snr(estimate.unsqueeze(0), clean.unsqueeze(0), return_ests=True)
         # sisnr
         two_sisnr = self.pit_sisnr(ests_np[:, 0:2], clean.unsqueeze(0)[:, 0:2])
-        one_sisnr = self.pit_sisnr(
-            ests_np[:, 2].unsqueeze(1), clean.unsqueeze(0)[:, 2].unsqueeze(1)
-        )
+        one_sisnr = self.pit_sisnr(ests_np[:, 2].unsqueeze(1), clean.unsqueeze(0)[:, 2].unsqueeze(1))
         mix = torch.stack([mix] * clean.shape[0], dim=0)
-        two_sisnr_baseline = self.pit_sisnr(
-            mix.unsqueeze(0)[:, 0:2], clean.unsqueeze(0)[:, 0:2]
-        )
-        one_sisnr_baseline = self.pit_sisnr(
-            mix.unsqueeze(0)[:, 2].unsqueeze(1), clean.unsqueeze(0)[:, 2].unsqueeze(1)
-        )
+        two_sisnr_baseline = self.pit_sisnr(mix.unsqueeze(0)[:, 0:2], clean.unsqueeze(0)[:, 0:2])
+        one_sisnr_baseline = self.pit_sisnr(mix.unsqueeze(0)[:, 2].unsqueeze(1), clean.unsqueeze(0)[:, 2].unsqueeze(1))
         two_sisnr_i = two_sisnr - two_sisnr_baseline
         one_sisnr_i = one_sisnr - one_sisnr_baseline
         # sdr
         two_snr = self.pit_snr(ests_np[:, 0:2], clean.unsqueeze(0)[:, 0:2])
-        one_snr = self.pit_snr(
-            ests_np[:, 2].unsqueeze(1), clean.unsqueeze(0)[:, 2].unsqueeze(1)
-        )
-        two_snr_baseline = self.pit_snr(
-            mix.unsqueeze(0)[:, 0:2], clean.unsqueeze(0)[:, 0:2]
-        )
-        one_snr_baseline = self.pit_snr(
-            mix.unsqueeze(0)[:, 2].unsqueeze(1), clean.unsqueeze(0)[:, 2].unsqueeze(1)
-        )
+        one_snr = self.pit_snr(ests_np[:, 2].unsqueeze(1), clean.unsqueeze(0)[:, 2].unsqueeze(1))
+        two_snr_baseline = self.pit_snr(mix.unsqueeze(0)[:, 0:2], clean.unsqueeze(0)[:, 0:2])
+        one_snr_baseline = self.pit_snr(mix.unsqueeze(0)[:, 2].unsqueeze(1), clean.unsqueeze(0)[:, 2].unsqueeze(1))
         two_snr_i = two_snr - two_snr_baseline
         one_snr_i = one_snr - one_snr_baseline
 

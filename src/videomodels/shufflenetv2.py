@@ -1,12 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.autograd import Variable
-from collections import OrderedDict
-from torch.nn import init
-import math
-
-import pdb
 
 
 def conv_bn(inp, oup, stride):
@@ -124,11 +117,7 @@ class ShuffleNetV2(nn.Module):
         elif width_mult == 2.0:
             self.stage_out_channels = [-1, 24, 244, 488, 976, 2048]
         else:
-            raise ValueError(
-                """Width multiplier should be in [0.5, 1.0, 1.5, 2.0]. Current value: {}""".format(
-                    width_mult
-                )
-            )
+            raise ValueError("""Width multiplier should be in [0.5, 1.0, 1.5, 2.0]. Current value: {}""".format(width_mult))
 
         # building first layer
         input_channel = self.stage_out_channels[1]
@@ -143,13 +132,9 @@ class ShuffleNetV2(nn.Module):
             for i in range(numrepeat):
                 if i == 0:
                     # inp, oup, stride, benchmodel):
-                    self.features.append(
-                        InvertedResidual(input_channel, output_channel, 2, 2)
-                    )
+                    self.features.append(InvertedResidual(input_channel, output_channel, 2, 2))
                 else:
-                    self.features.append(
-                        InvertedResidual(input_channel, output_channel, 1, 1)
-                    )
+                    self.features.append(InvertedResidual(input_channel, output_channel, 1, 1))
                 input_channel = output_channel
 
         # make it nn.Sequential

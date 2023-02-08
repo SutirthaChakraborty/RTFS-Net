@@ -5,11 +5,11 @@
 # LastEditTime: 2021-07-08 11:34:08
 ###
 
-from .wujian_videomodel import WujianVideoModel, update_wujian_parameter
 from .resnet import ResNet, BasicBlock
-from .resnet1D import ResNet1D, BasicBlock1D
 from .shufflenetv2 import ShuffleNetV2
+from .resnet1D import ResNet1D, BasicBlock1D
 from .frcnn_videomodel import FRCNNVideoModel, update_frcnn_parameter
+from .wujian_videomodel import WujianVideoModel, update_wujian_parameter
 
 __all__ = [
     "WujianVideoModel",
@@ -31,13 +31,8 @@ def register_model(custom_model):
         custom_model: Custom model to register.
 
     """
-    if (
-        custom_model.__name__ in globals().keys()
-        or custom_model.__name__.lower() in globals().keys()
-    ):
-        raise ValueError(
-            f"Model {custom_model.__name__} already exists. Choose another name."
-        )
+    if custom_model.__name__ in globals().keys() or custom_model.__name__.lower() in globals().keys():
+        raise ValueError(f"Model {custom_model.__name__} already exists. Choose another name.")
     globals().update({custom_model.__name__: custom_model})
 
 

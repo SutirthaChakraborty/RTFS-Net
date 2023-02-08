@@ -8,7 +8,4 @@
 from .core import System
 from .optimizers import make_optimizer
 
-# from .comet import CometLogger
-# from .tensorboard import TensorBoardLogger
-
 __all__ = ["System", "make_optimizer"]

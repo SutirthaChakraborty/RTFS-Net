@@ -6,17 +6,12 @@
 ###
 import csv
 import torch
-import numpy as np
 import logging
+import numpy as np
+
 from pypesq import pesq
 from pystoi import stoi
-
-from ..losses import (
-    PITLossWrapper,
-    pairwise_neg_sisdr,
-    pairwise_neg_snr,
-    singlesrc_neg_sisdr,
-)
+from ..losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +52,7 @@ class ALLMetricsTracker:
 
         # stoi pesq
         # PESQ
-        _pesq = pesq(
-            estimate.squeeze(0).cpu().numpy(), clean.squeeze(0).cpu().numpy(), 16000
-        )
+        _pesq = pesq(estimate.squeeze(0).cpu().numpy(), clean.squeeze(0).cpu().numpy(), 16000)
 
         # STOI
         _stoi = stoi(

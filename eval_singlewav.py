@@ -21,8 +21,9 @@ import soundfile as sf
 from torch.utils import data
 from typing import OrderedDict
 
+from src.models import CTCNet
 from src.videomodels import FRCNNVideoModel
-from src.models.avfrcnn2 import AVFRCNN2
+from src.utils.parser_utils import parse_args_as_dict
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
 from src.datas.transform import get_preprocessing_pipelines
 
@@ -84,9 +85,8 @@ def main(conf):
     conf["audionet"].update({"n_src": 1})
 
     model_path = os.path.join(conf["exp_dir"], "checkpoints/last.ckpt")
-    sample_rate = conf["data"]["sample_rate"]
     videomodel = FRCNNVideoModel(**conf["videonet"])
-    audiomodel = AVFRCNN2(sample_rate=sample_rate, **conf["audionet"])
+    audiomodel = CTCNet(**conf["audionet"])
     ckpt = load_ckpt(model_path, "audio_model")
     audiomodel.load_state_dict(ckpt)
 
@@ -136,7 +136,6 @@ def main(conf):
 
 
 if __name__ == "__main__":
-    from src.utils.parser_utils import prepare_parser_from_dict, parse_args_as_dict
 
     args = parser.parse_args()
 

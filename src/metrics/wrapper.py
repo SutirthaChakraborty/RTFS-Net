@@ -6,16 +6,10 @@
 ###
 import csv
 import torch
-import numpy as np
 import logging
+import numpy as np
 
-# from torch_mir_eval.separation import bss_eval_sources
-from ..losses import (
-    PITLossWrapper,
-    pairwise_neg_sisdr,
-    pairwise_neg_snr,
-    singlesrc_neg_sisdr,
-)
+from ..losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
 logger = logging.getLogger(__name__)
 

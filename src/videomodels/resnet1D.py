@@ -1,12 +1,9 @@
 import math
 import torch.nn as nn
-import pdb
 
 
 def conv3x3(in_planes, out_planes, stride=1):
-    return nn.Conv1d(
-        in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False
-    )
+    return nn.Conv1d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 
 def downsample_basic_block(inplanes, outplanes, stride):
@@ -18,9 +15,7 @@ def downsample_basic_block(inplanes, outplanes, stride):
 
 def downsample_basic_block_v2(inplanes, outplanes, stride):
     return nn.Sequential(
-        nn.AvgPool1d(
-            kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False
-        ),
+        nn.AvgPool1d(kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False),
         nn.Conv1d(inplanes, outplanes, kernel_size=1, stride=1, bias=False),
         nn.BatchNorm1d(outplanes),
     )
@@ -77,9 +72,7 @@ class ResNet1D(nn.Module):
         self.relu_type = relu_type
         self.downsample_block = downsample_basic_block
 
-        self.conv1 = nn.Conv1d(
-            1, self.inplanes, kernel_size=80, stride=4, padding=38, bias=False
-        )
+        self.conv1 = nn.Conv1d(1, self.inplanes, kernel_size=80, stride=4, padding=38, bias=False)
         self.bn1 = nn.BatchNorm1d(self.inplanes)
         # type of ReLU is an input option
         if relu_type == "relu":
@@ -117,9 +110,7 @@ class ResNet1D(nn.Module):
             )
 
         layers = []
-        layers.append(
-            block(self.inplanes, planes, stride, downsample, relu_type=self.relu_type)
-        )
+        layers.append(block(self.inplanes, planes, stride, downsample, relu_type=self.relu_type))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes, relu_type=self.relu_type))
