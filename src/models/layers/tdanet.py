@@ -142,10 +142,11 @@ class TDANetBlock(nn.Module):
         return out
 
     def forward(self, x):
+        # x: shape (B, C, T)
         residual = x
         x_enc = self.projection(x)
 
-        # Do the downsampling process from the previous level
+        # bottom-up
         downsampled_outputs = [self.downsample_layers[0](x_enc)]
         for i in range(1, self.upsampling_depth):
             out_i = self.downsample_layers[i](downsampled_outputs[-1])
@@ -168,9 +169,9 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth - 3, -1, -1):
             expanded = self.concat_layers[i](x_fused[i], expanded)
 
-        out = self.residual_conv(expanded) + residual
+        out = self.residual_conv(expanded)
 
-        return out
+        return out + residual
 
 
 class TDANet(nn.Module):
@@ -183,11 +184,11 @@ class TDANet(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
+        repeats: int = 4,
+        shared: bool = False,
         n_head: int = 8,
         dropout: float = 0.1,
         drop_path: float = 0.1,
-        repeats: int = 4,
-        shared: bool = False,
         *args,
         **kwargs,
     ):
@@ -199,13 +200,13 @@ class TDANet(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
+        self.repeats = repeats
+        self.shared = shared
         self.n_head = n_head
         self.dropout = dropout
         self.drop_path = drop_path
-        self.repeats = repeats
-        self.shared = shared
 
-        self.tdanet = self.__build_tdanet()
+        self.blocks = self.__build_tdanet()
         self.concat_block = self.__build_concat_block()
 
     def __build_tdanet(self):
@@ -256,9 +257,9 @@ class TDANet(nn.Module):
 
     def get_block(self, i):
         if self.shared:
-            return self.tdanet
+            return self.blocks
         else:
-            return self.tdanet[i]
+            return self.blocks[i]
 
     def get_concat_block(self, i):
         if self.shared:

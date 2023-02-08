@@ -23,7 +23,7 @@ audionet:
       act_type: 
       
     audio_params:
-      audio_net: FRCNN
+      audio_net: TDANet
       # in_chan same as audio_bn_chan
       hid_chan: 512                       # FRCNN hidden channels
       upsampling_depth: 5
@@ -33,9 +33,10 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
+      n_head: 8
     
     video_params:
-        video_net: FRCNN
+        video_net: TDANet
       # in_chan same as video_bn_chan
         hid_chan: 64
         upsampling_depth: 4
@@ -45,6 +46,7 @@ audionet:
         act_type: PReLU
         kernel_size: 3
         stride: 2
+        n_head: 8
 
     fusion_params:
       fusion_type: ConcatFusion
