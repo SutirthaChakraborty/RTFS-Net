@@ -254,7 +254,7 @@ class TDANet(nn.Module):
 
         return out
 
-    def get_frcnn_block(self, i):
+    def get_block(self, i):
         if self.shared:
             return self.tdanet
         else:
@@ -270,7 +270,7 @@ class TDANet(nn.Module):
         # x: shape (B, C, T)
         res = x
         for i in range(self.repeats):
-            frcnn = self.get_frcnn_block(i)
+            frcnn = self.get_block(i)
             concat_block = self.get_concat_block(i)
             if i == 0:
                 x = frcnn(x)

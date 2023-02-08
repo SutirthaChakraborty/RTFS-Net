@@ -1,74 +1,33 @@
-import torch
 import inspect
 import torch.nn as nn
 
 from .fusion import MultiModalFusion
-from ..layers import normalizations, activations
 from ...models import layers
 
 
-class Masker(nn.Module):
+class RefinementModule(nn.Module):
     def __init__(
         self,
-        n_src: int,
-        in_chan: int,
-        hid_chan: int,
+        audio_params: dict,
+        video_params: dict,
         audio_bn_chan: int,
-        fusion_repeats: int = 1,
-        audio_repeats: int = 3,
-        upsampling_depth: int = 5,
-        audio_net: str = "FCRNN",
-        norm_type: str = "gLN",
-        mask_act: str = "ReLU",
-        act_type: str = "PReLU",
-        video_params: dict = dict(),
-        pretrain: str = None,
-        audio_shared: bool = True,
-        fusion_shared: bool = False,
-        fusion_type: str = "ConcatFusion",
+        video_bn_chan: int,
+        fusion_type: str,
+        fusion_shared: bool,
     ):
-        super(Masker, self).__init__()
-        self.n_src = n_src
-        self.in_chan = in_chan
-        self.hid_chan = hid_chan
+        super(RefinementModule, self).__init__()
+        self.audio_params = audio_params
+        self.video_params = video_params
         self.audio_bn_chan = audio_bn_chan
-        self.video_bn_chan = video_params["in_chan"]
-        self.vout_chan = video_params["vout_chan"]
-        self.video_net_name = video_params["video_net"]
-        self.fusion_repeats = fusion_repeats
-        self.audio_repeats = audio_repeats
-        self.upsampling_depth = upsampling_depth
-        self.audio_net_name = audio_net
-        self.norm_type = norm_type
-        self.mask_act = mask_act
-        self.act_type = act_type
-        self.pretrain = pretrain
-        self.audio_shared = audio_shared
-        self.fusion_shared = fusion_shared
+        self.video_bn_chan = video_bn_chan
         self.fusion_type = fusion_type
+        self.fusion_shared = fusion_shared
 
-        self.audio_bottleneck = nn.Sequential(
-            normalizations.get(self.norm_type)(self.in_chan),
-            nn.Conv1d(self.in_chan, self.audio_bn_chan, 1, 1),
-        )
-        self.video_bottleneck = nn.Conv1d(self.vout_chan, self.video_bn_chan, kernel_size=3, padding=1)
-        self.mask_generator = nn.Sequential(
-            nn.PReLU(),
-            nn.Conv1d(self.audio_bn_chan, self.n_src * self.in_chan, 1, 1),
-            activations.get(self.mask_act)(),
-        )
+        self.fusion_repeats = self.video_params["repeats"]
+        self.audio_repeats = self.audio_params["repeats"] - self.fusion_repeats
 
-        # main modules
-        self.video_net = layers.get(self.video_net_name)(**video_params, repeats=self.fusion_repeats)
-        self.audio_net = layers.get(self.audio_net_name)(
-            in_chan=self.audio_bn_chan,
-            hid_chan=self.hid_chan,
-            upsampling_depth=self.upsampling_depth,
-            repeats=self.audio_repeats + self.fusion_repeats,
-            shared=self.audio_shared,
-            norm_type=self.norm_type,
-            act_type=self.act_type,
-        )
+        self.video_net = layers.get(self.video_params["video_net"])(**self.video_params, in_chan=self.video_bn_chan)
+        self.audio_net = layers.get(self.audio_params["audio_net"])(**self.audio_params, in_chan=self.audio_bn_chan)
 
         self.crossmodal_fusion = MultiModalFusion(
             audio_bn_chan=self.audio_bn_chan,
@@ -79,44 +38,26 @@ class Masker(nn.Module):
             fusion_shared=self.fusion_shared,
         )
 
-        if self.pretrain is not None:
-            state_dict = torch.load(self.pretrain, map_location="cpu")["model_state_dict"]
-
-            frcnn_state_dict = dict()
-            for k, v in state_dict.items():
-                if k.startswith("module.head.frcnn"):
-                    frcnn_state_dict[k[18:]] = v
-            self.video_net.load_state_dict(frcnn_state_dict)
-
-            pre_v_state_dict = dict(weight=state_dict["module.head.proj.weight"], bias=state_dict["module.head.proj.bias"])
-            self.video_bottleneck.load_state_dict(pre_v_state_dict)
-
     def forward(self, audio, video):
-        batch_size = audio.shape[0]
-
-        audio = self.audio_bottleneck(audio)
-        video = self.video_bottleneck(video)
 
         audio_residual = audio
         video_residual = video
 
         for i in range(self.fusion_repeats):
             if i == 0:
-                audio = self.audio_net.get_frcnn_block(i)(audio)
-                video = self.video_net.get_frcnn_block(i)(video)
+                audio = self.audio_net.get_block(i)(audio)
+                video = self.video_net.get_block(i)(video)
                 audio_fused, video_fused = self.crossmodal_fusion.get_fusion_block(i)(audio, video)
             else:
-                audio_fused = self.audio_net.get_frcnn_block(i)(self.audio_net.get_concat_block(i)(audio_fused + audio_residual))
-                video_fused = self.video_net.get_frcnn_block(i)(self.video_net.get_concat_block(i)(video_fused + video_residual))
+                audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused + audio_residual))
+                video_fused = self.video_net.get_block(i)(self.video_net.get_concat_block(i)(video_fused + video_residual))
                 audio_fused, video_fused = self.crossmodal_fusion.get_fusion_block(i)(audio_fused, video_fused)
 
         for i in range(self.audio_repeats):
             j = i + self.fusion_repeats
-            audio_fused = self.audio_net.get_frcnn_block(j)(self.audio_net.get_concat_block(j)(audio_fused + audio_residual))
+            audio_fused = self.audio_net.get_block(j)(self.audio_net.get_concat_block(j)(audio_fused + audio_residual))
 
-        masks = self.mask_generator(audio_fused).view(batch_size, self.n_src, self.in_chan, -1)
-
-        return masks
+        return audio_fused
 
     def get_config(self):
         encoder_args = {}

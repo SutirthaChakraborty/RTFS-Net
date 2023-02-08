@@ -68,7 +68,7 @@ class FRCNNBlock(nn.Module):
                             self.hid_chan,
                             self.hid_chan,
                             kernel_size=self.kernel_size,
-                            stride=2,
+                            stride=self.stride,
                             groups=self.hid_chan,
                             padding=(self.kernel_size - 1) // 2,
                             norm_type=self.norm_type,
@@ -147,6 +147,7 @@ class FRCNN(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
+        stride: int = 2,
         norm_type: str = "BatchNorm1d",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
@@ -166,6 +167,7 @@ class FRCNN(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.kernel_size = kernel_size
+        self.stride = stride
 
         self.frcnn = self.__build_frcnn()
         self.concat_block = self.__build_concat_block()
@@ -176,6 +178,7 @@ class FRCNN(nn.Module):
                 in_chan=self.in_chan,
                 hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
+                stride=self.stride,
                 norm_type=self.norm_type,
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
@@ -189,6 +192,7 @@ class FRCNN(nn.Module):
                         in_chan=self.in_chan,
                         hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
+                        stride=self.stride,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
@@ -208,7 +212,7 @@ class FRCNN(nn.Module):
 
         return out
 
-    def get_frcnn_block(self, i):
+    def get_block(self, i):
         if self.shared:
             return self.frcnn
         else:
@@ -224,7 +228,7 @@ class FRCNN(nn.Module):
         # x: shape (B, C, T)
         res = x
         for i in range(self.repeats):
-            frcnn = self.get_frcnn_block(i)
+            frcnn = self.get_block(i)
             concat_block = self.get_concat_block(i)
             if i == 0:
                 x = frcnn(x)
