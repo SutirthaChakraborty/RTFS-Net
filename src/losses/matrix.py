@@ -6,10 +6,11 @@
 ###
 
 import torch
-import torch.nn as nn
+
+from torch.nn.modules.loss import _Loss
 
 
-class PairwiseNegSDR(nn.Module):
+class PairwiseNegSDR(_Loss):
     def __init__(self, sdr_type, zero_mean=True, take_log=True, EPS=1e-8):
         super().__init__()
         assert sdr_type in ["snr", "sisdr", "sdsdr"]
@@ -52,7 +53,7 @@ class PairwiseNegSDR(nn.Module):
         return -pair_wise_sdr
 
 
-class SingleSrcNegSDR(nn.Module):
+class SingleSrcNegSDR(_Loss):
     def __init__(self, sdr_type, zero_mean=True, take_log=True, reduction="none", EPS=1e-8):
         assert reduction != "sum", NotImplementedError
         super().__init__(reduction=reduction)
@@ -95,7 +96,7 @@ class SingleSrcNegSDR(nn.Module):
         return -losses
 
 
-class MultiSrcNegSDR(nn.Module):
+class MultiSrcNegSDR(_Loss):
     def __init__(self, sdr_type, zero_mean=True, take_log=True, EPS=1e-8):
         super().__init__()
 
