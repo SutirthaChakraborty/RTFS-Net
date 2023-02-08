@@ -4,11 +4,11 @@ import torch.nn as nn
 
 
 class BaseDecoder(nn.Module):
-    def __pad_to_input_length(self, separated_audio, input_frames):
+    def pad_to_input_length(self, separated_audio, input_frames):
         output_frames = separated_audio.shape[-1]
         return nn.functional.pad(separated_audio, [0, input_frames - output_frames])
 
-    def __reconstruct_to_original_dimensions(self, separated_audio, input_shape):
+    def reconstruct_to_original_dimensions(self, separated_audio, input_shape):
         return separated_audio.squeeze(0) if len(input_shape) == 1 else separated_audio
 
     def forward(self, *args, **kwargs):
@@ -53,8 +53,8 @@ class ConvolutionalDecoder(BaseDecoder):
 
     def forward(self, separated_audio_embedding, input_shape):
         separated_audio = self.decoder(separated_audio_embedding)
-        separated_audio = self.__pad_to_input_length(separated_audio, input_shape[-1])
-        separated_audio = self.__reconstruct_to_original_dimensions(separated_audio, input_shape)
+        separated_audio = self.pad_to_input_length(separated_audio, input_shape[-1])
+        separated_audio = self.reconstruct_to_original_dimensions(separated_audio, input_shape)
 
         return separated_audio
 

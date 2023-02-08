@@ -8,14 +8,9 @@ from .layers import ConvNormAct
 
 
 class BaseEncoder(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        kernel_size: int = 21,
-        upsampling_depth: int = 4,
-    ):
+    def __init__(self, out_chan: int, kernel_size: int, upsampling_depth: int):
         super(BaseEncoder, self).__init__()
-        self.in_chan = in_chan
+        self.in_chan = out_chan
         self.kernel_size = kernel_size
         self.upsampling_depth = upsampling_depth
 
@@ -23,7 +18,7 @@ class BaseEncoder(nn.Module):
         self.lcm_1 = abs(self.in_chan // 2 * 2**self.upsampling_depth) // math.gcd(self.kernel_size // 2, 2**self.upsampling_depth)
         self.lcm_2 = abs(self.kernel_size // 2 * 2**self.upsampling_depth) // math.gcd(self.kernel_size // 2, 2**self.upsampling_depth)
 
-    def __unsqueeze_to_3D(self, x):
+    def unsqueeze_to_3D(self, x):
         if x.ndim == 1:
             return x.reshape(1, 1, -1)
         elif x.ndim == 2:
@@ -31,7 +26,7 @@ class BaseEncoder(nn.Module):
         else:
             return x
 
-    def __pad(self, x, lcm: int):
+    def pad(self, x, lcm: int):
         values_to_pad = int(x.shape[-1]) % lcm
         if values_to_pad:
             appropriate_shape = x.shape
@@ -65,7 +60,7 @@ class ConvolutionalEncoder(BaseEncoder):
         *args,
         **kwargs,
     ):
-        super(ConvolutionalEncoder, self).__init__(in_chan, kernel_size, upsampling_depth)
+        super(ConvolutionalEncoder, self).__init__(out_chan, kernel_size, upsampling_depth)
 
         self.in_chan = in_chan
         self.out_chan = out_chan
@@ -88,10 +83,10 @@ class ConvolutionalEncoder(BaseEncoder):
         )
 
     def forward(self, x):
-        x = self.__unsqueeze_to_3D(x)
+        x = self.unsqueeze_to_3D(x)
 
-        padded_x = self.__pad(x, self.lcm_1)
-        padded_x = self.__pad(padded_x, self.lcm_2)
+        padded_x = self.pad(x, self.lcm_1)
+        padded_x = self.pad(padded_x, self.lcm_2)
         feature_map = self.encoder(padded_x)
 
         return feature_map
