@@ -8,7 +8,7 @@ from ..layers import GC_RNN
 from .masker import RefinementModule
 
 
-class CTCNet(BaseAVModel):
+class GC3CTCNet(BaseAVModel):
     def __init__(
         self,
         n_src: int,
@@ -25,7 +25,7 @@ class CTCNet(BaseAVModel):
         *args,
         **kwargs,
     ):
-        super().__init__()
+        super(GC3CTCNet, self).__init__()
 
         self.n_src = n_src
         self.pretrained_vout_chan = pretrained_vout_chan
@@ -120,7 +120,7 @@ class CTCNet(BaseAVModel):
             audio_sf = audio_sb.shape[-1]
             video_sf = video_sb.shape[-1]
             audio_si = audio_sb.permute(0, 3, 1, 2).contiguous().view(batch_size * audio_sf, self.audio_bn_chan, self.context_size)
-            video_si = audio_sb.permute(0, 3, 1, 2).contiguous().view(batch_size * video_sf, self.video_bn_chan, self.context_size)
+            video_si = video_sb.permute(0, 3, 1, 2).contiguous().view(batch_size * video_sf, self.video_bn_chan, self.context_size)
             audio_so = self.audio_context_enc(audio_si)
             video_so = self.video_context_enc(video_si)
             audio = audio_so.mean(2).view(batch_size, audio_sf, self.audio_bn_chan).transpose(1, 2).contiguous()

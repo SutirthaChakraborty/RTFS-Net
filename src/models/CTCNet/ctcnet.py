@@ -21,7 +21,7 @@ class CTCNet(BaseAVModel):
         *args,
         **kwargs,
     ):
-        super().__init__()
+        super(CTCNet, self).__init__()
 
         self.n_src = n_src
         self.pretrained_vout_chan = pretrained_vout_chan

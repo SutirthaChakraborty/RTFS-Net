@@ -6,9 +6,11 @@
 ###
 
 from .CTCNet import CTCNet
+from .CTCNet import GC3CTCNet
 
 __all__ = [
     "CTCNet",
+    "GC3CTCNet",
 ]
 
 
