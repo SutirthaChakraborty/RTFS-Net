@@ -7,8 +7,9 @@ videonet:
 audionet:
     n_src: 1
     pretrained_vout_chan: 512                  # output from pretrained model
-    group_size: 16
+    group_size: 32
     context_size: 32
+    video_context: False
 
     video_bn_params:
       video_bn_chan: 64

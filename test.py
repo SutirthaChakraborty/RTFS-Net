@@ -19,9 +19,6 @@ from src.utils.parser_utils import parse_args_as_dict
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
 
-# torch.Size([32000]) torch.Size([32000]) torch.Size([1, 50, 88, 88])
-
-
 class AVSpeechDataset(Dataset):
     def __init__(self, epochs=5):
         super().__init__()
@@ -35,8 +32,8 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(300)
-    val_set = AVSpeechDataset(300)
+    train_set = AVSpeechDataset(600)
+    val_set = AVSpeechDataset(600)
 
     train_loader = DataLoader(
         train_set,
@@ -56,7 +53,7 @@ def build_dataloaders(conf):
     return train_loader, val_loader
 
 
-def main(conf, model=GC3CTCNet, epochs=5):
+def main(conf, model=GC3CTCNet, epochs=1):
 
     train_loader, val_loader = build_dataloaders(conf)
 
@@ -164,4 +161,4 @@ if __name__ == "__main__":
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)
     main(def_conf)
-    main(def_conf, CTCNet)
+    # main(def_conf, CTCNet)
