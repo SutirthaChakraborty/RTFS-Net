@@ -64,4 +64,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_frcnn
+    exp_name: ctcnet_small_frcnn_14_02_23
