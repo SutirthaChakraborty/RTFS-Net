@@ -42,6 +42,10 @@ class MultiHeadSelfAttention(nn.Module):
         self.n_head = n_head
         self.dropout = dropout
 
+        assert self.in_chan % self.n_head == 0, "In channels: {} must be divisible by the number of heads: {}".format(
+            self.in_chan, self.n_head
+        )
+
         self.norm1 = nn.LayerNorm(self.in_chan)
         self.pos_enc = PositionalEncoding(self.in_chan)
         self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout)

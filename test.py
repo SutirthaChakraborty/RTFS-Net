@@ -147,7 +147,7 @@ def main(conf, model=GC3CTCNet, epochs=1):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_frcnn_context_com.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com copy.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -160,5 +160,5 @@ if __name__ == "__main__":
 
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)
+
     main(def_conf)
-    # main(def_conf, CTCNet)

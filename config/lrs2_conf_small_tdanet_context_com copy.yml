@@ -10,13 +10,13 @@ audionet:
 
     gc3_params:
       audio:
-        group_size: 32                          # 128/8=16, 512/16=32
-        context_size: 128                       # 128/32=4, 512/4=128 
-        num_layers: 1 
+        group_size: 1                          # 128/8=16, 512/16=32
+        context_size: 1                       # 128/32=4, 512/4=128  
+        num_layers: 1
         bidirectional: True
       video:    
-        group_size: 4                          # 128/8=16, 64/16=4
-        context_size: 16                       # 128/32=4, 64/4=16 
+        group_size: 1                          # 128/8=16, 64/16=4
+        context_size: 1                       # 128/32=4, 64/4=16 
         num_layers: 1
         bidirectional: True
 
@@ -35,7 +35,7 @@ audionet:
       act_type: 
       
     audio_params:
-      audio_net: FRCNN
+      audio_net: TDANet
       # in_chan same as audio_bn_chan
       hid_chan: 512                       # FRCNN hidden channels
       upsampling_depth: 5
@@ -45,9 +45,10 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
+      n_head: 8
     
     video_params:
-        video_net: FRCNN
+        video_net: TDANet
       # in_chan same as video_bn_chan
         hid_chan: 64
         upsampling_depth: 4
@@ -57,6 +58,7 @@ audionet:
         act_type: PReLU
         kernel_size: 3
         stride: 2
+        n_head: 4
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -95,4 +97,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_frcnn_context24
+    exp_name: ctcnet_small_tdanet_context24

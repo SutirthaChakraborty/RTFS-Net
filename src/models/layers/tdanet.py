@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .rnn_layers import TAC
 from .cnn_layers import ConvNormAct
 from .attention import GlobalAttention
 
@@ -82,6 +83,7 @@ class TDANetBlock(nn.Module):
         n_head: int = 8,
         dropout: int = 0.1,
         drop_path: int = 0.1,
+        group_size: int = 1,
     ):
         super(TDANetBlock, self).__init__()
         self.in_chan = in_chan
@@ -94,15 +96,22 @@ class TDANetBlock(nn.Module):
         self.n_head = n_head
         self.dropout = dropout
         self.drop_path = drop_path
+        self.group_size = group_size
 
-        self.projection = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, act_type=self.act_type)
+        self.projection = ConvNormAct(
+            in_chan=self.in_chan // self.group_size,
+            out_chan=self.hid_chan // self.group_size,
+            kernel_size=1,
+            norm_type=self.norm_type,
+            act_type=self.act_type,
+        )
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
-        self.residual_conv = nn.Conv1d(self.hid_chan, self.in_chan, 1)
+        self.residual_conv = nn.Conv1d(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1)
 
         self.globalatt = GlobalAttention(
-            in_chan=self.hid_chan,
+            in_chan=self.hid_chan // self.group_size,
             n_head=self.n_head,
             kernel_size=self.kernel_size,
             dropout=self.dropout,
@@ -115,11 +124,11 @@ class TDANetBlock(nn.Module):
             stride = 1 if i == 0 else self.stride
             out.append(
                 ConvNormAct(
-                    in_chan=self.hid_chan,
-                    out_chan=self.hid_chan,
+                    in_chan=self.hid_chan // self.group_size,
+                    out_chan=self.hid_chan // self.group_size,
                     kernel_size=self.kernel_size,
                     stride=stride,
-                    groups=self.hid_chan,
+                    groups=self.hid_chan // self.group_size,
                     padding=(self.kernel_size - 1) // 2,
                     norm_type=self.norm_type,
                 )
@@ -130,14 +139,28 @@ class TDANetBlock(nn.Module):
     def __build_fusion_layers(self):
         out = nn.ModuleList([])
         for _ in range(self.upsampling_depth):
-            out.append(InjectionMultiSum(self.hid_chan, self.hid_chan, 1, self.norm_type))
+            out.append(
+                InjectionMultiSum(
+                    in_chan=self.hid_chan // self.group_size,
+                    hid_chan=self.hid_chan // self.group_size,
+                    kernel_size=1,
+                    norm_type=self.norm_type,
+                )
+            )
 
         return out
 
     def __build_concat_layers(self):
         out = nn.ModuleList([])
         for _ in range(self.upsampling_depth - 1):
-            out.append(InjectionMultiSum(self.hid_chan, self.hid_chan, self.kernel_size, self.norm_type))
+            out.append(
+                InjectionMultiSum(
+                    in_chan=self.hid_chan // self.group_size,
+                    hid_chan=self.hid_chan // self.group_size,
+                    kernel_size=self.kernel_size,
+                    norm_type=self.norm_type,
+                )
+            )
 
         return out
 
@@ -169,9 +192,9 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth - 3, -1, -1):
             expanded = self.concat_layers[i](x_fused[i], expanded)
 
-        out = self.residual_conv(expanded)
+        out = self.residual_conv(expanded) + residual
 
-        return out + residual
+        return out
 
 
 class TDANet(nn.Module):
@@ -189,6 +212,7 @@ class TDANet(nn.Module):
         n_head: int = 8,
         dropout: float = 0.1,
         drop_path: float = 0.1,
+        group_size: int = 1,
         *args,
         **kwargs,
     ):
@@ -205,9 +229,11 @@ class TDANet(nn.Module):
         self.n_head = n_head
         self.dropout = dropout
         self.drop_path = drop_path
+        self.group_size = group_size
 
         self.blocks = self.__build_tdanet()
         self.concat_block = self.__build_concat_block()
+        self.tac = TAC(self.in_chan // self.group_size, self.hid_chan // self.group_size) if self.group_size > 1 else nn.Identity()
 
     def __build_tdanet(self):
         if self.shared:
@@ -222,6 +248,7 @@ class TDANet(nn.Module):
                 n_head=self.n_head,
                 dropout=self.dropout,
                 drop_path=self.drop_path,
+                group_size=self.group_size,
             )
         else:
             out = nn.ModuleList()
@@ -238,6 +265,7 @@ class TDANet(nn.Module):
                         n_head=self.n_head,
                         dropout=self.dropout,
                         drop_path=self.drop_path,
+                        group_size=self.group_size,
                     )
                 )
 
@@ -245,12 +273,24 @@ class TDANet(nn.Module):
 
     def __build_concat_block(self):
         if self.shared:
-            out = ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type=self.act_type)
+            out = ConvNormAct(
+                in_chan=self.in_chan // self.group_size,
+                out_chan=self.in_chan // self.group_size,
+                kernel_size=1,
+                groups=self.in_chan // self.group_size,
+                act_type=self.act_type,
+            )
         else:
             out = nn.ModuleList([None])
             for _ in range(self.repeats - 1):
                 out.append(
-                    ConvNormAct(in_chan=self.in_chan, out_chan=self.in_chan, kernel_size=1, groups=self.in_chan, act_type=self.act_type)
+                    ConvNormAct(
+                        in_chan=self.in_chan // self.group_size,
+                        out_chan=self.in_chan // self.group_size,
+                        kernel_size=1,
+                        groups=self.in_chan // self.group_size,
+                        act_type=self.act_type,
+                    )
                 )
 
         return out
@@ -269,6 +309,9 @@ class TDANet(nn.Module):
 
     def forward(self, x):
         # x: shape (B, C, T)
+        batch_size, _, T = x.shape
+        x = self.tac(x.view(batch_size, self.group_size, -1, T)).view(batch_size * self.group_size, -1, T)
+
         res = x
         for i in range(self.repeats):
             frcnn = self.get_block(i)
@@ -277,4 +320,5 @@ class TDANet(nn.Module):
                 x = frcnn(x)
             else:
                 x = frcnn(concat_block(res + x))
-        return x
+
+        return x.view(batch_size, -1, T)

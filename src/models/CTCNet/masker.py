@@ -14,6 +14,7 @@ class RefinementModule(nn.Module):
         video_bn_chan: int,
         fusion_type: str,
         fusion_shared: bool,
+        gc3_params: dict = dict(),
     ):
         super(RefinementModule, self).__init__()
         self.audio_params = audio_params
@@ -22,12 +23,21 @@ class RefinementModule(nn.Module):
         self.video_bn_chan = video_bn_chan
         self.fusion_type = fusion_type
         self.fusion_shared = fusion_shared
+        self.gc3_params = gc3_params
 
         self.fusion_repeats = self.video_params["repeats"]
         self.audio_repeats = self.audio_params["repeats"] - self.fusion_repeats
 
-        self.video_net = layers.get(self.video_params["video_net"])(**self.video_params, in_chan=self.video_bn_chan)
-        self.audio_net = layers.get(self.audio_params["audio_net"])(**self.audio_params, in_chan=self.audio_bn_chan)
+        self.video_net = layers.get(self.video_params["video_net"])(
+            **self.video_params,
+            in_chan=self.video_bn_chan,
+            group_size=self.gc3_params.get("video", dict()).get("group_size", 1),
+        )
+        self.audio_net = layers.get(self.audio_params["audio_net"])(
+            **self.audio_params,
+            in_chan=self.audio_bn_chan,
+            group_size=self.gc3_params.get("audio", dict()).get("group_size", 1),
+        )
 
         self.crossmodal_fusion = MultiModalFusion(
             audio_bn_chan=self.audio_bn_chan,
@@ -39,23 +49,31 @@ class RefinementModule(nn.Module):
         )
 
     def forward(self, audio, video):
+        batch_size, _, T1 = audio.shape
+        audio = self.audio_net.tac(audio.view(batch_size, self.audio_net.group_size, -1, T1)).view(batch_size, -1, T1)
+
+        T2 = video.shape[-1]
+        video = self.video_net.tac(video.view(batch_size, self.video_net.group_size, -1, T2)).view(batch_size, -1, T2)
 
         audio_residual = audio
         video_residual = video
 
         for i in range(self.fusion_repeats):
             if i == 0:
-                audio = self.audio_net.get_block(i)(audio)
-                video = self.video_net.get_block(i)(video)
+                audio = self.audio_net.get_block(i)(audio.view(batch_size * self.audio_net.group_size, -1, T1)).view(batch_size, -1, T1)
+                video = self.video_net.get_block(i)(video.view(batch_size * self.video_net.group_size, -1, T2)).view(batch_size, -1, T2)
                 audio_fused, video_fused = self.crossmodal_fusion.get_fusion_block(i)(audio, video)
             else:
-                audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused + audio_residual))
-                video_fused = self.video_net.get_block(i)(self.video_net.get_concat_block(i)(video_fused + video_residual))
+                audio_fused = (audio_fused + audio_residual).view(batch_size * self.audio_net.group_size, -1, T1)
+                video_fused = (video_fused + video_residual).view(batch_size * self.video_net.group_size, -1, T2)
+                audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused)).view(batch_size, -1, T1)
+                video_fused = self.video_net.get_block(i)(self.video_net.get_concat_block(i)(video_fused)).view(batch_size, -1, T2)
                 audio_fused, video_fused = self.crossmodal_fusion.get_fusion_block(i)(audio_fused, video_fused)
 
-        for i in range(self.audio_repeats):
-            j = i + self.fusion_repeats
-            audio_fused = self.audio_net.get_block(j)(self.audio_net.get_concat_block(j)(audio_fused + audio_residual))
+        for j in range(self.audio_repeats):
+            i = j + self.fusion_repeats
+            audio_fused = (audio_fused + audio_residual).view(batch_size * self.audio_net.group_size, -1, T1)
+            audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused)).view(batch_size, -1, T1)
 
         return audio_fused
 
