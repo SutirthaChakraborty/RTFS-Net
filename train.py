@@ -20,7 +20,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.system.core import System
 from src.datas import AVSpeechDataset
-from src.models import GC3CTCNet
+from src.models import CTCNet
 from src.videomodels import FRCNNVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
@@ -67,7 +67,7 @@ def main(conf):
 
     # Define model and optimizer
     videomodel = FRCNNVideoModel(**conf["videonet"])
-    audiomodel = GC3CTCNet(**conf["audionet"])
+    audiomodel = CTCNet(**conf["audionet"])
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
     # Define scheduler

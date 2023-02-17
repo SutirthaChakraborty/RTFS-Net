@@ -5,6 +5,7 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
+from thop import profile
 from torch.utils.data import DataLoader, Dataset
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -12,7 +13,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.system.core import System
 from src.datas import AVSpeechDataset
-from src.models import GC3CTCNet, CTCNet
+from src.models import CTCNet
 from src.videomodels import FRCNNVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
@@ -32,8 +33,8 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(600)
-    val_set = AVSpeechDataset(600)
+    train_set = AVSpeechDataset(100)
+    val_set = AVSpeechDataset(100)
 
     train_loader = DataLoader(
         train_set,
@@ -53,7 +54,7 @@ def build_dataloaders(conf):
     return train_loader, val_loader
 
 
-def main(conf, model=GC3CTCNet, epochs=1):
+def main(conf, model=CTCNet, epochs=1):
 
     train_loader, val_loader = build_dataloaders(conf)
 
@@ -129,6 +130,10 @@ def main(conf, model=GC3CTCNet, epochs=1):
         sync_batchnorm=True,
     )
 
+    mouth = videomodel(torch.rand((1, 1, 50, 88, 88)))
+    macs = profile(audiomodel, inputs=(torch.rand(1, 32000), mouth), verbose=False)[0] / 1000000
+    print("Number of MACs: {:,.0f}M".format(macs))
+
     trainer.fit(system)
 
     # Save best_k models
@@ -147,7 +152,7 @@ def main(conf, model=GC3CTCNet, epochs=1):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com copy.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_frcnn_context_com.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
