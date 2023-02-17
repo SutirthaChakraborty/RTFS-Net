@@ -15,8 +15,8 @@ audionet:
         num_layers: 1
         bidirectional: True
       video:    
-        group_size: 8                          # 128/8=16, 64/16=4
-        context_size: 16                       # 128/32=4, 64/4=16 
+        group_size: 1                         # 128/8=16, 64/16=4
+        context_size: 1                       # 128/32=4, 64/4=16 
         num_layers: 1
         bidirectional: True
 
@@ -95,4 +95,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_frcnn_context24
+    exp_name: ctcnet_small_frcnn_context_18_02_23
