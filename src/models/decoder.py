@@ -47,6 +47,7 @@ class ConvolutionalDecoder(BaseDecoder):
             stride=self.stride,
             padding=self.padding,
             output_padding=self.output_padding,
+            bias=self.bias,
         )
 
         torch.nn.init.xavier_uniform_(self.decoder.weight)
