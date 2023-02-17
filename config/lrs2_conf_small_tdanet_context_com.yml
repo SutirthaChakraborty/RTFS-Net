@@ -11,7 +11,7 @@ audionet:
     gc3_params:
       audio:
         group_size: 64                          # 128/8=16, 512/16=32
-        context_size: 128                       # 128/32=4, 512/4=128  
+        context_size: 128                       # 128/32=4, 512/4=128 
         num_layers: 1
         bidirectional: True
       video:    
@@ -58,7 +58,7 @@ audionet:
         act_type: PReLU
         kernel_size: 3
         stride: 2
-        n_head: 4
+        n_head: 8
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -71,7 +71,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 2
+    batch_size: 4
     num_workers: 8
     half_lr: yes
     early_stop: yes
