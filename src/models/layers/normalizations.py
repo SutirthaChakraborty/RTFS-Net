@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from collections.abc import Iterable
 
 EPS = torch.finfo(torch.float32).eps
 
@@ -18,27 +19,12 @@ class GlobalLayerNorm(nn.Module):
 
 
 class LayerNormalization4D(nn.Module):
-    def __init__(self, input_dimension, eps: float = EPS):
+    def __init__(self, input_dimension: Iterable, eps: float = EPS):
         super(LayerNormalization4D, self).__init__()
-        param_size = [1, input_dimension, 1, 1]
-        self.gamma = nn.Parameter(torch.Tensor(*param_size).to(torch.float32))
-        self.beta = nn.Parameter(torch.Tensor(*param_size).to(torch.float32))
-        nn.init.ones_(self.gamma)
-        nn.init.zeros_(self.beta)
-        self.eps = eps
-
-    def forward(self, x: torch.Tensor):
-        mu_ = x.mean(dim=(1,), keepdim=True)  # [B,1,T,F]
-        std_ = torch.sqrt(x.var(dim=(1,), unbiased=False, keepdim=True) + self.eps)  # [B,1,T,F]
-        x_hat = ((x - mu_) / std_) * self.gamma + self.beta
-        return x_hat
-
-
-class LayerNormalizationChanFreq(nn.Module):
-    def __init__(self, input_dimension, eps: float = EPS):
-        super(LayerNormalizationChanFreq, self).__init__()
         assert len(input_dimension) == 2
         param_size = [1, input_dimension[0], 1, input_dimension[1]]
+
+        self.dim = (1, 3) if self.param_size[-1] > 1 else (1,)
         self.gamma = nn.Parameter(torch.Tensor(*param_size).to(torch.float32))
         self.beta = nn.Parameter(torch.Tensor(*param_size).to(torch.float32))
         nn.init.ones_(self.gamma)
@@ -46,13 +32,14 @@ class LayerNormalizationChanFreq(nn.Module):
         self.eps = eps
 
     def forward(self, x: torch.Tensor):
-        mu_ = x.mean(dim=(1, 3), keepdim=True)  # [B,1,T,1]
-        std_ = torch.sqrt(x.var(dim=(1, 3), unbiased=False, keepdim=True) + self.eps)  # [B,1,T,F]
+        mu_ = x.mean(dim=self.dim, keepdim=True)
+        std_ = torch.sqrt(x.var(dim=self.dim, unbiased=False, keepdim=True) + self.eps)
         x_hat = ((x - mu_) / std_) * self.gamma + self.beta
         return x_hat
 
 
 gLN = GlobalLayerNorm
+LN4d = LayerNormalization4D
 
 
 def get(identifier):
