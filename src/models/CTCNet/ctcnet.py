@@ -1,5 +1,6 @@
+from ...models import encoder
+
 from ..base_av_model import BaseAVModel
-from ..encoder import ConvolutionalEncoder
 from ..decoder import ConvolutionalDecoder
 from ..bottleneck import AudioBottleneck, VideoBottleneck
 from ..mask_generator import MaskGenerator
@@ -37,17 +38,17 @@ class CTCNet(BaseAVModel):
         self.mask_generation_params = mask_generation_params
         self.gc3_params = gc3_params
 
-        self.audio_embedding_dim = self.enc_dec_params["out_chan"]
         self.audio_bn_chan = self.audio_bn_params["audio_bn_chan"]
         self.video_bn_chan = self.video_bn_params["video_bn_chan"]
         self.audio_hid_chan = self.audio_params["hid_chan"]
         self.video_hid_chan = self.video_params["hid_chan"]
 
-        self.encoder = ConvolutionalEncoder(
+        self.encoder = encoder.get(self.enc_dec_params["encoder_type"])(
             **self.enc_dec_params,
             in_chan=1,
             upsampling_depth=self.audio_params["upsampling_depth"],
         )
+        self.audio_embedding_dim = self.encoder.out_chan
 
         self.audio_bottleneck = AudioBottleneck(**self.audio_bn_params, in_chan=self.audio_embedding_dim)
         self.video_bottleneck = VideoBottleneck(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
@@ -87,7 +88,7 @@ class CTCNet(BaseAVModel):
 
         self.decoder = ConvolutionalDecoder(
             **self.enc_dec_params,
-            in_chan=self.enc_dec_params["out_chan"] * self.n_src,
+            in_chan=self.audio_embedding_dim * self.n_src,
             n_src=self.n_src,
         )
 

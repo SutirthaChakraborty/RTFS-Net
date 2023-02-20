@@ -33,8 +33,8 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(100)
-    val_set = AVSpeechDataset(100)
+    train_set = AVSpeechDataset(1000)
+    val_set = AVSpeechDataset(1000)
 
     train_loader = DataLoader(
         train_set,
@@ -152,7 +152,24 @@ def main(conf, model=CTCNet, epochs=1):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_frcnn_context_com.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
+    parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    parser.add_argument("--nodes", type=int, default=1, help="#node")
+
+    args = parser.parse_args()
+
+    with open(args.conf_dir) as f:
+        def_conf = yaml.safe_load(f)
+    if args.name is not None:
+        def_conf["log"]["exp_name"] = args.name
+
+    arg_dic = parse_args_as_dict(parser)
+    def_conf.update(arg_dic)
+
+    main(def_conf)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_multiscale.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 

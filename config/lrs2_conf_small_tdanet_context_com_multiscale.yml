@@ -34,9 +34,10 @@ audionet:
       stride: 10
       bias: False
       act_type: 
+      layers: 3
       
     audio_params:
-      audio_net: FRCNN
+      audio_net: TDANet
       # in_chan same as audio_bn_chan
       hid_chan: 512                       # FRCNN hidden channels
       upsampling_depth: 5
@@ -46,9 +47,10 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
+      n_head: 8
     
     video_params:
-        video_net: FRCNN
+        video_net: TDANet
       # in_chan same as video_bn_chan
         hid_chan: 64
         upsampling_depth: 4
@@ -58,6 +60,7 @@ audionet:
         act_type: PReLU
         kernel_size: 3
         stride: 2
+        n_head: 8
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -96,4 +99,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_frcnn_context_18_02_23
+    exp_name: ctcnet_small_tdanet_context_18_02_23

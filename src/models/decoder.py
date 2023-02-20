@@ -37,8 +37,8 @@ class ConvolutionalDecoder(BaseDecoder):
         self.stride = stride
         self.bias = bias
 
-        self.padding = self.kernel_size // 2
-        self.output_padding = (self.kernel_size // 2) - 1
+        self.padding = (self.kernel_size - 1) // 2
+        self.output_padding = ((self.kernel_size -1)// 2) - 1
 
         self.decoder = nn.ConvTranspose1d(
             in_channels=self.in_chan,

@@ -28,6 +28,7 @@ audionet:
       audio_bn_chan: 512
 
     enc_dec_params:
+      encoder_type: ConvolutionalEncoder
       out_chan: 512
       kernel_size: 21
       stride: 10
