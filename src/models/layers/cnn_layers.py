@@ -70,6 +70,8 @@ class Conv2dNormAct(nn.Module):
         act_type: str = None,
         xavier_init: bool = False,
         bias: bool = True,
+        n_freqs=None,
+        eps: float = torch.finfo(torch.float32).eps,
     ):
         super(Conv2dNormAct, self).__init__()
         self.in_chan = in_chan
@@ -83,6 +85,8 @@ class Conv2dNormAct(nn.Module):
         self.act_type = act_type
         self.xavier_init = xavier_init
         self.bias = bias
+        self.n_freqs = n_freqs
+        self.eps = eps
 
         self.conv = nn.Conv2d(
             in_channels=self.in_chan,
@@ -97,11 +101,14 @@ class Conv2dNormAct(nn.Module):
         if self.xavier_init:
             nn.init.xavier_uniform_(self.conv.weight)
 
-        self.norm = normalizations.get(self.norm_type)(self.out_chan)
+        if n_freqs is not None:
+            self.norm = normalizations.get(self.norm_type)((self.out_chan, n_freqs), eps=eps)
+        else:
+            self.norm = normalizations.get(self.norm_type)(self.out_chan, eps=eps)
         self.act = activations.get(self.act_type)()
 
     def forward(self, x):
         output = self.conv(x)
-        output = self.norm(output)
         output = self.act(output)
+        output = self.norm(output)
         return output

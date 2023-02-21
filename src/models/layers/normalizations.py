@@ -6,13 +6,12 @@ EPS = torch.finfo(torch.float32).eps
 
 
 class GlobalLayerNorm(nn.Module):
-    def __init__(self, num_channels: int = 1, num_groups: int = 1, eps: float = EPS):
+    def __init__(self, num_channels: int = 1, eps: float = EPS):
         super(GlobalLayerNorm, self).__init__()
         self.num_channels = num_channels
-        self.num_groups = num_groups
         self.eps = eps
 
-        self.norm = nn.GroupNorm(num_groups=self.num_groups, num_channels=self.num_channels, eps=self.eps)
+        self.norm = nn.GroupNorm(num_groups=1, num_channels=self.num_channels, eps=self.eps)
 
     def forward(self, x: torch.Tensor):
         return self.norm(x)
@@ -24,7 +23,7 @@ class LayerNormalization4D(nn.Module):
         assert len(input_dimension) == 2
         param_size = [1, input_dimension[0], 1, input_dimension[1]]
 
-        self.dim = (1, 3) if self.param_size[-1] > 1 else (1,)
+        self.dim = (1, 3) if param_size[-1] > 1 else (1,)
         self.gamma = nn.Parameter(torch.Tensor(*param_size).to(torch.float32))
         self.beta = nn.Parameter(torch.Tensor(*param_size).to(torch.float32))
         nn.init.ones_(self.gamma)

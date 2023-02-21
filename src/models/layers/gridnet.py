@@ -3,27 +3,25 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import activations, normalizations
+from . import normalizations
+from .cnn_layers import Conv2dNormAct
 
 
 class GridNetBlock(nn.Module):
-    def __getitem__(self, key):
-        return getattr(self, key)
-
     def __init__(
         self,
         in_chan: int,
+        hid_chan: int,
         kernel_size: int,
         stride: int,
         n_freqs: int,
-        hid_chan: int,
+        norm_type: str = "LN4d",
+        act_type: str = "PReLU",
         n_head: int = 4,
         approx_qk_dim: int = 512,
-        act_type: str = "PReLU",
-        norm_type: str = "LN4d",
         eps=1e-5,
     ):
-        super().__init__()
+        super(GridNetBlock, self).__init__()
 
         in_channels = in_chan * kernel_size
 
@@ -37,39 +35,22 @@ class GridNetBlock(nn.Module):
 
         E = math.ceil(approx_qk_dim * 1.0 / n_freqs)  # approx_qk_dim is only approximate
         assert in_chan % n_head == 0
+
         for ii in range(n_head):
             self.add_module(
                 "attn_conv_Q_%d" % ii,
-                nn.Sequential(
-                    nn.Conv2d(in_chan, E, 1),
-                    activations.get(act_type)(),
-                    normalizations.get(norm_type)((E, n_freqs), eps=eps),
-                ),
+                Conv2dNormAct(in_chan, E, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
             )
             self.add_module(
                 "attn_conv_K_%d" % ii,
-                nn.Sequential(
-                    nn.Conv2d(in_chan, E, 1),
-                    activations.get(act_type)(),
-                    normalizations.get(norm_type)((E, n_freqs), eps=eps),
-                ),
+                Conv2dNormAct(in_chan, E, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
             )
             self.add_module(
                 "attn_conv_V_%d" % ii,
-                nn.Sequential(
-                    nn.Conv2d(in_chan, in_chan // n_head, 1),
-                    activations.get(act_type)(),
-                    normalizations.get(norm_type)((in_chan // n_head, n_freqs), eps=eps),
-                ),
+                Conv2dNormAct(in_chan, in_chan // n_head, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
             )
-        self.add_module(
-            "attn_concat_proj",
-            nn.Sequential(
-                nn.Conv2d(in_chan, in_chan, 1),
-                activations.get(act_type)(),
-                normalizations.get(norm_type)((in_chan, n_freqs), eps=eps),
-            ),
-        )
+
+        self.attn_concat_proj = Conv2dNormAct(in_chan, in_chan, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs)
 
         self.emb_dim = in_chan
         self.emb_ks = kernel_size
@@ -142,7 +123,7 @@ class GridNetBlock(nn.Module):
         batch = V.view([self.n_head, B, emb_dim, old_T, -1])  # [n_head, B, C, T, Q])
         batch = batch.transpose(0, 1)  # [B, n_head, C, T, Q])
         batch = batch.contiguous().view([B, self.n_head * emb_dim, old_T, -1])  # [B, C, T, Q])
-        batch = self["attn_concat_proj"](batch)  # [B, C, T, Q])
+        batch = self.attn_concat_proj(batch)  # [B, C, T, Q])
 
         out = batch + inter_rnn
         return out
