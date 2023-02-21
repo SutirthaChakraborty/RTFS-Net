@@ -4,7 +4,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .layers import ConvNormAct
+from .layers import ConvNormAct, Conv2dActNorm
 
 
 class BaseEncoder(nn.Module):
@@ -57,6 +57,7 @@ class ConvolutionalEncoder(BaseEncoder):
         bias: bool = False,
         upsampling_depth: int = 4,
         act_type: str = None,
+        norm_type: str = "gLN",
         layers: int = 1,
         *args,
         **kwargs,
@@ -69,6 +70,7 @@ class ConvolutionalEncoder(BaseEncoder):
         self.stride = stride
         self.bias = bias
         self.act_type = act_type
+        self.norm_type = norm_type
         self.layers = layers
 
         self.encoder = nn.ModuleList()
@@ -84,6 +86,7 @@ class ConvolutionalEncoder(BaseEncoder):
                     stride=self.stride,
                     dilation=dilation,
                     padding=dilation * (kernel_size - 1) // 2,
+                    norm_type=self.norm_type,
                     act_type=self.act_type,
                     xavier_init=True,
                     bias=self.bias,
@@ -115,12 +118,43 @@ class ConvolutionalEncoder(BaseEncoder):
 
 
 class STFTEncoder(BaseEncoder):
-    def __init__(self, win: int, stride: int):
+    def __init__(
+        self,
+        win: int,
+        hop_length: int,
+        out_chan: int,
+        kernel_size: int,
+        stride: int,
+        dilation: int,
+        act_type: str = None,
+        norm_type: str = "gLN",
+        bias: bool = False,
+    ):
         super().__init__(0, 0, 0)
 
         self.win = win
+        self.hop_length = hop_length
+        self.out_chan = out_chan
+        self.kernel_size = (kernel_size, 3)
         self.stride = stride
+        self.dilation = dilation
+        self.bias = bias
+        self.act_type = act_type
+        self.norm_type = norm_type
+
         self.window = torch.hann_window(self.win)
+        self.conv = Conv2dActNorm(
+            in_chan=2,
+            out_chan=self.out_chan,
+            kernel_size=self.kernel_size,
+            stride=self.stride,
+            dilation=self.dilation,
+            padding=(self.kernel_size - 1) // 2,
+            act_type=self.act_type,
+            norm_type=self.norm_type,
+            xavier_init=True,
+            bias=self.bias,
+        )
 
     def forward(self, x: torch.Tensor):
         x = self.unsqueeze_to_3D(x)
@@ -128,7 +162,7 @@ class STFTEncoder(BaseEncoder):
         spec = torch.stft(
             x,
             n_fft=self.win,
-            hop_length=self.stride,
+            hop_length=self.hop_length,
             window=self.window.to(x.device).type(x.type()),
             return_complex=True,
         )

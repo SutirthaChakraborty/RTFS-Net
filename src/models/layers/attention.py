@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from . import ConvNormAct
 from timm.models.layers import DropPath
-from .cnn_layers import ConvNormAct
 
 
 class PositionalEncoding(nn.Module):

@@ -3,8 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import normalizations
-from .cnn_layers import Conv2dNormAct
+from . import normalizations, Conv2dActNorm
 
 
 class GridNetBlock(nn.Module):
@@ -39,18 +38,18 @@ class GridNetBlock(nn.Module):
         for ii in range(n_head):
             self.add_module(
                 "attn_conv_Q_%d" % ii,
-                Conv2dNormAct(in_chan, E, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
+                Conv2dActNorm(in_chan, E, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
             )
             self.add_module(
                 "attn_conv_K_%d" % ii,
-                Conv2dNormAct(in_chan, E, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
+                Conv2dActNorm(in_chan, E, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
             )
             self.add_module(
                 "attn_conv_V_%d" % ii,
-                Conv2dNormAct(in_chan, in_chan // n_head, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
+                Conv2dActNorm(in_chan, in_chan // n_head, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs),
             )
 
-        self.attn_concat_proj = Conv2dNormAct(in_chan, in_chan, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs)
+        self.attn_concat_proj = Conv2dActNorm(in_chan, in_chan, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs)
 
         self.emb_dim = in_chan
         self.emb_ks = kernel_size

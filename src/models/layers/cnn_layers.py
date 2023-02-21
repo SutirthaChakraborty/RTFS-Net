@@ -56,7 +56,7 @@ class ConvNormAct(nn.Module):
         return output
 
 
-class Conv2dNormAct(nn.Module):
+class Conv2dActNorm(nn.Module):
     def __init__(
         self,
         in_chan: int,
@@ -73,7 +73,7 @@ class Conv2dNormAct(nn.Module):
         n_freqs=None,
         eps: float = torch.finfo(torch.float32).eps,
     ):
-        super(Conv2dNormAct, self).__init__()
+        super(Conv2dActNorm, self).__init__()
         self.in_chan = in_chan
         self.out_chan = out_chan
         self.kernel_size = kernel_size

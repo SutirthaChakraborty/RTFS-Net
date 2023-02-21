@@ -5,16 +5,12 @@ from .layers import normalizations
 
 
 class AudioBottleneck(nn.Module):
-    def __init__(self, in_chan: int, audio_bn_chan: int, norm_type: str):
+    def __init__(self, in_chan: int, audio_bn_chan: int):
         super(AudioBottleneck, self).__init__()
         self.in_chan = in_chan
         self.audio_bn_chan = audio_bn_chan
-        self.norm_type = norm_type
 
-        self.audio_bottleneck = nn.Sequential(
-            normalizations.get(self.norm_type)(self.in_chan),
-            nn.Conv1d(self.in_chan, self.audio_bn_chan, 1, 1),
-        )
+        self.audio_bottleneck = nn.Conv1d(self.in_chan, self.audio_bn_chan, 1, 1)
 
     def forward(self, x):
         return self.audio_bottleneck(x)
