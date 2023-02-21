@@ -5,35 +5,33 @@ videonet:
     width_mult: 1.0
     pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
-    n_src: 1
-    in_chan: 512
-    kernel_size: 21
-    stride: 10
-    hid_chan: 512                       # FRCNN hidden channels
-    audio_bn_chan: 512                  # bottleneck
-    mask_act: ReLU
+  act_type: PReLU
+  audio_bn_chan: 512
+  audio_net: FRCNN
+  audio_repeats: 3
+  audio_shared: true
+  fusion_repeats: 1
+  fusion_shared: true
+  fusion_type: ConcatFusion
+  hid_chan: 512
+  in_chan: 512
+  kernel_size: 21
+  mask_act: ReLU
+  n_src: 1
+  norm_type: gLN
+  stride: 10
+  upsampling_depth: 5
+  video_params:
     act_type: PReLU
-    norm_type: gLN
-    upsampling_depth: 5
-    audio_repeats: 3
-    audio_net: FRCNN
-    audio_shared: True
-    # fusion params
-    fusion_repeats: 1
-    fusion_type: ConcatFusion
-    fusion_shared: True
-    # video frcnn
-    video_params:
-        video_net: FRCNN
-        vout_chan: 512                  # output from pretrained model
-        in_chan: 64                     # video bottleneck 
-        hid_chan: 64
-        upsampling_depth: 4
-        shared: True
-        norm_type: "BatchNorm1d"
-        act_type: "PReLU"
-        kernel_size: 3
-        stride: 2
+    hid_chan: 64
+    in_chan: 64
+    kernel_size: 3
+    norm_type: BatchNorm1d
+    shared: true
+    stride: 2
+    upsampling_depth: 4
+    video_net: FRCNN
+    vout_chan: 512
 # Training config
 training:
     gpus: [0,1,2,3,4,5,6]
@@ -64,4 +62,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_frcnn_14_02_23
+    exp_name: ctcnet_small_frcnn_21_02_23
