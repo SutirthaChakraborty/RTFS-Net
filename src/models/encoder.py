@@ -54,10 +54,10 @@ class ConvolutionalEncoder(BaseEncoder):
         out_chan: int,
         kernel_size: int,
         stride: int,
-        bias: bool = False,
-        upsampling_depth: int = 4,
         act_type: str = None,
         norm_type: str = "gLN",
+        bias: bool = False,
+        upsampling_depth: int = 4,
         layers: int = 1,
         *args,
         **kwargs,
@@ -125,7 +125,6 @@ class STFTEncoder(BaseEncoder):
         out_chan: int,
         kernel_size: int,
         stride: int,
-        dilation: int,
         act_type: str = None,
         norm_type: str = "gLN",
         bias: bool = False,
@@ -137,7 +136,6 @@ class STFTEncoder(BaseEncoder):
         self.out_chan = out_chan
         self.kernel_size = (kernel_size, 3)
         self.stride = stride
-        self.dilation = dilation
         self.bias = bias
         self.act_type = act_type
         self.norm_type = norm_type
@@ -148,7 +146,6 @@ class STFTEncoder(BaseEncoder):
             out_chan=self.out_chan,
             kernel_size=self.kernel_size,
             stride=self.stride,
-            dilation=self.dilation,
             padding=(self.kernel_size - 1) // 2,
             act_type=self.act_type,
             norm_type=self.norm_type,
@@ -167,7 +164,20 @@ class STFTEncoder(BaseEncoder):
             return_complex=True,
         )
 
-        torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
+        spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
+        spec_feature_map = self.conv(spec)
+
+        return spec_feature_map
+
+    def get_config(self):
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
 
 
 def get(identifier):
