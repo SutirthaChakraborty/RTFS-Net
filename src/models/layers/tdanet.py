@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import TAC, ConvNormAct, GlobalAttention
+from .rnn_layers import TAC
+from .cnn_layers import ConvNormAct
+from .attention import GlobalAttention
 
 
 class InjectionMultiSum(nn.Module):

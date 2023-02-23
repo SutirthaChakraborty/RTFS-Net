@@ -152,7 +152,7 @@ def main(conf, model=CTCNet, epochs=1):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     main(def_conf)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_multiscale.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_frcnn.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 

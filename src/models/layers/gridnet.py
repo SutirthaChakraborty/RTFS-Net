@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import normalizations, Conv2dActNorm
+from . import normalizations
+from .cnn_layers import Conv2dActNorm
 
 
 class GridNetBlock(nn.Module):

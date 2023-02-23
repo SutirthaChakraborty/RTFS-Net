@@ -24,7 +24,6 @@ audionet:
       video_bn_chan: 64
 
     audio_bn_params:
-      norm_type: gLN
       audio_bn_chan: 512
 
     enc_dec_params:
@@ -34,6 +33,7 @@ audionet:
       stride: 10
       bias: False
       act_type: 
+      norm_type: gLN
       
     audio_params:
       audio_net: TDANet
