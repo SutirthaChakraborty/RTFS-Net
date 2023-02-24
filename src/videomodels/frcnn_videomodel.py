@@ -51,7 +51,7 @@ class FRCNNVideoModel(nn.Module):
         if pretrain:
             self.init_from(pretrain)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         B, C, T, H, W = x.size()
         x = self.frontend3D(x)
         Tnew = x.shape[2]  # outpu should be B x C2 x Tnew x H x W
