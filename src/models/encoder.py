@@ -165,7 +165,7 @@ class STFTEncoder(BaseEncoder):
         )
 
         spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
-        spec_feature_map = self.conv(spec)
+        spec_feature_map = self.conv(spec) # B, C, T, F
 
         return spec_feature_map
 

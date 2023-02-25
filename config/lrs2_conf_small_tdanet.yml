@@ -34,6 +34,7 @@ audionet:
       bias: False
       act_type: 
       norm_type: gLN
+      layers: 1
       
     audio_params:
       audio_net: TDANet
