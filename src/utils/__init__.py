@@ -7,15 +7,7 @@
 
 from .separator import Separator, separate
 from .torch_utils import pad_x_to_y, shape_reconstructed, tensors_to_device
-from .parser_utils import (
-    prepare_parser_from_dict,
-    parse_args_as_dict,
-    str_int_float,
-    str2bool,
-    str2bool_arg,
-    isfloat,
-    isint,
-)
+from .parser_utils import prepare_parser_from_dict, parse_args_as_dict, str_int_float, str2bool_arg, str2bool, isfloat, isint
 
 __all__ = [
     "Separator",

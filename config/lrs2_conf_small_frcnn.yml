@@ -5,33 +5,66 @@ videonet:
     width_mult: 1.0
     pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
-  act_type: PReLU
-  audio_bn_chan: 512
-  audio_net: FRCNN
-  audio_repeats: 3
-  audio_shared: true
-  fusion_repeats: 1
-  fusion_shared: true
-  fusion_type: ConcatFusion
-  hid_chan: 512
-  in_chan: 512
-  kernel_size: 21
-  mask_act: ReLU
-  n_src: 1
-  norm_type: gLN
-  stride: 10
-  upsampling_depth: 5
-  video_params:
-    act_type: PReLU
-    hid_chan: 64
-    in_chan: 64
-    kernel_size: 3
-    norm_type: BatchNorm1d
-    shared: true
-    stride: 2
-    upsampling_depth: 4
-    video_net: FRCNN
-    vout_chan: 512
+    n_src: 1
+    pretrained_vout_chan: 512                  # output from pretrained model
+
+    gc3_params:
+      audio:
+        group_size: 1                          # 128/8=16, 512/16=32
+        context_size: 1                       # 128/32=4, 512/4=128 
+        num_layers: 1
+        bidirectional: True
+      video:    
+        group_size: 1                          # 128/8=16, 64/16=4
+        context_size: 1                       # 128/32=4, 64/4=16 
+        num_layers: 1
+        bidirectional: True
+
+    video_bn_params:
+      video_bn_chan: 64
+
+    audio_bn_params:
+      norm_type: gLN
+      audio_bn_chan: 512
+
+    enc_dec_params:
+      out_chan: 512
+      kernel_size: 21
+      stride: 10
+      bias: False
+      act_type: 
+      
+    audio_params:
+      audio_net: FRCNN
+      # in_chan same as audio_bn_chan
+      hid_chan: 512                       # FRCNN hidden channels
+      upsampling_depth: 5
+      shared: True
+      repeats: 4
+      norm_type: gLN
+      act_type: PReLU
+      kernel_size: 5
+      stride: 2 
+    
+    video_params:
+        video_net: FRCNN
+      # in_chan same as video_bn_chan
+        hid_chan: 64
+        upsampling_depth: 4
+        shared: True
+        repeats: 1
+        norm_type: BatchNorm1d
+        act_type: PReLU
+        kernel_size: 3
+        stride: 2
+
+    fusion_params:
+      fusion_type: ConcatFusion
+      fusion_shared: True
+
+    mask_generation_params:
+      mask_act: ReLU
+      
 # Training config
 training:
     gpus: [0,1,2,3,4,5,6]
@@ -62,4 +95,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_frcnn_21_02_23
+    exp_name: ctcnet_small_frcnn_23_02_23_gc3_refactor

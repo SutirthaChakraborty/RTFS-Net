@@ -7,11 +7,7 @@ from ..layers import ConvNormAct
 
 
 class FusionBasemodule(nn.Module):
-    def __init__(
-        self,
-        ain_chan: int = 128,
-        vin_chan: int = 128,
-    ):
+    def __init__(self, ain_chan: int, vin_chan: int):
         super(FusionBasemodule, self).__init__()
         self.ain_chan = ain_chan
         self.vin_chan = vin_chan
@@ -21,14 +17,10 @@ class FusionBasemodule(nn.Module):
 
 
 class ConcatFusion(FusionBasemodule):
-    def __init__(
-        self,
-        ain_chan: int = 128,
-        vin_chan: int = 128,
-    ):
+    def __init__(self, ain_chan: int, vin_chan: int):
         super(ConcatFusion, self).__init__(ain_chan, vin_chan)
-        self.audio_conv = ConvNormAct(ain_chan + vin_chan, ain_chan, 1, 1, norm_type="gLN")
-        self.video_conv = ConvNormAct(ain_chan + vin_chan, vin_chan, 1, 1, norm_type="gLN")
+        self.audio_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.ain_chan, 1, norm_type="gLN")
+        self.video_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.vin_chan, 1, norm_type="gLN")
 
     def forward(self, audio, video):
         video_interp = F.interpolate(video, size=audio.shape[-1], mode="nearest")
@@ -43,10 +35,10 @@ class ConcatFusion(FusionBasemodule):
 
 
 class SumFusion(FusionBasemodule):
-    def __init__(self, ain_chan: int = 128, vin_chan: int = 128):
+    def __init__(self, ain_chan: int, vin_chan: int):
         super(SumFusion, self).__init__(ain_chan, vin_chan)
-        self.audio_conv = ConvNormAct(vin_chan, ain_chan, 1, 1, norm_type="gLN")
-        self.video_conv = ConvNormAct(ain_chan, vin_chan, 1, 1, norm_type="gLN")
+        self.audio_conv = ConvNormAct(self.vin_chan, self.ain_chan, 1, norm_type="gLN")
+        self.video_conv = ConvNormAct(self.ain_chan, self.vin_chan, 1, norm_type="gLN")
 
     def forward(self, audio, video):
         audio_interp = F.interpolate(audio, size=video.shape[-1], mode="nearest")

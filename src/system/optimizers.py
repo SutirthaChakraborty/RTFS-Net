@@ -8,19 +8,19 @@
 from torch.optim.optimizer import Optimizer
 from torch.optim import Adam, RMSprop, SGD, Adadelta, Adagrad, Adamax, AdamW, ASGD
 from torch_optimizer import (
-    AccSGD,
-    AdaBound,
-    AdaMod,
-    DiffGrad,
-    Lamb,
-    NovoGrad,
     PID,
-    QHAdam,
     QHM,
-    RAdam,
-    SGDW,
     Yogi,
+    SGDW,
+    Lamb,
+    RAdam,
+    AdaMod,
+    AccSGD,
+    QHAdam,
     Ranger,
+    AdaBound,
+    DiffGrad,
+    NovoGrad,
     RangerQH,
     RangerVA,
 )
@@ -82,13 +82,8 @@ def register_optimizer(custom_opt):
         custom_opt: Custom optimizer to register.
 
     """
-    if (
-        custom_opt.__name__ in globals().keys()
-        or custom_opt.__name__.lower() in globals().keys()
-    ):
-        raise ValueError(
-            f"Activation {custom_opt.__name__} already exists. Choose another name."
-        )
+    if custom_opt.__name__ in globals().keys() or custom_opt.__name__.lower() in globals().keys():
+        raise ValueError(f"Activation {custom_opt.__name__} already exists. Choose another name.")
     globals().update({custom_opt.__name__: custom_opt})
 
 

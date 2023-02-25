@@ -6,11 +6,11 @@
 ###
 
 import torch
-from pprint import pprint
-import pytorch_lightning as pl
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from collections.abc import MutableMapping
 import warnings
+import pytorch_lightning as pl
+
+from collections.abc import MutableMapping
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 warnings.filterwarnings("ignore")
 
@@ -114,9 +114,7 @@ class System(pl.LightningModule):
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
         train_loss = torch.mean(self.all_gather(avg_loss))
         # import pdb; pdb.set_trace()
-        self.logger.experiment.add_scalar(
-            "train_sisnr", -train_loss, self.current_epoch
-        )
+        self.logger.experiment.add_scalar("train_sisnr", -train_loss, self.current_epoch)
 
     def validation_step(self, batch, batch_nb):
         loss = self.common_step(batch, batch_nb, is_train=False)
@@ -133,9 +131,7 @@ class System(pl.LightningModule):
             prog_bar=True,
             sync_dist=True,
         )
-        self.logger.experiment.add_scalar(
-            "learning_rate", self.optimizer.param_groups[0]["lr"], self.current_epoch
-        )
+        self.logger.experiment.add_scalar("learning_rate", self.optimizer.param_groups[0]["lr"], self.current_epoch)
         self.logger.experiment.add_scalar("val_sisnr", -val_loss, self.current_epoch)
 
     def configure_optimizers(self):
@@ -192,9 +188,7 @@ class System(pl.LightningModule):
         new_src = []
         for i in range(targets.shape[1]):
             new_s = targets[torch.randperm(batch), i, :]
-            new_s = new_s * torch.sqrt(
-                energies[:, i] / (new_s**2).sum(-1, keepdims=True)
-            )
+            new_s = new_s * torch.sqrt(energies[:, i] / (new_s**2).sum(-1, keepdims=True))
             new_src.append(new_s)
 
         targets = torch.stack(new_src, dim=1)
@@ -202,17 +196,10 @@ class System(pl.LightningModule):
         return inputs, targets
 
     def on_epoch_end(self):
-        if (
-            self.config["sche"]["patience"] > 0
-            and self.config["training"]["divide_lr_by"] != None
-        ):
-            if (
-                self.current_epoch % self.config["sche"]["patience"] == 0
-                and self.current_epoch != 0
-            ):
+        if self.config["sche"]["patience"] > 0 and self.config["training"]["divide_lr_by"] != None:
+            if self.current_epoch % self.config["sche"]["patience"] == 0 and self.current_epoch != 0:
                 new_lr = self.config["optim"]["lr"] / (
-                    self.config["training"]["divide_lr_by"]
-                    ** (self.current_epoch // self.config["sche"]["patience"])
+                    self.config["training"]["divide_lr_by"] ** (self.current_epoch // self.config["sche"]["patience"])
                 )
                 # print("Reducing Learning rate to: {}".format(new_lr))
                 for param_group in self.optimizer.param_groups:
