@@ -233,7 +233,7 @@ class TDANet(nn.Module):
 
         self.blocks = self.__build_tdanet()
         self.concat_block = self.__build_concat_block()
-        self.tac = TAC(self.in_chan // self.group_size, self.hid_chan // self.group_size) if self.group_size > 1 else nn.Identity()
+        self.tac = TAC(self.in_chan // self.group_size, self.hid_chan * 3 // self.group_size) if self.group_size > 1 else nn.Identity()
 
     def __build_tdanet(self):
         if self.shared:
