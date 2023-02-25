@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .cnn_layers import ConvNormAct
+from .cnn_layers import ConvActNorm
 from timm.models.layers import DropPath
 
 
@@ -62,7 +62,8 @@ class MultiHeadSelfAttention(nn.Module):
         x = self.dropout_layer(x) + residual
         x = self.norm2(x)
 
-        return x.transpose(2, 1)
+        x = x.transpose(2, 1)
+        return x
 
 
 class FeedForwardNetwork(nn.Module):
@@ -71,19 +72,28 @@ class FeedForwardNetwork(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
+        norm_type: str = "gLN",
+        act_type: str = "ReLU",
         dropout: float = 0.1,
     ):
         super(FeedForwardNetwork, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
+        self.norm_type = norm_type
+        self.act_type = act_type
         self.dropout = dropout
 
-        self.encoder = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type="gLN", bias=False)
-        self.refiner = ConvNormAct(
-            self.hid_chan, self.hid_chan, self.kernel_size, groups=self.hid_chan, padding=((self.kernel_size - 1) // 2), act_type="ReLU"
+        self.encoder = ConvActNorm(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False)
+        self.refiner = ConvActNorm(
+            self.hid_chan,
+            self.hid_chan,
+            self.kernel_size,
+            groups=self.hid_chan,
+            padding=((self.kernel_size - 1) // 2),
+            act_type=self.act_type,
         )
-        self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type="gLN", bias=False)
+        self.decoder = ConvActNorm(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False)
         self.dropout_layer = nn.Dropout(self.dropout)
 
     def forward(self, x):
@@ -111,7 +121,16 @@ class GlobalAttention(nn.Module):
         self.dropout = dropout
         self.drop_path = drop_path
 
-        self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
+        if self.n_head > 0:
+            self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
+        else:
+            self.mhsa = ConvActNorm(
+                self.in_chan,
+                self.in_chan,
+                self.kernel_size,
+                groups=self.in_chan,
+                padding=((self.kernel_size - 1) // 2),
+            )
         self.ffn = FeedForwardNetwork(self.in_chan, self.in_chan * 2, self.kernel_size, self.dropout)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 

@@ -4,7 +4,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .layers import ConvNormAct, Conv2dActNorm
+from .layers import ConvActNorm, Conv2dActNorm
 
 
 class BaseEncoder(nn.Module):
@@ -79,7 +79,7 @@ class ConvolutionalEncoder(BaseEncoder):
             dilation = i + 1
             kernel_size = self.kernel_size * dilation
             self.encoder.append(
-                ConvNormAct(
+                ConvActNorm(
                     in_chan=self.in_chan,
                     out_chan=self.out_chan,
                     kernel_size=kernel_size,
@@ -165,7 +165,7 @@ class STFTEncoder(BaseEncoder):
         )
 
         spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
-        spec_feature_map = self.conv(spec) # B, C, T, F
+        spec_feature_map = self.conv(spec)  # B, C, T, F
 
         return spec_feature_map
 

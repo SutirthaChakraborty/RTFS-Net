@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from . import normalizations, activations
 
 
-class ConvNormAct(nn.Module):
+class ConvActNorm(nn.Module):
     def __init__(
         self,
         in_chan: int,
@@ -20,7 +20,7 @@ class ConvNormAct(nn.Module):
         xavier_init: bool = False,
         bias: bool = True,
     ):
-        super(ConvNormAct, self).__init__()
+        super(ConvActNorm, self).__init__()
         self.in_chan = in_chan
         self.out_chan = out_chan
         self.kernel_size = kernel_size
