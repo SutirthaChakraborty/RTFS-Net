@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .cnn_layers import ConvActNorm
 from timm.models.layers import DropPath
+from .cnn_layers import ConvActNorm, FeedForwardNetwork
 
 
 class PositionalEncoding(nn.Module):
@@ -52,7 +52,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.dropout_layer = nn.Dropout(self.dropout)
         self.norm2 = nn.LayerNorm(self.in_chan)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         x = x.transpose(1, 2)
 
         x = self.norm1(x)
@@ -63,45 +63,6 @@ class MultiHeadSelfAttention(nn.Module):
         x = self.norm2(x)
 
         x = x.transpose(2, 1)
-        return x
-
-
-class FeedForwardNetwork(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        hid_chan: int,
-        kernel_size: int = 5,
-        norm_type: str = "gLN",
-        act_type: str = "ReLU",
-        dropout: float = 0.1,
-    ):
-        super(FeedForwardNetwork, self).__init__()
-        self.in_chan = in_chan
-        self.hid_chan = hid_chan
-        self.kernel_size = kernel_size
-        self.norm_type = norm_type
-        self.act_type = act_type
-        self.dropout = dropout
-
-        self.encoder = ConvActNorm(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False)
-        self.refiner = ConvActNorm(
-            self.hid_chan,
-            self.hid_chan,
-            self.kernel_size,
-            groups=self.hid_chan,
-            padding=((self.kernel_size - 1) // 2),
-            act_type=self.act_type,
-        )
-        self.decoder = ConvActNorm(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False)
-        self.dropout_layer = nn.Dropout(self.dropout)
-
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.refiner(x)
-        x = self.dropout_layer(x)
-        x = self.decoder(x)
-        x = self.dropout_layer(x)
         return x
 
 
@@ -134,7 +95,7 @@ class GlobalAttention(nn.Module):
         self.ffn = FeedForwardNetwork(self.in_chan, self.in_chan * 2, self.kernel_size, dropout=self.dropout)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         x = x + self.drop_path_layer(self.mhsa(x))
         x = x + self.drop_path_layer(self.ffn(x))
         return x
