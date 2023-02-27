@@ -10,7 +10,7 @@ from src.models.layers.attention import GlobalAttention
 in_chan = 256
 kernel_size = 5
 dropout = 0.1
-its = 100
+its = 200
 
 model = ConvolutionalRNN(in_chan, in_chan * 2, kernel_size, dropout=dropout).cuda()
 loss_fn = torch.nn.CrossEntropyLoss().cuda()
@@ -47,11 +47,11 @@ for i in pbar:
     if i > 5:
         model1_time += t2 - t1
 
-    # optimizer2.zero_grad()
-    # outputs2 = model2(x)
-    # loss2 = loss_fn2(outputs2, y)
-    # loss2.backward()
-    # optimizer2.step()
+    optimizer2.zero_grad()
+    outputs2 = model2(x)
+    loss2 = loss_fn2(outputs2, y)
+    loss2.backward()
+    optimizer2.step()
 
     t3 = time()
     if i > 5:
