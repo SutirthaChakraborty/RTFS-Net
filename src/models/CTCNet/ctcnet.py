@@ -1,8 +1,8 @@
 from ...models import encoder
 
+from ..layers import ConvActNorm
 from ..base_av_model import BaseAVModel
 from ..decoder import ConvolutionalDecoder
-from ..bottleneck import AudioBottleneck, VideoBottleneck
 from ..mask_generator import MaskGenerator
 
 from .masker import RefinementModule
@@ -38,8 +38,8 @@ class CTCNet(BaseAVModel):
         self.mask_generation_params = mask_generation_params
         self.gc3_params = gc3_params
 
-        self.audio_bn_chan = self.audio_bn_params["audio_bn_chan"]
-        self.video_bn_chan = self.video_bn_params["video_bn_chan"]
+        self.audio_bn_chan = self.audio_bn_params["out_chan"]
+        self.video_bn_chan = self.video_bn_params["out_chan"]
         self.audio_hid_chan = self.audio_params["hid_chan"]
         self.video_hid_chan = self.video_params["hid_chan"]
 
@@ -50,18 +50,18 @@ class CTCNet(BaseAVModel):
         )
         self.audio_embedding_dim = self.encoder.out_chan
 
-        self.audio_bottleneck = AudioBottleneck(**self.audio_bn_params, in_chan=self.audio_embedding_dim)
-        self.video_bottleneck = VideoBottleneck(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
+        self.audio_bottleneck = ConvActNorm(**self.audio_bn_params, in_chan=self.audio_embedding_dim)
+        self.video_bottleneck = ConvActNorm(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
 
         self.audio_context_enc = ContextEncoder(
-            **self.gc3_params["audio"],
             in_chan=self.audio_bn_chan,
             hid_chan=self.audio_hid_chan,
+            gc3_params=self.gc3_params["audio"],
         )
         self.video_context_enc = ContextEncoder(
-            **self.gc3_params["video"],
             in_chan=self.video_bn_chan,
             hid_chan=self.video_hid_chan,
+            gc3_params=self.gc3_params["video"],
         )
 
         self.refinement_module = RefinementModule(
@@ -74,9 +74,9 @@ class CTCNet(BaseAVModel):
         )
 
         self.context_dec = ContextDecoder(
-            **self.gc3_params["audio"],
             in_chan=self.audio_bn_chan,
             hid_chan=self.audio_hid_chan,
+            gc3_params=self.gc3_params["audio"],
         )
 
         self.mask_generator = MaskGenerator(

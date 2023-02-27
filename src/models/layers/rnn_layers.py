@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 
 
+from .attention import GlobalAttention
+
+
 class TAC(nn.Module):
     def __init__(self, input_size: int, hidden_size: int):
         super(TAC, self).__init__()
@@ -46,6 +49,8 @@ class RNNProjection(nn.Module):
         rnn_type: str = "LSTM",
         dropout: float = 0,
         bidirectional: bool = False,
+        *args,
+        **kwargs,
     ):
         super(RNNProjection, self).__init__()
 
@@ -69,8 +74,8 @@ class RNNProjection(nn.Module):
         batch_size, num_group, _, seq_len = x.shape  # B, G, N, L
 
         x = x.transpose(2, 3).contiguous().view(batch_size * num_group, seq_len, -1)  # B*G, L, N
-        rnn_output = self.rnn(x)[0]  # B*G, L, num_direction * H
-        rnn_output = rnn_output.contiguous().view(-1, self.num_direction * self.hidden_size)  # B*G*L, num_direction * H
+        rnn_output = self.rnn(x)[0].contiguous()  # B*G, L, num_direction * H
+        rnn_output = rnn_output.view(-1, self.num_direction * self.hidden_size)  # B*G*L, num_direction * H
         proj_output = self.proj(rnn_output)  # B*G*L, N
         proj_output = proj_output.view(batch_size, num_group, seq_len, -1).transpose(2, 3).contiguous()  # B, G, N, L
 
@@ -78,46 +83,43 @@ class RNNProjection(nn.Module):
 
 
 class GC_RNN(nn.Module):
-    def __init__(
-        self,
-        input_size: int,
-        hidden_size: int,
-        rnn_type: str = "LSTM",
-        num_group: int = 2,
-        dropout: float = 0,
-        num_layers: int = 1,
-        bidirectional: bool = True,
-    ):
+    def __init__(self, input_size: int, hidden_size: int, gc3_params: dict):
         super(GC_RNN, self).__init__()
 
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.rnn_type = rnn_type
-        self.num_group = num_group
-        self.dropout = dropout
-        self.num_layers = num_layers
-        self.bidirectional = bidirectional
+        self.rnn_type = gc3_params.get("rnn_type", "LSTM")
+        self.num_group = gc3_params.get("num_group", 1)
+        self.num_layers = gc3_params.get("num_layers", 2)
 
         self.TAC = nn.ModuleList([])
         self.rnn = nn.ModuleList([])
         self.LN = nn.ModuleList([])
 
-        for _ in range(num_layers):
+        for _ in range(self.num_layers):
             self.TAC.append(
                 TAC(
                     input_size=self.input_size // self.num_group,
                     hidden_size=self.hidden_size * 3 // self.num_group,
                 )
             )
-            self.rnn.append(
-                RNNProjection(
-                    input_size=self.input_size // self.num_group,
-                    hidden_size=self.hidden_size // self.num_group,
-                    rnn_type=self.rnn_type,
-                    dropout=self.dropout,
-                    bidirectional=self.bidirectional,
+            if self.rnn_type == "GlobalAttention":
+                self.rnn.append(
+                    GlobalAttention(
+                        in_chan=self.input_size // self.num_group,
+                        hid_chan=self.hidden_size // self.num_group,
+                        **gc3_params,
+                    )
                 )
-            )
+            else:
+                self.rnn.append(
+                    RNNProjection(
+                        input_size=self.input_size // self.num_group,
+                        hidden_size=self.hidden_size // self.num_group,
+                        rnn_type=self.rnn_type,
+                        **gc3_params,
+                    )
+                )
             self.LN.append(nn.GroupNorm(num_groups=1, num_channels=self.input_size // self.num_group))
 
     def forward(self, x):

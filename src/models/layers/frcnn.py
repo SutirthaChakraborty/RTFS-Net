@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .cnn_layers import ConvActNorm
 from .rnn_layers import TAC
+from .cnn_layers import ConvActNorm
 
 
 class FRCNNBlock(nn.Module):

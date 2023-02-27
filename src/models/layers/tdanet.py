@@ -112,8 +112,8 @@ class TDANetBlock(nn.Module):
 
         self.globalatt = GlobalAttention(
             in_chan=self.hid_chan // self.group_size,
-            n_head=self.n_head,
             kernel_size=self.kernel_size,
+            n_head=self.n_head,
             dropout=self.dropout,
             drop_path=self.drop_path,
         )

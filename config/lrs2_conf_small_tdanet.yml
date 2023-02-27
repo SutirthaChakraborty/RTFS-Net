@@ -21,10 +21,12 @@ audionet:
         bidirectional: True
 
     video_bn_params:
-      video_bn_chan: 64
+      out_chan: 64
+      kernel_size: 1
 
     audio_bn_params:
-      audio_bn_chan: 512
+      out_chan: 512
+      kernel_size: 3
 
     enc_dec_params:
       encoder_type: ConvolutionalEncoder

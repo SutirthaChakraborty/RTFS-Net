@@ -10,9 +10,9 @@ audionet:
 
     gc3_params:
       audio:
-        group_size: 32
-        context_size: 64
-        num_layers: 1
+        group_size: 64                         # 128/16
+        context_size: 128                      # 128/32 
+        num_layers: 2
         bidirectional: True
       video:    
         group_size: 1
@@ -21,10 +21,13 @@ audionet:
         bidirectional: True
 
     video_bn_params:
-      video_bn_chan: 64
+      out_chan: 64
+      kernel_size: 1
 
     audio_bn_params:
-      audio_bn_chan: 512
+      out_chan: 512
+      kernel_size: 3
+      padding: 1
 
     enc_dec_params:
       encoder_type: ConvolutionalEncoder
@@ -99,4 +102,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_context_18_02_23
+    exp_name: ctcnet_small_tdanet_context_26_02_23
