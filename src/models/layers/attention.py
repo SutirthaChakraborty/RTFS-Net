@@ -131,7 +131,7 @@ class GlobalAttention(nn.Module):
                 groups=self.in_chan,
                 padding=((self.kernel_size - 1) // 2),
             )
-        self.ffn = FeedForwardNetwork(self.in_chan, self.in_chan * 2, self.kernel_size, self.dropout)
+        self.ffn = FeedForwardNetwork(self.in_chan, self.in_chan * 2, self.kernel_size, dropout=self.dropout)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 
     def forward(self, x):

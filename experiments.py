@@ -5,21 +5,22 @@ from src.models import encoder
 
 from src.models.layers.attention import FeedForwardNetwork
 from src.models.layers.cnn_layers import ConvActNorm
+from src.models.layers.tdanet2d import TDANet
 
 in_chan = 256
 kernel_size = 5
 dropout = 0.1
 its = 1000
 
-model = FeedForwardNetwork(in_chan, in_chan * 2, kernel_size, dropout=dropout).cuda()
+model = TDANet(in_chan, in_chan * 2, kernel_size, dropout=dropout).cuda()
 
 loss_fn = torch.nn.CrossEntropyLoss().cuda()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
-model2 = ConvActNorm(in_chan, in_chan, kernel_size, padding=(kernel_size - 1) // 2, norm_type="gLN", act_type="ReLU").cuda()
+# model2 = ConvActNorm(in_chan, in_chan, kernel_size, padding=(kernel_size - 1) // 2, norm_type="gLN", act_type="ReLU").cuda()
 
-loss_fn2 = torch.nn.CrossEntropyLoss().cuda()
-optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.001, momentum=0.9)
+# loss_fn2 = torch.nn.CrossEntropyLoss().cuda()
+# optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.001, momentum=0.9)
 
 model1_time = 0
 model2_time = 0
@@ -27,8 +28,8 @@ model2_time = 0
 pbar = tqdm(range(its))
 
 for i in pbar:
-    x = torch.rand((8, 256, 3200)).cuda()
-    y = torch.rand((8, 256, 3200)).cuda()
+    x = torch.rand((2, 256, 200, 123)).cuda()
+    y = torch.rand((2, 256, 200, 123)).cuda()
 
     t1 = time()
 
@@ -41,11 +42,11 @@ for i in pbar:
     t2 = time()
     model1_time += t2 - t1
 
-    optimizer2.zero_grad()
-    outputs2 = model2(x)
-    loss2 = loss_fn2(outputs2, y)
-    loss2.backward()
-    optimizer2.step()
+    # optimizer2.zero_grad()
+    # outputs2 = model2(x)
+    # loss2 = loss_fn2(outputs2, y)
+    # loss2.backward()
+    # optimizer2.step()
 
     t3 = time()
     model2_time += t3 - t2
