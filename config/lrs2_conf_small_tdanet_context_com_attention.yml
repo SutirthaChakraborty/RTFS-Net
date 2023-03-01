@@ -10,15 +10,15 @@ audionet:
 
     gc3_params:
       audio:
-        group_size: 1                          # 128/8=16, 512/16=32
-        context_size: 1                       # 128/32=4, 512/4=128 
-        num_layers: 1
-        bidirectional: True
+        group_size: 64                         # 128/16
+        context_size: 128                      # 128/32 
+        num_layers: 2
+        rnn_type: GlobalAttention
+        kernel_size: 5
+        n_head: 8
       video:    
-        group_size: 1                          # 128/8=16, 64/16=4
-        context_size: 1                       # 128/32=4, 64/4=16 
-        num_layers: 1
-        bidirectional: True
+        group_size: 1
+        context_size: 1
 
     video_bn_params:
       out_chan: 64
@@ -102,4 +102,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_23_02_23_gc3_refactor
+    exp_name: ctcnet_small_tdanet_context_26_02_23

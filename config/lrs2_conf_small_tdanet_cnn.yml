@@ -22,12 +22,12 @@ audionet:
 
     video_bn_params:
       out_chan: 64
-      kernel_size: 1
+      kernel_size: 3
+      padding: 1
 
     audio_bn_params:
       out_chan: 512
-      kernel_size: 3
-      padding: 1
+      kernel_size: 1
 
     enc_dec_params:
       encoder_type: ConvolutionalEncoder

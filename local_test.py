@@ -11,9 +11,9 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
+from src.models import CTCNet
 from src.system.core import System
 from src.datas import AVSpeechDataset
-from src.models import CTCNet
 from src.videomodels import FRCNNVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
@@ -55,7 +55,6 @@ def build_dataloaders(conf):
 
 
 def main(conf, model=CTCNet, epochs=1):
-
     train_loader, val_loader = build_dataloaders(conf)
 
     # Define model and optimizer
@@ -152,7 +151,8 @@ def main(conf, model=CTCNet, epochs=1):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
