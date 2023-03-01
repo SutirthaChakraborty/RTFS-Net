@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .rnn_layers import TAC
-from .cnn_layers import ConvActNorm
+from .cnn_layers import ConvNormAct
 from .attention import GlobalAttention
 
 
@@ -23,7 +23,7 @@ class InjectionMultiSum(nn.Module):
 
         self.groups = in_chan if in_chan == hid_chan else 1
 
-        self.local_embedding = ConvActNorm(
+        self.local_embedding = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -32,7 +32,7 @@ class InjectionMultiSum(nn.Module):
             norm_type=self.norm_type,
             bias=False,
         )
-        self.global_embedding = ConvActNorm(
+        self.global_embedding = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -41,7 +41,7 @@ class InjectionMultiSum(nn.Module):
             norm_type=self.norm_type,
             bias=False,
         )
-        self.global_gate = ConvActNorm(
+        self.global_gate = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -98,7 +98,7 @@ class TDANetBlock(nn.Module):
         self.drop_path = drop_path
         self.group_size = group_size
 
-        self.projection = ConvActNorm(
+        self.projection = ConvNormAct(
             in_chan=self.in_chan // self.group_size,
             out_chan=self.hid_chan // self.group_size,
             kernel_size=1,
@@ -123,7 +123,7 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth):
             stride = 1 if i == 0 else self.stride
             out.append(
-                ConvActNorm(
+                ConvNormAct(
                     in_chan=self.hid_chan // self.group_size,
                     out_chan=self.hid_chan // self.group_size,
                     kernel_size=self.kernel_size,
@@ -273,7 +273,7 @@ class TDANet(nn.Module):
 
     def __build_concat_block(self):
         if self.shared:
-            out = ConvActNorm(
+            out = ConvNormAct(
                 in_chan=self.in_chan // self.group_size,
                 out_chan=self.in_chan // self.group_size,
                 kernel_size=1,
@@ -284,7 +284,7 @@ class TDANet(nn.Module):
             out = nn.ModuleList([None])
             for _ in range(self.repeats - 1):
                 out.append(
-                    ConvActNorm(
+                    ConvNormAct(
                         in_chan=self.in_chan // self.group_size,
                         out_chan=self.in_chan // self.group_size,
                         kernel_size=1,

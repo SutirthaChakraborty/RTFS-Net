@@ -1,6 +1,6 @@
 from ...models import encoder
 
-from ..layers import ConvActNorm
+from ..layers import ConvNormAct
 from ..base_av_model import BaseAVModel
 from ..decoder import ConvolutionalDecoder
 from ..mask_generator import MaskGenerator
@@ -50,8 +50,8 @@ class CTCNet(BaseAVModel):
         )
         self.audio_embedding_dim = self.encoder.out_chan
 
-        self.audio_bottleneck = ConvActNorm(**self.audio_bn_params, in_chan=self.audio_embedding_dim)
-        self.video_bottleneck = ConvActNorm(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
+        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.audio_embedding_dim)
+        self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
 
         self.audio_context_enc = ContextEncoder(
             in_chan=self.audio_bn_chan,

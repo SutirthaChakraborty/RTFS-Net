@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from timm.models.layers import DropPath
-from .cnn_layers import ConvActNorm, FeedForwardNetwork
+from .cnn_layers import ConvNormAct, FeedForwardNetwork
 
 
 class PositionalEncoding(nn.Module):
@@ -89,7 +89,7 @@ class GlobalAttention(nn.Module):
         if self.n_head > 0:
             self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         else:
-            self.mhsa = ConvActNorm(
+            self.mhsa = ConvNormAct(
                 self.in_chan,
                 self.in_chan,
                 self.kernel_size,

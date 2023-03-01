@@ -4,7 +4,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .layers import ConvActNorm, Conv2dActNorm
+from .layers import ConvNormAct, ConvNormAct2D
 
 
 class BaseEncoder(nn.Module):
@@ -79,7 +79,7 @@ class ConvolutionalEncoder(BaseEncoder):
             dilation = i + 1
             kernel_size = self.kernel_size * dilation
             self.encoder.append(
-                ConvActNorm(
+                ConvNormAct(
                     in_chan=self.in_chan,
                     out_chan=self.out_chan,
                     kernel_size=kernel_size,
@@ -141,7 +141,7 @@ class STFTEncoder(BaseEncoder):
         self.norm_type = norm_type
 
         self.window = torch.hann_window(self.win)
-        self.conv = Conv2dActNorm(
+        self.conv = ConvNormAct2D(
             in_chan=2,
             out_chan=self.out_chan,
             kernel_size=self.kernel_size,

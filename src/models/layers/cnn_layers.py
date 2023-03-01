@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from . import normalizations, activations
 
 
-class ConvActNorm(nn.Module):
+class ConvNormAct(nn.Module):
     def __init__(
         self,
         in_chan: int,
@@ -20,7 +20,7 @@ class ConvActNorm(nn.Module):
         xavier_init: bool = False,
         bias: bool = True,
     ):
-        super(ConvActNorm, self).__init__()
+        super(ConvNormAct, self).__init__()
         self.in_chan = in_chan
         self.out_chan = out_chan
         self.kernel_size = kernel_size
@@ -56,7 +56,7 @@ class ConvActNorm(nn.Module):
         return output
 
 
-class Conv2dActNorm(nn.Module):
+class ConvNormAct2D(nn.Module):
     def __init__(
         self,
         in_chan: int,
@@ -73,7 +73,7 @@ class Conv2dActNorm(nn.Module):
         n_freqs=None,
         eps: float = torch.finfo(torch.float32).eps,
     ):
-        super(Conv2dActNorm, self).__init__()
+        super(ConvNormAct2D, self).__init__()
         self.in_chan = in_chan
         self.out_chan = out_chan
         self.kernel_size = kernel_size
@@ -132,8 +132,8 @@ class FeedForwardNetwork(nn.Module):
         self.act_type = act_type
         self.dropout = dropout
 
-        self.encoder = ConvActNorm(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False)  # FC 1
-        self.refiner = ConvActNorm(
+        self.encoder = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False)  # FC 1
+        self.refiner = ConvNormAct(
             self.hid_chan,
             self.hid_chan,
             self.kernel_size,
@@ -141,7 +141,7 @@ class FeedForwardNetwork(nn.Module):
             padding=((self.kernel_size - 1) // 2),
             act_type=self.act_type,
         )  # DW seperable conv
-        self.decoder = ConvActNorm(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
+        self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
         self.dropout_layer = nn.Dropout(self.dropout)
 
     def forward(self, x: torch.Tensor):
@@ -171,8 +171,8 @@ class ConvolutionalRNN(nn.Module):
         self.act_type = act_type
         self.dropout = dropout
 
-        self.encoder = ConvActNorm(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False)  # FC 1
-        self.forward_pass = ConvActNorm(
+        self.encoder = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False)  # FC 1
+        self.forward_pass = ConvNormAct(
             self.hid_chan,
             self.hid_chan,
             self.kernel_size,
@@ -180,7 +180,7 @@ class ConvolutionalRNN(nn.Module):
             padding=((self.kernel_size - 1) // 2),
             act_type=self.act_type,
         )  # DW seperable conv
-        self.backward_pass = ConvActNorm(
+        self.backward_pass = ConvNormAct(
             self.hid_chan,
             self.hid_chan,
             self.kernel_size,
@@ -188,7 +188,7 @@ class ConvolutionalRNN(nn.Module):
             padding=((self.kernel_size - 1) // 2),
             act_type=self.act_type,
         )  # DW seperable conv
-        self.decoder = ConvActNorm(self.hid_chan * 2, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
+        self.decoder = ConvNormAct(self.hid_chan * 2, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
         self.dropout_layer = nn.Dropout(self.dropout)
 
     def forward(self, x: torch.Tensor):

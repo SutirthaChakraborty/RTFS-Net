@@ -1,7 +1,7 @@
 import inspect
 import torch.nn as nn
 
-from .layers import ConvActNorm
+from .layers import ConvNormAct
 
 
 class MaskGenerator(nn.Module):
@@ -14,7 +14,7 @@ class MaskGenerator(nn.Module):
 
         self.mask_generator = nn.Sequential(
             nn.PReLU(),
-            ConvActNorm(self.bottleneck_chan, self.n_src * self.in_chan, 1, act_type=self.mask_act),
+            ConvNormAct(self.bottleneck_chan, self.n_src * self.in_chan, 1, act_type=self.mask_act),
         )
 
     def forward(self, x):
