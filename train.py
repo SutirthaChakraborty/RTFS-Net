@@ -139,7 +139,7 @@ def main(conf):
         sync_batchnorm=True,
     )
 
-    trainer.fit(system)
+    trainer.fit(system, ckpt_path=conf["main_args"]["checkpoint"])
 
     # Save best_k models
     best_k = {k: v.item() for k, v in checkpoint.best_k_models.items()}
@@ -166,6 +166,7 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--conf-dir", default="config/lrs2_config_new_frcnn.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
+    parser.add_argument("--checkpoint", type=str, default=None, help="path to checkpoint if training crashes")
 
     args = parser.parse_args()
 
