@@ -61,7 +61,7 @@ class CTCNet(BaseAVModel):
             hid_chan=self.audio_hid_chan,
             gc3_params=self.gc3_params["audio"],
         )
-        macs = profile(self.audio_context_enc, inputs=torch.rand(1, self.audio_bn_chan, 3280), verbose=False)[0] / 1000000
+        macs = profile(self.audio_context_enc, inputs=(torch.rand(1, self.audio_bn_chan, 3280),), verbose=False)[0] / 1000000
         print("Number of MACs in audio context encoder: {:,.0f}M".format(macs))
 
         self.video_context_enc = ContextEncoder(
@@ -69,7 +69,7 @@ class CTCNet(BaseAVModel):
             hid_chan=self.video_hid_chan,
             gc3_params=self.gc3_params["video"],
         )
-        macs = profile(self.video_context_enc, inputs=torch.rand(1, self.video_bn_chan, 3280), verbose=False)[0] / 1000000
+        macs = profile(self.video_context_enc, inputs=(torch.rand(1, self.video_bn_chan, 3280),), verbose=False)[0] / 1000000
         print("Number of MACs in video context encoder: {:,.0f}M".format(macs))
 
         self.refinement_module = RefinementModule(
@@ -80,6 +80,15 @@ class CTCNet(BaseAVModel):
             video_bn_chan=self.video_bn_chan,
             gc3_params=self.gc3_params,
         )
+        macs = (
+            profile(
+                self.refinement_module,
+                inputs=(torch.rand(1, self.audio_bn_chan, 3280), torch.rand(1, self.video_bn_chan, 50)),
+                verbose=False,
+            )[0]
+            / 1000000
+        )
+        print("Number of MACs in RefinementModule: {:,.0f}M".format(macs))
 
         self.context_dec = ContextDecoder(
             in_chan=self.audio_bn_chan,
@@ -112,6 +121,9 @@ class CTCNet(BaseAVModel):
             in_chan=self.audio_embedding_dim * self.n_src,
             n_src=self.n_src,
         )
+
+        macs = profile(self, inputs=(torch.rand(1, 32000), torch.rand(1, self.pretrained_vout_chan, 50)), verbose=False)[0] / 1000000
+        print("Number of MACs in total: {:,.0f}M".format(macs))
 
     def __apply_masks(self, masks, audio_mixture_embedding):
         batch_size, _, meta_frames = audio_mixture_embedding.shape

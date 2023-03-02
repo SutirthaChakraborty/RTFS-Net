@@ -102,12 +102,12 @@ class GlobalAttention(nn.Module):
     def forward(self, x: torch.Tensor):
         shape = x.shape
         if len(shape) == 4:
-            x.view(shape[0] * shape[1], shape[2], shape[3])
+            x = x.view(shape[0] * shape[1], shape[2], shape[3])
 
         x = x + self.drop_path_layer(self.mhsa(x))
         x = x + self.drop_path_layer(self.ffn(x))
 
         if len(shape) == 4:
-            x.view(shape[0], shape[1], shape[2], shape[3])
+            x = x.view(shape[0], shape[1], shape[2], shape[3])
 
         return x

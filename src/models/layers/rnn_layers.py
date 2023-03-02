@@ -88,7 +88,7 @@ class GC_RNN(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.rnn_type = gc3_params.get("rnn_type", "LSTM")
-        self.num_group = gc3_params.get("num_group", 1)
+        self.group_size = gc3_params.get("group_size", 1)
         self.num_layers = gc3_params.get("num_layers", 2)
 
         self.TAC = nn.ModuleList([])
@@ -98,38 +98,37 @@ class GC_RNN(nn.Module):
         for _ in range(self.num_layers):
             self.TAC.append(
                 TAC(
-                    input_size=self.input_size // self.num_group,
-                    hidden_size=self.hidden_size * 3 // self.num_group,
+                    input_size=self.input_size // self.group_size,
+                    hidden_size=self.hidden_size * 3 // self.group_size,
                 )
             )
             if self.rnn_type == "GlobalAttention":
                 self.rnn.append(
                     GlobalAttention(
-                        in_chan=self.input_size // self.num_group,
-                        hid_chan=self.hidden_size // self.num_group,
+                        in_chan=self.input_size // self.group_size,
                         **gc3_params,
                     )
                 )
             else:
                 self.rnn.append(
                     RNNProjection(
-                        input_size=self.input_size // self.num_group,
-                        hidden_size=self.hidden_size // self.num_group,
+                        input_size=self.input_size // self.group_size,
+                        hidden_size=self.hidden_size // self.group_size,
                         rnn_type=self.rnn_type,
                         **gc3_params,
                     )
                 )
-            self.LN.append(nn.GroupNorm(num_groups=1, num_channels=self.input_size // self.num_group))
+            self.LN.append(nn.GroupNorm(num_groups=1, num_channels=self.input_size // self.group_size))
 
     def forward(self, x: torch.Tensor):
         batch_size, dim, seq_len = x.shape
-        x = x.view(batch_size, self.num_group, -1, seq_len)
+        x = x.view(batch_size, self.group_size, -1, seq_len)
 
         for i in range(self.num_layers):
             x = self.TAC[i](x)
             res = x
             x = self.rnn[i](x)
-            x = self.LN[i](x.view(batch_size * self.num_group, -1, seq_len)).view(batch_size, self.num_group, -1, seq_len)
+            x = self.LN[i](x.view(batch_size * self.group_size, -1, seq_len)).view(batch_size, self.group_size, -1, seq_len)
             x = res + x
 
         x = x.view(batch_size, dim, seq_len)

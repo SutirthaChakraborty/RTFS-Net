@@ -23,8 +23,6 @@ class ContextEncoder(nn.Module):
             self.group_context_rnn = GC_RNN(input_size=self.in_chan, hidden_size=self.hid_chan, gc3_params=self.gc3_params)
 
     def forward(self, x: torch.Tensor):
-        if len(x.shape) == 2:
-            x = x.unsqueeze(0)
         if self.context_size > 1:
             squeeze_block, squeeze_rest = split_feature(x, self.context_size)  # B, N, context, L
             batch_size, bn_dim, _, seq_len = squeeze_block.shape
@@ -56,9 +54,6 @@ class ContextDecoder(nn.Module):
             self.context_dec = GC_RNN(input_size=self.in_chan, hidden_size=self.hid_chan, gc3_params=self.gc3_params)
 
     def forward(self, x: torch.Tensor, res, squeeze_rest):
-        if len(x.shape) == 2:
-            x = x.unsqueeze(0)
-            res = res.unsqueeze(0)
         if self.context_size > 1:
             x = x.unsqueeze(2) + res  # B, N, context, L
             batch_size, bn_dim, _, seq_len = x.shape

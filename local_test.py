@@ -129,10 +129,6 @@ def main(conf, model=CTCNet, epochs=1):
         sync_batchnorm=True,
     )
 
-    mouth = videomodel(torch.rand((1, 1, 50, 88, 88)))
-    macs = profile(audiomodel, inputs=(torch.rand(1, 32000), mouth), verbose=False)[0] / 1000000
-    print("Number of MACs: {:,.0f}M".format(macs))
-
     trainer.fit(system)
 
     # Save best_k models
@@ -151,8 +147,8 @@ def main(conf, model=CTCNet, epochs=1):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
     # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
