@@ -1,4 +1,5 @@
 import torch
+import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -54,6 +55,16 @@ class ConvNormAct(nn.Module):
         output = self.norm(output)
         output = self.act(output)
         return output
+
+    def get_config(self):
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
 
 
 class ConvNormAct2D(nn.Module):
@@ -162,6 +173,8 @@ class ConvolutionalRNN(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "ReLU",
         dropout: float = 0,
+        *args,
+        **kwargs,
     ):
         super(ConvolutionalRNN, self).__init__()
         self.in_chan = in_chan
@@ -192,6 +205,10 @@ class ConvolutionalRNN(nn.Module):
         self.dropout_layer = nn.Dropout(self.dropout)
 
     def forward(self, x: torch.Tensor):
+        shape = x.shape
+        if len(shape) == 4:
+            x = x.view(shape[0] * shape[1], shape[2], shape[3])
+
         x = self.encoder(x)
         forward_features = self.forward_pass(x)
         backward_features = self.backward_pass(x).flip(-1)
@@ -199,4 +216,7 @@ class ConvolutionalRNN(nn.Module):
         x = self.dropout_layer(x)
         x = self.decoder(x)
         x = self.dropout_layer(x)
+
+        if len(shape) == 4:
+            x = x.view(shape[0], shape[1], shape[2], shape[3])
         return x

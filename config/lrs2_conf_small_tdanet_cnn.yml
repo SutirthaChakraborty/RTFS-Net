@@ -50,7 +50,7 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
-      n_head: -1
+      n_head: 0
     
     video_params:
         video_net: TDANet

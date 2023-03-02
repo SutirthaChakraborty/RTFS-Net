@@ -13,9 +13,8 @@ audionet:
         group_size: 64                         # 128/16
         context_size: 128                      # 128/32 
         num_layers: 2
-        rnn_type: GlobalAttention
+        rnn_type: ConvolutionalRNN
         kernel_size: 5
-        n_head: 2
       video:    
         group_size: 1
         context_size: 1

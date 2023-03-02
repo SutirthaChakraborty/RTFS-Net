@@ -5,7 +5,8 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
-from thop import profile
+
+from time import time
 from torch.utils.data import DataLoader, Dataset
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -33,20 +34,22 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(1000)
-    val_set = AVSpeechDataset(1000)
+    train_set = AVSpeechDataset(500)
+    val_set = AVSpeechDataset(250)
 
     train_loader = DataLoader(
         train_set,
         shuffle=True,
-        batch_size=conf["training"]["batch_size"],
+        # batch_size=conf["training"]["batch_size"],
+        batch_size=1,
         num_workers=conf["training"]["num_workers"],
         drop_last=True,
     )
     val_loader = DataLoader(
         val_set,
         shuffle=False,
-        batch_size=conf["training"]["batch_size"],
+        # batch_size=conf["training"]["batch_size"],
+        batch_size=1,
         num_workers=conf["training"]["num_workers"],
         drop_last=True,
     )
@@ -146,10 +149,9 @@ def main(conf, model=CTCNet, epochs=1):
 
 
 if __name__ == "__main__":
+    t0 = time()
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
-    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
-    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -164,3 +166,44 @@ if __name__ == "__main__":
     def_conf.update(arg_dic)
 
     main(def_conf)
+    t1 = time()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_convrnn.yml")
+    parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    parser.add_argument("--nodes", type=int, default=1, help="#node")
+
+    args = parser.parse_args()
+
+    with open(args.conf_dir) as f:
+        def_conf = yaml.safe_load(f)
+    if args.name is not None:
+        def_conf["log"]["exp_name"] = args.name
+
+    arg_dic = parse_args_as_dict(parser)
+    def_conf.update(arg_dic)
+
+    main(def_conf)
+    t2 = time()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
+    parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    parser.add_argument("--nodes", type=int, default=1, help="#node")
+
+    args = parser.parse_args()
+
+    with open(args.conf_dir) as f:
+        def_conf = yaml.safe_load(f)
+    if args.name is not None:
+        def_conf["log"]["exp_name"] = args.name
+
+    arg_dic = parse_args_as_dict(parser)
+    def_conf.update(arg_dic)
+
+    main(def_conf)
+    t3 = time()
+
+    print("TDANet Context with Attention: {:.2f}".format(t1 - t0))
+    print("TDANet Context with ConvRNN: {:.2f}".format(t2 - t1))
+    print("TDANet Context with ProjectionRNN: {:.2f}".format(t3 - t2))

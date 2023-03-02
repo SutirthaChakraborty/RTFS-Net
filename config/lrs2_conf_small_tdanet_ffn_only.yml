@@ -10,15 +10,15 @@ audionet:
 
     gc3_params:
       audio:
-        group_size: 64                         # 128/16
-        context_size: 128                      # 128/32 
-        num_layers: 2
-        rnn_type: GlobalAttention
-        kernel_size: 5
-        n_head: 2
+        group_size: 1                          # 128/8=16, 512/16=32
+        context_size: 1                       # 128/32=4, 512/4=128 
+        num_layers: 1
+        bidirectional: True
       video:    
-        group_size: 1
-        context_size: 1
+        group_size: 1                          # 128/8=16, 64/16=4
+        context_size: 1                       # 128/32=4, 64/4=16 
+        num_layers: 1
+        bidirectional: True
 
     video_bn_params:
       out_chan: 64
@@ -50,7 +50,7 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
-      n_head: 8
+      n_head: -1
     
     video_params:
         video_net: TDANet
@@ -102,4 +102,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_context_26_02_23
+    exp_name: ctcnet_small_tdanet_15_02_23

@@ -7,16 +7,16 @@ from src.models.layers.cnn_layers import ConvNormAct, FeedForwardNetwork, Convol
 from src.models.layers.rnn_layers import RNNProjection
 from src.models.layers.attention import GlobalAttention
 
-in_chan = 256
+in_chan = 8
 kernel_size = 5
 dropout = 0.1
 its = 200
 
-model = ConvolutionalRNN(in_chan, in_chan * 2, kernel_size, dropout=dropout).cuda()
-loss_fn = torch.nn.CrossEntropyLoss().cuda()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+# model = ConvolutionalRNN(in_chan, in_chan * 2, kernel_size, dropout=dropout).cuda()
+# loss_fn = torch.nn.CrossEntropyLoss().cuda()
+# optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
-model2 = GlobalAttention(in_chan, n_head=-1, kernel_size=kernel_size).cuda()
+model2 = RNNProjection(in_chan, in_chan * 2).cuda()
 loss_fn2 = torch.nn.CrossEntropyLoss().cuda()
 optimizer2 = torch.optim.SGD(model2.parameters(), lr=0.001, momentum=0.9)
 
@@ -32,16 +32,16 @@ model3_time = 0
 pbar = tqdm(range(its))
 
 for i in pbar:
-    x = torch.rand((8, 256, 3200)).cuda().float()
-    y = torch.rand((8, 256, 3200)).cuda().float()
+    x = torch.rand((54, 64, 8, 128)).cuda().float()
+    y = torch.rand((54, 64, 8, 128)).cuda().float()
 
     t1 = time()
 
-    optimizer.zero_grad()
-    outputs = model(x)
-    loss1 = loss_fn(outputs, y)
-    loss1.backward()
-    optimizer.step()
+    # optimizer.zero_grad()
+    # outputs = model(x)
+    # loss1 = loss_fn(outputs, y)
+    # loss1.backward()
+    # optimizer.step()
 
     t2 = time()
     if i > 5:
@@ -68,7 +68,7 @@ for i in pbar:
         model3_time += t4 - t3
 
     pbar.set_description(
-        "Convolutional RNN time: {:.4f}, FFN time: {:.4f}, Global Attention time: {:.4f}".format(model1_time, model2_time, model3_time)
+        "Convolutional RNN time: {:.4f}, RNN time: {:.4f}, Global Attention time: {:.4f}".format(model1_time, model2_time, model3_time)
     )
 
 model1_time /= its
@@ -76,5 +76,15 @@ model2_time /= its
 model3_time /= its
 
 print("Convolutional RNN time: {:.8f}".format(model1_time))
-print("FNN time: {:.8f}".format(model2_time))
+print("RNN time: {:.8f}".format(model2_time))
 print("Global Attention time: {:.8f}".format(model3_time))
+
+
+# from thop import profile
+
+# t0 = time()
+# m, p = profile(model2, inputs=(torch.rand(54, 64, 8, 128).cuda(),), verbose=False)
+# t1 = time()
+# print("RNN:", m, p, t1 - t0)
+# m, p = profile(model3, inputs=(torch.rand(54, 64, 8, 128).cuda(),), verbose=False)
+# print("Global Attention:", m, p, time() - t1)

@@ -48,7 +48,7 @@ class MultiHeadSelfAttention(nn.Module):
 
         self.norm1 = nn.LayerNorm(self.in_chan)
         self.pos_enc = PositionalEncoding(self.in_chan)
-        self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout)
+        self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout, batch_first=True)
         self.dropout_layer = nn.Dropout(self.dropout)
         self.norm2 = nn.LayerNorm(self.in_chan)
 
@@ -88,7 +88,7 @@ class GlobalAttention(nn.Module):
 
         if self.n_head > 0:
             self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        else:
+        elif self.n_head == 0:
             self.mhsa = ConvNormAct(
                 self.in_chan,
                 self.in_chan,
@@ -96,6 +96,9 @@ class GlobalAttention(nn.Module):
                 groups=self.in_chan,
                 padding=((self.kernel_size - 1) // 2),
             )
+        else:
+            self.mhsa = nn.Identity()
+
         self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from .attention import GlobalAttention
+from .cnn_layers import ConvolutionalRNN
 
 
 class TAC(nn.Module):
@@ -106,6 +107,15 @@ class GC_RNN(nn.Module):
                 self.rnn.append(
                     GlobalAttention(
                         in_chan=self.input_size // self.group_size,
+                        hid_chan=self.hidden_size // self.group_size,
+                        **gc3_params,
+                    )
+                )
+            elif self.rnn_type == "ConvolutionalRNN":
+                self.rnn.append(
+                    ConvolutionalRNN(
+                        in_chan=self.input_size // self.group_size,
+                        hid_chan=self.hidden_size // self.group_size,
                         **gc3_params,
                     )
                 )

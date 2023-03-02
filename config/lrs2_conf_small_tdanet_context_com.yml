@@ -17,8 +17,6 @@ audionet:
       video:    
         group_size: 1
         context_size: 1
-        num_layers: 1
-        bidirectional: True
 
     video_bn_params:
       out_chan: 64
