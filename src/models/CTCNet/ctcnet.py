@@ -8,6 +8,9 @@ from ..mask_generator import MaskGenerator
 from .masker import RefinementModule
 from .contextcodec import ContextEncoder, ContextDecoder
 
+import torch
+from thop import profile
+
 
 class CTCNet(BaseAVModel):
     def __init__(
@@ -58,11 +61,16 @@ class CTCNet(BaseAVModel):
             hid_chan=self.audio_hid_chan,
             gc3_params=self.gc3_params["audio"],
         )
+        macs = profile(self.audio_context_enc, inputs=torch.rand(1, self.audio_bn_chan, 3280), verbose=False)[0] / 1000000
+        print("Number of MACs in audio context encoder: {:,.0f}M".format(macs))
+
         self.video_context_enc = ContextEncoder(
             in_chan=self.video_bn_chan,
             hid_chan=self.video_hid_chan,
             gc3_params=self.gc3_params["video"],
         )
+        macs = profile(self.video_context_enc, inputs=torch.rand(1, self.video_bn_chan, 3280), verbose=False)[0] / 1000000
+        print("Number of MACs in video context encoder: {:,.0f}M".format(macs))
 
         self.refinement_module = RefinementModule(
             **self.fusion_params,
@@ -78,6 +86,19 @@ class CTCNet(BaseAVModel):
             hid_chan=self.audio_hid_chan,
             gc3_params=self.gc3_params["audio"],
         )
+        macs = (
+            profile(
+                self.context_dec,
+                inputs=(
+                    torch.rand(1, self.audio_bn_chan, 54),
+                    torch.rand(1, 512, 128, 54),
+                    112,
+                ),
+                verbose=False,
+            )[0]
+            / 1000000
+        )
+        print("Number of MACs in video context encoder: {:,.0f}M".format(macs))
 
         self.mask_generator = MaskGenerator(
             **self.mask_generation_params,

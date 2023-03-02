@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-
 from .attention import GlobalAttention
 
 
@@ -70,7 +69,7 @@ class RNNProjection(nn.Module):
         )
         self.proj = nn.Linear(self.hidden_size * self.num_direction, self.input_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         batch_size, num_group, _, seq_len = x.shape  # B, G, N, L
 
         x = x.transpose(2, 3).contiguous().view(batch_size * num_group, seq_len, -1)  # B*G, L, N
@@ -122,7 +121,7 @@ class GC_RNN(nn.Module):
                 )
             self.LN.append(nn.GroupNorm(num_groups=1, num_channels=self.input_size // self.num_group))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         batch_size, dim, seq_len = x.shape
         x = x.view(batch_size, self.num_group, -1, seq_len)
 
