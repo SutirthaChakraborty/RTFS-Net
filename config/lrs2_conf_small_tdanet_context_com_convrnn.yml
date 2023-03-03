@@ -15,6 +15,8 @@ audionet:
         num_layers: 2
         rnn_type: ConvolutionalRNN
         kernel_size: 5
+        norm_type: gLN
+        act_type: ReLU
       video:    
         group_size: 1
         context_size: 1
@@ -52,17 +54,17 @@ audionet:
       n_head: 8
     
     video_params:
-        video_net: TDANet
+      video_net: TDANet
       # in_chan same as video_bn_chan
-        hid_chan: 64
-        upsampling_depth: 4
-        shared: True
-        repeats: 1
-        norm_type: BatchNorm1d
-        act_type: PReLU
-        kernel_size: 3
-        stride: 2
-        n_head: 8
+      hid_chan: 64
+      upsampling_depth: 4
+      shared: True
+      repeats: 1
+      norm_type: BatchNorm1d
+      act_type: PReLU
+      kernel_size: 3
+      stride: 2
+      n_head: 8
 
     fusion_params:
       fusion_type: ConcatFusion
