@@ -5,7 +5,7 @@ from ..base_av_model import BaseAVModel
 from ..decoder import ConvolutionalDecoder
 from ..mask_generator import MaskGenerator
 
-from .masker import RefinementModule
+from .refinement_module import RefinementModule
 from .contextcodec import ContextEncoder, ContextDecoder
 
 import torch

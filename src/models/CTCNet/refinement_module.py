@@ -2,7 +2,7 @@ import inspect
 import torch.nn as nn
 
 from .fusion import MultiModalFusion
-from ...models import layers
+from .. import layers
 
 
 class RefinementModule(nn.Module):
