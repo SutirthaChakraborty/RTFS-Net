@@ -1,7 +1,6 @@
 name=(
-        "lrs2_conf_small_tdanet"
-        "lrs2_conf_small_tdanet_ffn_only"
-        "lrs2_conf_small_tdanet_cnn"
+        "lrs2_conf_large_frcnn"
+        "lrs2_conf_large_tdanet"
 )
 for n in "${name[@]}"
 do
@@ -10,9 +9,8 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        "ctcnet_small_tdanet_3_3_2023_Attention_Fixed"
-        "ctcnet_small_tdanet_3_3_2023_FFN_Only"
-        "ctcnet_small_tdanet_3_3_2023_CNN"
+        "ctcnet_large_frcnn_3_4_23"
+        "ctcnet_large_tdanet_3_4_23"
 )
 for e in "${exp[@]}"
 do
