@@ -124,7 +124,6 @@ class GC_RNN(nn.Module):
                     RNNProjection(
                         input_size=self.input_size // self.group_size,
                         hidden_size=self.hidden_size // self.group_size,
-                        rnn_type=self.rnn_type,
                         **gc3_params,
                     )
                 )

@@ -34,8 +34,8 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(500)
-    val_set = AVSpeechDataset(250)
+    train_set = AVSpeechDataset(250)
+    val_set = AVSpeechDataset(100)
 
     train_loader = DataLoader(
         train_set,
@@ -151,7 +151,7 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -166,10 +166,10 @@ if __name__ == "__main__":
     def_conf.update(arg_dic)
 
     main(def_conf)
+
     t1 = time()
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_convrnn.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_ffn_only.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -184,10 +184,10 @@ if __name__ == "__main__":
     def_conf.update(arg_dic)
 
     main(def_conf)
+
     t2 = time()
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_cnn.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -202,8 +202,9 @@ if __name__ == "__main__":
     def_conf.update(arg_dic)
 
     main(def_conf)
+
     t3 = time()
 
-    print("TDANet Context with Attention: {:.2f}".format(t1 - t0))
-    print("TDANet Context with ConvRNN: {:.2f}".format(t2 - t1))
-    print("TDANet Context with ProjectionRNN: {:.2f}".format(t3 - t2))
+    print("TDANet with Attention: {:.2f}".format(t1 - t0))
+    print("TDANet with FFN only: {:.2f}".format(t2 - t1))
+    print("TDANet with CNN: {:.2f}".format(t3 - t2))

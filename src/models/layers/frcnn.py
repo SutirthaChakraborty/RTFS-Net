@@ -67,6 +67,7 @@ class FRCNNBlock(nn.Module):
                     norm_type=self.norm_type,
                 )
             )
+
         return out
 
     def __build_fusion_layers(self):
@@ -186,11 +187,23 @@ class FRCNN(nn.Module):
         self.dropout = dropout
         self.group_size = group_size
 
-        self.blocks = self.__build_frcnn()
+        self.tac = self.__build_tac()
+        self.blocks = self.__build_blocks()
         self.concat_block = self.__build_concat_block()
-        self.tac = TAC(self.in_chan // self.group_size, self.hid_chan * 3 // self.group_size) if self.group_size > 1 else nn.Identity()
 
-    def __build_frcnn(self):
+    def __build_tac(self):
+        if self.shared:
+            out = TAC(self.in_chan // self.group_size, self.hid_chan * 3 // self.group_size) if self.group_size > 1 else nn.Identity()
+        else:
+            out = nn.ModuleList()
+            for _ in range(self.repeats):
+                out.append(
+                    TAC(self.in_chan // self.group_size, self.hid_chan * 3 // self.group_size) if self.group_size > 1 else nn.Identity()
+                )
+
+        return out
+
+    def __build_blocks(self):
         if self.shared:
             out = FRCNNBlock(
                 in_chan=self.in_chan,
@@ -246,25 +259,32 @@ class FRCNN(nn.Module):
 
         return out
 
-    def get_block(self, i):
+    def get_tac(self, i: int):
+        if self.shared:
+            return self.tac
+        else:
+            return self.tac[i]
+
+    def get_block(self, i: int):
         if self.shared:
             return self.blocks
         else:
             return self.blocks[i]
 
-    def get_concat_block(self, i):
+    def get_concat_block(self, i: int):
         if self.shared:
             return self.concat_block
         else:
             return self.concat_block[i]
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         # x: shape (B, C, T)
         batch_size, _, T = x.shape
-        x = self.tac(x.view(batch_size, self.group_size, -1, T)).view(batch_size * self.group_size, -1, T)
 
-        res = x
+        res = x.view(batch_size * self.group_size, -1, T)
+
         for i in range(self.repeats):
+            x = self.tac(x.view(batch_size, self.group_size, -1, T)).view(batch_size * self.group_size, -1, T)
             frcnn = self.get_block(i)
             concat_block = self.get_concat_block(i)
             if i == 0:
