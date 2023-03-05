@@ -135,7 +135,7 @@ class STFTEncoder(BaseEncoder):
         norm_type: str = "gLN",
         bias: bool = False,
     ):
-        super().__init__(0, 0, 0)
+        super(STFTEncoder,self).__init__(0, 0, 0)
 
         self.win = win
         self.hop_length = hop_length

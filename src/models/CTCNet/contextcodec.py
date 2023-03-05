@@ -53,7 +53,7 @@ class ContextDecoder(nn.Module):
         if self.context_size > 1:
             self.context_dec = GC_RNN(input_size=self.in_chan, hidden_size=self.hid_chan, gc3_params=self.gc3_params)
 
-    def forward(self, x: torch.Tensor, res, squeeze_rest):
+    def forward(self, x: torch.Tensor, res: torch.Tensor, squeeze_rest: torch.Tensor):
         if self.context_size > 1:
             x = x.unsqueeze(2) + res  # B, N, context, L
             batch_size, bn_dim, _, seq_len = x.shape

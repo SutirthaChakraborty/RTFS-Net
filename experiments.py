@@ -8,7 +8,7 @@ from src.models.layers.cnn_layers import ConvNormAct, FeedForwardNetwork, Convol
 from src.models.layers.rnn_layers import RNNProjection
 from src.models.layers.attention import GlobalAttention
 
-in_chan = 16
+in_chan = 48
 kernel_size = 5
 dropout = 0.1
 its = 200
