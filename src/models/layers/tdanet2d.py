@@ -4,10 +4,10 @@ import torch.nn.functional as F
 
 from .rnn_layers import TAC
 from .cnn_layers import ConvNormAct2D
-from .attention import GlobalAttention
+from .attention import GlobalAttention2D
 
 
-class InjectionMultiSum(nn.Module):
+class InjectionMultiSum2D(nn.Module):
     def __init__(
         self,
         in_chan: int,
@@ -15,7 +15,7 @@ class InjectionMultiSum(nn.Module):
         kernel_size: int,
         norm_type: str = "gLN",
     ):
-        super(InjectionMultiSum, self).__init__()
+        super(InjectionMultiSum2D, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
@@ -64,7 +64,7 @@ class InjectionMultiSum(nn.Module):
         return injection_sum
 
 
-class TDANetBlock(nn.Module):
+class TDANetBlock2D(nn.Module):
     """
     This class defines the block which performs successive downsampling and
     upsampling in order to be able to analyze the input features in multiple
@@ -85,7 +85,7 @@ class TDANetBlock(nn.Module):
         drop_path: int = 0.1,
         group_size: int = 1,
     ):
-        super(TDANetBlock, self).__init__()
+        super(TDANetBlock2D, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
@@ -108,9 +108,9 @@ class TDANetBlock(nn.Module):
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
-        self.residual_conv = nn.Conv1d(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1)
+        self.residual_conv = nn.Conv2d(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1)
 
-        self.globalatt = GlobalAttention(
+        self.globalatt = GlobalAttention2D(
             in_chan=self.hid_chan // self.group_size,
             kernel_size=self.kernel_size,
             n_head=self.n_head,
@@ -140,7 +140,7 @@ class TDANetBlock(nn.Module):
         out = nn.ModuleList([])
         for _ in range(self.upsampling_depth):
             out.append(
-                InjectionMultiSum(
+                InjectionMultiSum2D(
                     in_chan=self.hid_chan // self.group_size,
                     hid_chan=self.hid_chan // self.group_size,
                     kernel_size=1,
@@ -154,7 +154,7 @@ class TDANetBlock(nn.Module):
         out = nn.ModuleList([])
         for _ in range(self.upsampling_depth - 1):
             out.append(
-                InjectionMultiSum(
+                InjectionMultiSum2D(
                     in_chan=self.hid_chan // self.group_size,
                     hid_chan=self.hid_chan // self.group_size,
                     kernel_size=self.kernel_size,
@@ -197,7 +197,7 @@ class TDANetBlock(nn.Module):
         return out
 
 
-class TDANet(nn.Module):
+class TDANet2D(nn.Module):
     def __init__(
         self,
         in_chan: int,
@@ -216,7 +216,7 @@ class TDANet(nn.Module):
         *args,
         **kwargs,
     ):
-        super(TDANet, self).__init__()
+        super(TDANet2D, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
@@ -249,7 +249,7 @@ class TDANet(nn.Module):
 
     def __build_blocks(self):
         if self.shared:
-            out = TDANetBlock(
+            out = TDANetBlock2D(
                 in_chan=self.in_chan,
                 hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
@@ -266,7 +266,7 @@ class TDANet(nn.Module):
             out = nn.ModuleList()
             for _ in range(self.repeats):
                 out.append(
-                    TDANetBlock(
+                    TDANetBlock2D(
                         in_chan=self.in_chan,
                         hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
@@ -332,7 +332,7 @@ class TDANet(nn.Module):
         res = x.view(batch_size * self.group_size, -1, T, freq)
 
         for i in range(self.repeats):
-            x = self.tac(x.view(batch_size, self.group_size, -1, T, freq)).view(batch_size * self.group_size, -1, T, freq)
+            x = self.get_tac(i)(x.view(batch_size, self.group_size, -1, T, freq)).view(batch_size * self.group_size, -1, T, freq)
             frcnn = self.get_block(i)
             concat_block = self.get_concat_block(i)
             if i == 0:

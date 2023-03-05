@@ -332,7 +332,7 @@ class TDANet(nn.Module):
         res = x.view(batch_size * self.group_size, -1, T)
 
         for i in range(self.repeats):
-            x = self.tac(x.view(batch_size, self.group_size, -1, T)).view(batch_size * self.group_size, -1, T)
+            x = self.get_tac(i)(x.view(batch_size, self.group_size, -1, T)).view(batch_size * self.group_size, -1, T)
             frcnn = self.get_block(i)
             concat_block = self.get_concat_block(i)
             if i == 0:

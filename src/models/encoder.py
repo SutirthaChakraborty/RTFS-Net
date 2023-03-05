@@ -26,6 +26,12 @@ class BaseEncoder(nn.Module):
         else:
             return x
 
+    def unsqueeze_to_2D(self, x: torch.Tensor):
+        if x.ndim == 1:
+            return x.reshape(1, -1)
+        else:
+            return x
+
     def pad(self, x: torch.Tensor, lcm: int):
         values_to_pad = int(x.shape[-1]) % lcm
         if values_to_pad:
@@ -123,8 +129,8 @@ class STFTEncoder(BaseEncoder):
         win: int,
         hop_length: int,
         out_chan: int,
-        kernel_size: int,
-        stride: int,
+        kernel_size: int = 3,
+        stride: int = 1,
         act_type: str = None,
         norm_type: str = "gLN",
         bias: bool = False,
@@ -134,7 +140,7 @@ class STFTEncoder(BaseEncoder):
         self.win = win
         self.hop_length = hop_length
         self.out_chan = out_chan
-        self.kernel_size = (kernel_size, 3)
+        self.kernel_size = kernel_size
         self.stride = stride
         self.bias = bias
         self.act_type = act_type
@@ -154,7 +160,7 @@ class STFTEncoder(BaseEncoder):
         )
 
     def forward(self, x: torch.Tensor):
-        x = self.unsqueeze_to_3D(x)
+        x = self.unsqueeze_to_2D(x)
 
         spec = torch.stft(
             x,
