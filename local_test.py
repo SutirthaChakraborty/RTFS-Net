@@ -147,11 +147,13 @@ def main(conf, model=CTCNet, epochs=1):
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
 
+    return audiomodel.macs
+
 
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -165,11 +167,11 @@ if __name__ == "__main__":
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)
 
-    main(def_conf)
+    macs1 = main(def_conf)
 
     t1 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_ffn_only.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_convrnn.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -183,11 +185,11 @@ if __name__ == "__main__":
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)
 
-    main(def_conf)
+    macs2 = main(def_conf)
 
     t2 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_cnn.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -201,10 +203,10 @@ if __name__ == "__main__":
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)
 
-    main(def_conf)
+    macs3 = main(def_conf)
 
     t3 = time()
 
-    print("TDANet with Attention: {:.2f}".format(t1 - t0))
-    print("TDANet with FFN only: {:.2f}".format(t2 - t1))
-    print("TDANet with CNN: {:.2f}".format(t3 - t2))
+    print("TDANet with Context: {:.2f} seconds, {} million MACs".format(t1 - t0, macs1))
+    print("TDANet with ConvRNN Context: {:.2f} seconds, {} million MACs".format(t2 - t1, macs2))
+    print("TDANet with Attention Context: {:.2f} seconds, {} million MACs".format(t3 - t2, macs3))

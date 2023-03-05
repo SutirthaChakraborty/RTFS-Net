@@ -10,8 +10,8 @@ audionet:
 
     gc3_params:
       audio:
-        group_size: 64                         # 128/16
-        context_size: 128                      # 128/32 
+        group_size: 32
+        context_size: 128
         num_layers: 2
         rnn_type: GlobalAttention
         kernel_size: 5
