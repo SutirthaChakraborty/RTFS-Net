@@ -101,4 +101,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_context_26_02_23
+    exp_name: ctcnet_small_tdanet_context_05_03_23
