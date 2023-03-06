@@ -1,7 +1,7 @@
 name=(
         "lrs2_conf_small_tdanet_context_com"
         "lrs2_conf_small_tdanet_context_com_convrnn"
-        "lrs2_conf_small_tdanet_context_com_attention"
+        # "lrs2_conf_small_tdanet_context_com_attention"
 )
 for n in "${name[@]}"
 do
@@ -12,7 +12,7 @@ done
 exp=(
         "ctcnet_small_tdanet_context_06_03_23"
         "ctcnet_small_tdanet_context_convrnn_06_03_23"
-        "ctcnet_small_tdanet_context_attention_06_03_23"
+        # "ctcnet_small_tdanet_context_attention_06_03_23"
 )
 for e in "${exp[@]}"
 do
