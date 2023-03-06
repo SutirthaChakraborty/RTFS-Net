@@ -91,6 +91,7 @@ class GC_RNN(nn.Module):
         self.rnn_type = gc3_params.get("rnn_type", "LSTM")
         self.group_size = gc3_params.get("group_size", 1)
         self.num_layers = gc3_params.get("num_layers", 2)
+        self.tac_multiplier = gc3_params.get("tac_multiplier", 2)
 
         self.TAC = nn.ModuleList([])
         self.rnn = nn.ModuleList([])
@@ -100,7 +101,7 @@ class GC_RNN(nn.Module):
             self.TAC.append(
                 TAC(
                     input_size=self.input_size // self.group_size,
-                    hidden_size=self.hidden_size * 3 // self.group_size,
+                    hidden_size=self.hidden_size * self.tac_multiplier // self.group_size,
                 )
             )
             if self.rnn_type == "GlobalAttention":

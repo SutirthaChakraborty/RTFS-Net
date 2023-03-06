@@ -213,6 +213,7 @@ class TDANet(nn.Module):
         dropout: float = 0.1,
         drop_path: float = 0.1,
         group_size: int = 1,
+        tac_multiplier: int = 2,
         *args,
         **kwargs,
     ):
@@ -230,6 +231,7 @@ class TDANet(nn.Module):
         self.dropout = dropout
         self.drop_path = drop_path
         self.group_size = group_size
+        self.tac_multiplier = tac_multiplier
 
         self.tac = self.__build_tac()
         self.blocks = self.__build_blocks()
@@ -237,12 +239,18 @@ class TDANet(nn.Module):
 
     def __build_tac(self):
         if self.shared:
-            out = TAC(self.in_chan // self.group_size, self.hid_chan * 3 // self.group_size) if self.group_size > 1 else nn.Identity()
+            out = (
+                TAC(self.in_chan // self.group_size, self.hid_chan * self.tac_multiplier // self.group_size)
+                if self.group_size > 1
+                else nn.Identity()
+            )
         else:
             out = nn.ModuleList()
             for _ in range(self.repeats):
                 out.append(
-                    TAC(self.in_chan // self.group_size, self.hid_chan * 3 // self.group_size) if self.group_size > 1 else nn.Identity()
+                    TAC(self.in_chan // self.group_size, self.hid_chan * self.tac_multiplier // self.group_size)
+                    if self.group_size > 1
+                    else nn.Identity()
                 )
 
         return out

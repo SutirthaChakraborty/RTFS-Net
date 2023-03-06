@@ -33,11 +33,13 @@ class RefinementModule(nn.Module):
             **self.video_params,
             in_chan=self.video_bn_chan,
             group_size=self.gc3_params.get("video", dict()).get("group_size", 1),
+            tac_multiplier=self.gc3_params.get("video", dict()).get("tac_multiplier", 2),
         )
         self.audio_net = layers.get(self.audio_params["audio_net"])(
             **self.audio_params,
             in_chan=self.audio_bn_chan,
             group_size=self.gc3_params.get("audio", dict()).get("group_size", 1),
+            tac_multiplier=self.gc3_params.get("audio", dict()).get("tac_multiplier", 2),
         )
 
         self.crossmodal_fusion = MultiModalFusion(

@@ -12,7 +12,8 @@ audionet:
       audio:
         group_size: 32
         context_size: 128
-        num_layers: 2
+        tac_multiplier: 2
+        num_layers: 1
         rnn_type: ConvolutionalRNN
         kernel_size: 5
         norm_type: gLN
@@ -78,7 +79,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6]
     epochs: 200
-    batch_size: 1
+    batch_size: 4
     num_workers: 8
     half_lr: yes
     early_stop: yes
