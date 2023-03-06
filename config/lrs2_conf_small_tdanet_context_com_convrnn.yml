@@ -78,7 +78,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6]
     epochs: 200
-    batch_size: 4
+    batch_size: 1
     num_workers: 8
     half_lr: yes
     early_stop: yes
