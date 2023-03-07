@@ -29,7 +29,7 @@ audionet:
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
-      win: 128
+      win: 256
       hop_length: 128
       out_chan: 512
       kernel_size: 3

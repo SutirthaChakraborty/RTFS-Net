@@ -99,7 +99,7 @@ class STFTDecoder(BaseDecoder):
             kernel_size=self.kernel_size,
             stride=self.stride,
             padding=(self.kernel_size - 1) // 2,
-            output_padding=((self.kernel_size - 1) // 2) - 1,
+            # output_padding=((self.kernel_size - 1) // 2) - 1,
             bias=self.bias,
         )
         torch.nn.init.xavier_uniform_(self.decoder.weight)
@@ -110,9 +110,10 @@ class STFTDecoder(BaseDecoder):
         # B, n_src*N, T, F
 
         batch_size, length = input_shape[0], input_shape[-1]
-        _, _, n_frame, fft_size = x.shape
 
-        decoded_separated_audio = self.decoder(x).view(-1, 2, n_frame, fft_size)  # B*n_src, 2, T, F
+        decoded_separated_audio = self.decoder(x)  # B, n_src * 2, T, F
+        _, _, n_frame, fft_size = decoded_separated_audio.shape
+        decoded_separated_audio = decoded_separated_audio.view(-1, 2, n_frame, fft_size)
         spec = torch.complex(decoded_separated_audio[:, 0], decoded_separated_audio[:, 1])  # B*n_src, T, F
         spec = torch.stack([spec.real, spec.imag], dim=-1)  # B*n_src, T, F
         spec = spec.transpose(1, 2).contiguous()  # B*n_src, F, T
@@ -120,7 +121,7 @@ class STFTDecoder(BaseDecoder):
         output = torch.istft(
             spec,
             n_fft=self.win,
-            hop_length=self.stride,
+            hop_length=self.hop_length,
             window=torch.hann_window(self.win).to(spec.device).type(spec.type()),
             length=length,
         )  # B*n_src, L
