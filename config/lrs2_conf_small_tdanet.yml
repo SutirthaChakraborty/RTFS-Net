@@ -99,4 +99,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_3_3_2023_Attention_Fixed
+    exp_name: ctcnet_small_tdanet_08_03_2023
