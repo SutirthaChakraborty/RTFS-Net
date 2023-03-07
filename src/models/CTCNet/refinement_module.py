@@ -13,8 +13,7 @@ class RefinementModule(nn.Module):
         video_params: dict,
         audio_bn_chan: int,
         video_bn_chan: int,
-        fusion_type: str,
-        fusion_shared: bool,
+        fusion_params: dict,
         gc3_params: dict = dict(),
     ):
         super(RefinementModule, self).__init__()
@@ -22,8 +21,7 @@ class RefinementModule(nn.Module):
         self.video_params = video_params
         self.audio_bn_chan = audio_bn_chan
         self.video_bn_chan = video_bn_chan
-        self.fusion_type = fusion_type
-        self.fusion_shared = fusion_shared
+        self.fusion_params = fusion_params
         self.gc3_params = gc3_params
 
         self.fusion_repeats = self.video_params["repeats"]
@@ -43,17 +41,21 @@ class RefinementModule(nn.Module):
         )
 
         self.crossmodal_fusion = MultiModalFusion(
+            **self.fusion_params,
             audio_bn_chan=self.audio_bn_chan,
             video_bn_chan=self.video_bn_chan,
             fusion_repeats=self.fusion_repeats,
             audio_repeats=self.audio_repeats,
-            fusion_type=self.fusion_type,
-            fusion_shared=self.fusion_shared,
         )
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
-        batch_size, _, T1 = audio.shape
-        T2 = video.shape[-1]
+        batch_size = audio.shape[0]
+        T1 = audio.shape[-(len(audio.shape) // 2) :]
+        T2 = video.shape[-(len(video.shape) // 2) :]
+
+        if len(T1) > len(T2):
+            video = video.unsqueeze(-1)
+            T2 = video.shape[-(len(video.shape) // 2) :]
 
         audio_residual = audio
         video_residual = video
@@ -66,23 +68,23 @@ class RefinementModule(nn.Module):
                 audio_fused = audio_fused + audio_residual
                 video_fused = video_fused + video_residual
 
-            audio_fused = self.audio_net.get_tac(i)(audio_fused.view(batch_size, self.audio_net.group_size, -1, T1))
-            audio_fused = audio_fused.view(batch_size * self.audio_net.group_size, -1, T1)
+            audio_fused = self.audio_net.get_tac(i)(audio_fused.view(batch_size, self.audio_net.group_size, -1, *T1))
+            audio_fused = audio_fused.view(batch_size * self.audio_net.group_size, -1, *T1)
 
-            video_fused = self.video_net.get_tac(i)(video_fused.view(batch_size, self.video_net.group_size, -1, T2))
-            video_fused = video_fused.view(batch_size * self.video_net.group_size, -1, T2)
+            video_fused = self.video_net.get_tac(i)(video_fused.view(batch_size, self.video_net.group_size, -1, *T2))
+            video_fused = video_fused.view(batch_size * self.video_net.group_size, -1, *T2)
 
-            audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused)).view(batch_size, -1, T1)
-            video_fused = self.video_net.get_block(i)(self.video_net.get_concat_block(i)(video_fused)).view(batch_size, -1, T2)
+            audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused)).view(batch_size, -1, *T1)
+            video_fused = self.video_net.get_block(i)(self.video_net.get_concat_block(i)(video_fused)).view(batch_size, -1, *T2)
             audio_fused, video_fused = self.crossmodal_fusion.get_fusion_block(i)(audio_fused, video_fused)
 
         for j in range(self.audio_repeats):
             i = j + self.fusion_repeats
             audio_fused = audio_fused + audio_residual
 
-            audio_fused = self.audio_net.get_tac(i)(audio_fused.view(batch_size, self.audio_net.group_size, -1, T1))
-            audio_fused = audio_fused.view(batch_size * self.audio_net.group_size, -1, T1)
-            audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused)).view(batch_size, -1, T1)
+            audio_fused = self.audio_net.get_tac(i)(audio_fused.view(batch_size, self.audio_net.group_size, -1, *T1))
+            audio_fused = audio_fused.view(batch_size * self.audio_net.group_size, -1, *T1)
+            audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused)).view(batch_size, -1, *T1)
 
         return audio_fused
 

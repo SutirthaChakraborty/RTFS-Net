@@ -20,6 +20,8 @@ class ConvNormAct(nn.Module):
         act_type: str = None,
         xavier_init: bool = False,
         bias: bool = True,
+        *args,
+        **kwargs,
     ):
         super(ConvNormAct, self).__init__()
         self.in_chan = in_chan
@@ -83,6 +85,8 @@ class ConvNormAct2D(nn.Module):
         bias: bool = True,
         n_freqs=None,
         eps: float = torch.finfo(torch.float32).eps,
+        *args,
+        **kwargs,
     ):
         super(ConvNormAct2D, self).__init__()
         self.in_chan = in_chan
@@ -123,6 +127,16 @@ class ConvNormAct2D(nn.Module):
         output = self.norm(output)
         output = self.act(output)
         return output
+
+    def get_config(self):
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
 
 
 class FeedForwardNetwork(nn.Module):

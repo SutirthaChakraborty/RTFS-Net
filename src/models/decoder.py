@@ -75,51 +75,59 @@ class STFTDecoder(BaseDecoder):
         self,
         win: int,
         hop_length: int,
-        out_chan: int,
-        kernel_size: int = 3,
-        stride: int = 1,
-        act_type: str = None,
-        norm_type: str = "gLN",
+        in_chan: int,
+        n_src: int,
+        kernel_size: int,
+        stride: int,
         bias: bool = False,
+        *args,
+        **kwargs,
     ):
         super(STFTDecoder, self).__init__()
 
         self.win = win
         self.hop_length = hop_length
-        self.out_chan = out_chan
+        self.in_chan = in_chan
+        self.n_src = n_src
         self.kernel_size = kernel_size
         self.stride = stride
         self.bias = bias
-        self.act_type = act_type
-        self.norm_type = norm_type
 
-        self.conv = nn.ConvTranspose2d(
-            in_channels=out_chan,
+        self.decoder = nn.ConvTranspose2d(
+            in_channels=in_chan,
             out_channels=2 * self.n_src,
             kernel_size=self.kernel_size,
             stride=self.stride,
             padding=(self.kernel_size - 1) // 2,
-            act_type=self.act_type,
-            norm_type=self.norm_type,
-            xavier_init=True,
+            output_padding=((self.kernel_size - 1) // 2) - 1,
             bias=self.bias,
         )
+        torch.nn.init.xavier_uniform_(self.decoder.weight)
+
         self.window = torch.hann_window(self.win)
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, input_shape: torch.Size):
+        # B, n_src*N, T, F
+
+        batch_size, length = input_shape[0], input_shape[-1]
+        _, _, n_frame, fft_size = x.shape
+
+        decoded_separated_audio = self.decoder(x).view(-1, 2, n_frame, fft_size)  # B*n_src, 2, T, F
+        spec = torch.complex(decoded_separated_audio[:, 0], decoded_separated_audio[:, 1])  # B*n_src, T, F
+        spec = torch.stack([spec.real, spec.imag], dim=-1)  # B*n_src, T, F
+        spec = spec.transpose(1, 2).contiguous()  # B*n_src, F, T
 
         output = torch.istft(
-            x.view(batch_size * nch * self.num_spks, self.out_chan, -1),
+            spec,
             n_fft=self.win,
             hop_length=self.stride,
-            window=torch.hann_window(self.win).to(x.device).type(x.type()),
-            length=nsample,
-        )
+            window=torch.hann_window(self.win).to(spec.device).type(spec.type()),
+            length=length,
+        )  # B*n_src, L
 
-        spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
-        spec_feature_map = self.conv(spec)  # B, C, T, F
+        output = output.view(batch_size, self.n_src, length)  # B, n_src, L
 
-        return spec_feature_map
+        return output
 
     def get_config(self):
         encoder_args = {}

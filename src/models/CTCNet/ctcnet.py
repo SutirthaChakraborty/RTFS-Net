@@ -1,15 +1,16 @@
+import torch
+
+from thop import profile
+
 from ...models import encoder
 from ...models import decoder
 
-from ..layers import ConvNormAct
+from ..layers import ConvNormAct, ConvNormAct2D
 from ..base_av_model import BaseAVModel
 from ..mask_generator import MaskGenerator
 
 from .refinement_module import RefinementModule
 from .contextcodec import ContextEncoder, ContextDecoder
-
-import torch
-from thop import profile
 
 
 class CTCNet(BaseAVModel):
@@ -53,8 +54,11 @@ class CTCNet(BaseAVModel):
         )
         self.enc_out_chan = self.encoder.out_chan
 
-        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan)
-        self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
+        audio_bn_conv = ConvNormAct2D if self.audio_bn_params.get("is2d", False) else ConvNormAct
+        video_bn_conv = ConvNormAct2D if self.video_bn_params.get("is2d", False) else ConvNormAct
+
+        self.audio_bottleneck = audio_bn_conv(**self.audio_bn_params, in_chan=self.enc_out_chan)
+        self.video_bottleneck = video_bn_conv(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
 
         self.audio_context_enc = ContextEncoder(
             in_chan=self.audio_bn_chan,
@@ -69,7 +73,7 @@ class CTCNet(BaseAVModel):
         )
 
         self.refinement_module = RefinementModule(
-            **self.fusion_params,
+            fusion_params=self.fusion_params,
             audio_params=self.audio_params,
             video_params=self.video_params,
             audio_bn_chan=self.audio_bn_chan,
@@ -101,7 +105,7 @@ class CTCNet(BaseAVModel):
     def __apply_masks(self, masks: torch.Tensor, audio_mixture_embedding: torch.Tensor):
         shape = audio_mixture_embedding.shape
         separated_audio_embedding = masks * audio_mixture_embedding.unsqueeze(1)
-        separated_audio_embedding = separated_audio_embedding.view(shape[0] * self.n_src, self.enc_out_chan, *shape[-(len(shape) // 2) :])
+        separated_audio_embedding = separated_audio_embedding.view(shape[0], self.n_src * self.enc_out_chan, *shape[-(len(shape) // 2) :])
         return separated_audio_embedding
 
     def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor):
@@ -120,9 +124,9 @@ class CTCNet(BaseAVModel):
         refined_features = self.context_dec(refined_features, res, squeeze_rest)
 
         masks = self.mask_generator(refined_features)  # B, C, T, (F) -> B, n_src, N, T, (F)
-        separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)  # B, n_src, N, T, (F) -> B*n_src, N, T, (F)
+        separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)  # B, n_src, N, T, (F) -> B, n_src*N, T, (F)
 
-        separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)  # B*n_src, N, T, (F) -> B*n_src, 1, L
+        separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)  # B, n_src*N, T, (F) -> B, n_src, L
 
         return separated_audio
 

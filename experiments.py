@@ -3,7 +3,7 @@ from time import time
 from tqdm import tqdm
 from src.models import encoder
 
-from src.models.layers.tdanet2d import TDANet2D
+from src.models.layers.tdanet import TDANet
 from src.models.layers.cnn_layers import ConvNormAct, FeedForwardNetwork, ConvolutionalRNN
 from src.models.layers.rnn_layers import RNNProjection
 from src.models.layers.attention import GlobalAttention
@@ -91,7 +91,7 @@ its = 200
 # print("Global Attention:", m, p, time() - t1)
 
 
-model = TDANet2D(in_chan, in_chan * 2, 5).cuda()
+model = TDANet(in_chan, in_chan * 2, 5, is2d=True).cuda()
 
 x = torch.rand((1, 32000)).cuda()
 

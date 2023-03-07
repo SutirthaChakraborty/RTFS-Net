@@ -6,15 +6,15 @@ from .layers import ConvNormAct, ConvNormAct2D
 
 
 class MaskGenerator(nn.Module):
-    def __init__(self, n_src: int, audio_emb_dim: int, bottleneck_chan: int, mask_act: str, conv2d: bool = False):
+    def __init__(self, n_src: int, audio_emb_dim: int, bottleneck_chan: int, mask_act: str, is2d: bool = False):
         super(MaskGenerator, self).__init__()
         self.n_src = n_src
         self.in_chan = audio_emb_dim
         self.bottleneck_chan = bottleneck_chan
         self.mask_act = mask_act
-        self.conv2d = conv2d
+        self.is2d = is2d
 
-        conv = ConvNormAct2D if self.conv2d else ConvNormAct
+        conv = ConvNormAct2D if self.is2d else ConvNormAct
 
         self.mask_generator = nn.Sequential(
             nn.PReLU(),

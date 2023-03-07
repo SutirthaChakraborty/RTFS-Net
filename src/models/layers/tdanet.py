@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .rnn_layers import TAC
-from .cnn_layers import ConvNormAct
-from .attention import GlobalAttention
+from .cnn_layers import ConvNormAct, ConvNormAct2D
+from .attention import GlobalAttention, GlobalAttention2D
 
 
 class InjectionMultiSum(nn.Module):
@@ -14,16 +14,20 @@ class InjectionMultiSum(nn.Module):
         hid_chan: int,
         kernel_size: int,
         norm_type: str = "gLN",
+        is2d: bool = False,
     ):
         super(InjectionMultiSum, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.norm_type = norm_type
+        self.is2d = is2d
 
         self.groups = in_chan if in_chan == hid_chan else 1
 
-        self.local_embedding = ConvNormAct(
+        self.conv = ConvNormAct2D if self.is2d else ConvNormAct
+
+        self.local_embedding = self.conv(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -32,7 +36,7 @@ class InjectionMultiSum(nn.Module):
             norm_type=self.norm_type,
             bias=False,
         )
-        self.global_embedding = ConvNormAct(
+        self.global_embedding = self.conv(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -41,7 +45,7 @@ class InjectionMultiSum(nn.Module):
             norm_type=self.norm_type,
             bias=False,
         )
-        self.global_gate = ConvNormAct(
+        self.global_gate = self.conv(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -52,8 +56,8 @@ class InjectionMultiSum(nn.Module):
             bias=False,
         )
 
-    def forward(self, local_features, global_features):
-        length = local_features.shape[-1]
+    def forward(self, local_features: torch.Tensor, global_features: torch.Tensor):
+        length = local_features.shape[-(len(local_features.shape) // 2) :]
 
         local_emb = self.local_embedding(local_features)
         global_emb = F.interpolate(self.global_embedding(global_features), size=length, mode="nearest")
@@ -84,6 +88,7 @@ class TDANetBlock(nn.Module):
         dropout: int = 0.1,
         drop_path: int = 0.1,
         group_size: int = 1,
+        is2d: bool = False,
     ):
         super(TDANetBlock, self).__init__()
         self.in_chan = in_chan
@@ -97,8 +102,13 @@ class TDANetBlock(nn.Module):
         self.dropout = dropout
         self.drop_path = drop_path
         self.group_size = group_size
+        self.is2d = is2d
 
-        self.projection = ConvNormAct(
+        self.conv = ConvNormAct2D if self.is2d else ConvNormAct
+        self.att = GlobalAttention2D if self.is2d else GlobalAttention
+        self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
+
+        self.projection = self.conv(
             in_chan=self.in_chan // self.group_size,
             out_chan=self.hid_chan // self.group_size,
             kernel_size=1,
@@ -108,9 +118,9 @@ class TDANetBlock(nn.Module):
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
-        self.residual_conv = nn.Conv1d(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1)
+        self.residual_conv = self.conv(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1)
 
-        self.globalatt = GlobalAttention(
+        self.globalatt = self.att(
             in_chan=self.hid_chan // self.group_size,
             kernel_size=self.kernel_size,
             n_head=self.n_head,
@@ -123,7 +133,7 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth):
             stride = 1 if i == 0 else self.stride
             out.append(
-                ConvNormAct(
+                self.conv(
                     in_chan=self.hid_chan // self.group_size,
                     out_chan=self.hid_chan // self.group_size,
                     kernel_size=self.kernel_size,
@@ -145,6 +155,7 @@ class TDANetBlock(nn.Module):
                     hid_chan=self.hid_chan // self.group_size,
                     kernel_size=1,
                     norm_type=self.norm_type,
+                    is2d=self.is2d,
                 )
             )
 
@@ -159,13 +170,14 @@ class TDANetBlock(nn.Module):
                     hid_chan=self.hid_chan // self.group_size,
                     kernel_size=self.kernel_size,
                     norm_type=self.norm_type,
+                    is2d=self.is2d,
                 )
             )
 
         return out
 
     def forward(self, x):
-        # x: shape (B, C, T)
+        # x: B, C, T, (F)
         residual = x
         x_enc = self.projection(x)
 
@@ -179,8 +191,8 @@ class TDANetBlock(nn.Module):
         shape = downsampled_outputs[-1].shape
         global_features = torch.zeros(shape, requires_grad=True, device=x_enc.device)
         for features in downsampled_outputs:
-            global_features = global_features + F.adaptive_avg_pool1d(features, output_size=shape[-1])
-        global_features = self.globalatt(global_features)  # [B, N, T]
+            global_features = global_features + self.pool(features, output_size=shape[-(len(shape) // 2) :])
+        global_features = self.globalatt(global_features)  # B, N, T, (F)
 
         x_fused = []
         # Gather them now in reverse order
@@ -214,6 +226,7 @@ class TDANet(nn.Module):
         drop_path: float = 0.1,
         group_size: int = 1,
         tac_multiplier: int = 2,
+        is2d: bool = False,
         *args,
         **kwargs,
     ):
@@ -232,6 +245,9 @@ class TDANet(nn.Module):
         self.drop_path = drop_path
         self.group_size = group_size
         self.tac_multiplier = tac_multiplier
+        self.is2d = is2d
+
+        self.conv = ConvNormAct2D if self.is2d else ConvNormAct
 
         self.tac = self.__build_tac()
         self.blocks = self.__build_blocks()
@@ -269,6 +285,7 @@ class TDANet(nn.Module):
                 dropout=self.dropout,
                 drop_path=self.drop_path,
                 group_size=self.group_size,
+                is2d=self.is2d,
             )
         else:
             out = nn.ModuleList()
@@ -286,6 +303,7 @@ class TDANet(nn.Module):
                         dropout=self.dropout,
                         drop_path=self.drop_path,
                         group_size=self.group_size,
+                        is2d=self.is2d,
                     )
                 )
 
@@ -293,7 +311,7 @@ class TDANet(nn.Module):
 
     def __build_concat_block(self):
         if self.shared:
-            out = ConvNormAct(
+            out = self.conv(
                 in_chan=self.in_chan // self.group_size,
                 out_chan=self.in_chan // self.group_size,
                 kernel_size=1,
@@ -304,7 +322,7 @@ class TDANet(nn.Module):
             out = nn.ModuleList([None])
             for _ in range(self.repeats - 1):
                 out.append(
-                    ConvNormAct(
+                    self.conv(
                         in_chan=self.in_chan // self.group_size,
                         out_chan=self.in_chan // self.group_size,
                         kernel_size=1,
@@ -335,12 +353,13 @@ class TDANet(nn.Module):
 
     def forward(self, x: torch.Tensor):
         # x: shape (B, C, T)
-        batch_size, _, T = x.shape
+        batch_size = x.shape[0]
+        T = x.shape[-(len(x.shape) // 2) :]
 
-        res = x.view(batch_size * self.group_size, -1, T)
+        res = x.view(batch_size * self.group_size, -1, *T)
 
         for i in range(self.repeats):
-            x = self.get_tac(i)(x.view(batch_size, self.group_size, -1, T)).view(batch_size * self.group_size, -1, T)
+            x = self.get_tac(i)(x.view(batch_size, self.group_size, -1, *T)).view(batch_size * self.group_size, -1, *T)
             frcnn = self.get_block(i)
             concat_block = self.get_concat_block(i)
             if i == 0:
@@ -348,4 +367,4 @@ class TDANet(nn.Module):
             else:
                 x = frcnn(concat_block(res + x))
 
-        return x.view(batch_size, -1, T)
+        return x.view(batch_size, -1, *T)

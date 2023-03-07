@@ -16,8 +16,10 @@ class TAC(nn.Module):
         self.TAC_output = nn.Sequential(nn.Linear(self.hidden_size * 2, self.input_size), nn.PReLU())
         self.TAC_norm = nn.GroupNorm(1, self.input_size)
 
-    def forward(self, x):
-        # input shape: batch, group, N, seq_length
+    def forward(self, x: torch.Tensor):
+        shape = x.shape
+        x = x.view(*shape[:3], -1)
+        # input shape: batch, group, N, seq_length, (freq)
 
         batch_size, groups, n_chan, seq_len = x.shape
         residual = x
@@ -37,6 +39,8 @@ class TAC(nn.Module):
         group_output = group_output.view(batch_size, seq_len, groups, -1).permute(0, 2, 3, 1).contiguous()  # B, G, N, T
         group_output = self.TAC_norm(group_output.view(batch_size * groups, n_chan, seq_len))  # B*G, N, T
         output = residual + group_output.view(x.shape)
+
+        output = output.view(*shape)
 
         return output
 

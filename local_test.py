@@ -151,7 +151,7 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     t1 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_convrnn.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -186,25 +186,25 @@ if __name__ == "__main__":
     macs2 = main(def_conf)
 
     t2 = time()
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
-    parser.add_argument("-n", "--name", default=None, help="Experiment name")
-    parser.add_argument("--nodes", type=int, default=1, help="#node")
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
+    # parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    # parser.add_argument("--nodes", type=int, default=1, help="#node")
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    with open(args.conf_dir) as f:
-        def_conf = yaml.safe_load(f)
-    if args.name is not None:
-        def_conf["log"]["exp_name"] = args.name
+    # with open(args.conf_dir) as f:
+    #     def_conf = yaml.safe_load(f)
+    # if args.name is not None:
+    #     def_conf["log"]["exp_name"] = args.name
 
-    arg_dic = parse_args_as_dict(parser)
-    def_conf.update(arg_dic)
+    # arg_dic = parse_args_as_dict(parser)
+    # def_conf.update(arg_dic)
 
-    macs3 = main(def_conf)
+    # macs3 = main(def_conf)
 
     t3 = time()
 
-    print("TDANet with Context: {:.2f} seconds, {} million MACs".format(t1 - t0, macs1))
-    print("TDANet with ConvRNN Context: {:.2f} seconds, {} million MACs".format(t2 - t1, macs2))
-    print("TDANet with Attention Context: {:.2f} seconds, {} million MACs".format(t3 - t2, macs3))
+    print("TDANet: {:.2f} seconds, {} million MACs".format(t2 - t1, macs2))
+    print("TDANet2D: {:.2f} seconds, {} million MACs".format(t1 - t0, macs1))
+    # print("TDANet with Attention Context: {:.2f} seconds, {} million MACs".format(t3 - t2, macs3))
