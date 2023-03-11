@@ -29,6 +29,9 @@ class BaseEncoder(nn.Module):
     def unsqueeze_to_2D(self, x: torch.Tensor):
         if x.ndim == 1:
             return x.reshape(1, -1)
+        elif len(s := x.shape) == 3:
+            assert s[1] == 1
+            return x.reshape(s[0], -1)
         else:
             return x
 
