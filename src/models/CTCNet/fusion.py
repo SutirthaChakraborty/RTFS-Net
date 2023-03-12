@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-from ..layers import ConvNormAct, ConvNormAct2D
+from ..layers import ConvNormAct
 
 
 class FusionBasemodule(nn.Module):
@@ -20,10 +20,9 @@ class FusionBasemodule(nn.Module):
 class ConcatFusion(FusionBasemodule):
     def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False):
         super(ConcatFusion, self).__init__(ain_chan, vin_chan, is2d)
-        conv = ConvNormAct2D if self.is2d else ConvNormAct
 
-        self.audio_conv = conv(self.ain_chan + self.vin_chan, self.ain_chan, 1, norm_type="gLN")
-        self.video_conv = conv(self.ain_chan + self.vin_chan, self.vin_chan, 1, norm_type="gLN")
+        self.audio_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.ain_chan, 1, norm_type="gLN", is2d=self.is2d)
+        self.video_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
 
@@ -41,10 +40,9 @@ class ConcatFusion(FusionBasemodule):
 class SumFusion(FusionBasemodule):
     def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False):
         super(SumFusion, self).__init__(ain_chan, vin_chan, is2d)
-        conv = ConvNormAct2D if self.is2d else ConvNormAct
 
-        self.video_conv = conv(self.vin_chan, self.ain_chan, 1, norm_type="gLN")
-        self.audio_conv = conv(self.ain_chan, self.vin_chan, 1, norm_type="gLN")
+        self.video_conv = ConvNormAct(self.vin_chan, self.ain_chan, 1, norm_type="gLN", is2d=self.is2d)
+        self.audio_conv = ConvNormAct(self.ain_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
 

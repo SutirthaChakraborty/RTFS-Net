@@ -1,4 +1,4 @@
-from .cnn_layers import ConvNormAct, ConvNormAct2D
+from .cnn_layers import ConvNormAct
 from .rnn_layers import GC_RNN, TAC
 from .frcnn import FRCNN
 from .tdanet import TDANet

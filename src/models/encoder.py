@@ -4,7 +4,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .layers import ConvNormAct, ConvNormAct2D
+from .layers import ConvNormAct
 
 
 class BaseEncoder(nn.Module):
@@ -145,23 +145,25 @@ class STFTEncoder(BaseEncoder):
         self.win = win
         self.hop_length = hop_length
         self.out_chan = out_chan
-        self.kernel_size = kernel_size
+        self.kernel_size = (kernel_size, 3)
+        self.padding = ((self.kernel_size - 1) // 2, 1)
         self.stride = stride
         self.bias = bias
         self.act_type = act_type
         self.norm_type = norm_type
 
         self.window = torch.hann_window(self.win)
-        self.conv = ConvNormAct2D(
+        self.conv = ConvNormAct(
             in_chan=2,
             out_chan=self.out_chan,
             kernel_size=self.kernel_size,
             stride=self.stride,
-            padding=(self.kernel_size - 1) // 2,
+            padding=self.padding,
             act_type=self.act_type,
             norm_type=self.norm_type,
             xavier_init=True,
             bias=self.bias,
+            is2d=True,
         )
 
     def forward(self, x: torch.Tensor):

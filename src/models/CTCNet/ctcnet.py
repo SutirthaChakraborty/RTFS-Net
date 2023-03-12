@@ -5,7 +5,7 @@ from thop import profile
 from ...models import encoder
 from ...models import decoder
 
-from ..layers import ConvNormAct, ConvNormAct2D
+from ..layers import ConvNormAct
 from ..base_av_model import BaseAVModel
 from ..mask_generator import MaskGenerator
 
@@ -54,11 +54,8 @@ class CTCNet(BaseAVModel):
         )
         self.enc_out_chan = self.encoder.out_chan
 
-        audio_bn_conv = ConvNormAct2D if self.audio_bn_params.get("is2d", False) else ConvNormAct
-        video_bn_conv = ConvNormAct2D if self.video_bn_params.get("is2d", False) else ConvNormAct
-
-        self.audio_bottleneck = audio_bn_conv(**self.audio_bn_params, in_chan=self.enc_out_chan)
-        self.video_bottleneck = video_bn_conv(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
+        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan)
+        self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
 
         self.audio_context_enc = ContextEncoder(
             in_chan=self.audio_bn_chan,

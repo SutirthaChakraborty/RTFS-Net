@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .rnn_layers import TAC
-from .cnn_layers import ConvNormAct, ConvNormAct2D
+from .cnn_layers import ConvNormAct
 from .attention import GlobalAttention, GlobalAttention2D
 
 
@@ -25,9 +25,7 @@ class InjectionMultiSum(nn.Module):
 
         self.groups = in_chan if in_chan == hid_chan else 1
 
-        self.conv = ConvNormAct2D if self.is2d else ConvNormAct
-
-        self.local_embedding = self.conv(
+        self.local_embedding = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -35,8 +33,9 @@ class InjectionMultiSum(nn.Module):
             padding=((self.kernel_size - 1) // 2),
             norm_type=self.norm_type,
             bias=False,
+            is2d=self.is2d,
         )
-        self.global_embedding = self.conv(
+        self.global_embedding = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -44,8 +43,9 @@ class InjectionMultiSum(nn.Module):
             padding=((self.kernel_size - 1) // 2),
             norm_type=self.norm_type,
             bias=False,
+            is2d=self.is2d,
         )
-        self.global_gate = self.conv(
+        self.global_gate = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=self.kernel_size,
@@ -54,6 +54,7 @@ class InjectionMultiSum(nn.Module):
             norm_type=self.norm_type,
             act_type="Sigmoid",
             bias=False,
+            is2d=self.is2d,
         )
 
     def forward(self, local_features: torch.Tensor, global_features: torch.Tensor):
@@ -104,21 +105,21 @@ class TDANetBlock(nn.Module):
         self.group_size = group_size
         self.is2d = is2d
 
-        self.conv = ConvNormAct2D if self.is2d else ConvNormAct
         self.att = GlobalAttention2D if self.is2d else GlobalAttention
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
-        self.projection = self.conv(
+        self.projection = ConvNormAct(
             in_chan=self.in_chan // self.group_size,
             out_chan=self.hid_chan // self.group_size,
             kernel_size=1,
             norm_type=self.norm_type,
             act_type=self.act_type,
+            is2d=self.is2d,
         )
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
-        self.residual_conv = self.conv(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1)
+        self.residual_conv = ConvNormAct(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1, is2d=self.is2d)
 
         self.globalatt = self.att(
             in_chan=self.hid_chan // self.group_size,
@@ -133,7 +134,7 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth):
             stride = 1 if i == 0 else self.stride
             out.append(
-                self.conv(
+                ConvNormAct(
                     in_chan=self.hid_chan // self.group_size,
                     out_chan=self.hid_chan // self.group_size,
                     kernel_size=self.kernel_size,
@@ -141,6 +142,7 @@ class TDANetBlock(nn.Module):
                     groups=self.hid_chan // self.group_size,
                     padding=(self.kernel_size - 1) // 2,
                     norm_type=self.norm_type,
+                    is2d=self.is2d,
                 )
             )
 
@@ -247,8 +249,6 @@ class TDANet(nn.Module):
         self.tac_multiplier = tac_multiplier
         self.is2d = is2d
 
-        self.conv = ConvNormAct2D if self.is2d else ConvNormAct
-
         self.tac = self.__build_tac()
         self.blocks = self.__build_blocks()
         self.concat_block = self.__build_concat_block()
@@ -311,23 +311,25 @@ class TDANet(nn.Module):
 
     def __build_concat_block(self):
         if self.shared:
-            out = self.conv(
+            out = ConvNormAct(
                 in_chan=self.in_chan // self.group_size,
                 out_chan=self.in_chan // self.group_size,
                 kernel_size=1,
                 groups=self.in_chan // self.group_size,
                 act_type=self.act_type,
+                is2d=self.is2d,
             )
         else:
             out = nn.ModuleList([None])
             for _ in range(self.repeats - 1):
                 out.append(
-                    self.conv(
+                    ConvNormAct(
                         in_chan=self.in_chan // self.group_size,
                         out_chan=self.in_chan // self.group_size,
                         kernel_size=1,
                         groups=self.in_chan // self.group_size,
                         act_type=self.act_type,
+                        is2d=self.is2d,
                     )
                 )
 
