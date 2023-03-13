@@ -21,7 +21,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 128
       hop_length: 64
-      out_chan: 48
+      out_chan: 32
       kernel_size: 3
       stride: 1
       bias: False
@@ -31,7 +31,7 @@ audionet:
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 192                       # TDANet hidden channels
+      hid_chan: 64                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
       repeats: 4
