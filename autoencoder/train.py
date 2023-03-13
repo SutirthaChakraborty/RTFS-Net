@@ -5,26 +5,18 @@
 # LastEditTime: 2022-10-04 15:51:44
 ###
 import warnings
+
 warnings.filterwarnings("ignore")
 
 import os
-import sys
 import torch
-from torch import Tensor
-import argparse
-import json
-from dataclasses import dataclass
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, RichProgressBar
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.callbacks.progress.rich_progress import *
-from rich.console import Console
 from pytorch_lightning.loggers import TensorBoardLogger
-from rich import print, reconfigure
 
-from datamodule import AVSpeechDataModule
-from autoencoder import AE
+from utils.datamodule import AVSpeechDataModule
+from models.autoencoder import AE
 
 
 def main():
@@ -39,9 +31,7 @@ def main():
     datamodule.setup()
     train_loader, val_loader, test_loader = datamodule.make_loader
     # Define scheduler
-    system = AE(
-        in_channels=1, base_channels=4, num_layers=3, train_loader=train_loader, val_loader=val_loader
-    )
+    system = AE(in_channels=1, base_channels=4, num_layers=3, train_loader=train_loader, val_loader=val_loader)
 
     # Define callbacks
     print("Instantiating ModelCheckpoint")
@@ -61,7 +51,7 @@ def main():
     callbacks.append(EarlyStopping(monitor="val/loss", patience=10, verbose=True))
 
     # Don't ask GPU if they are not available.
-    gpus = [0,1,2]
+    gpus = [0, 1, 2]
     distributed_backend = "gpu" if torch.cuda.is_available() else None
 
     # default logger used by trainer
@@ -80,6 +70,7 @@ def main():
     )
     trainer.fit(system)
     print("Finished Training")
+
 
 if __name__ == "__main__":
     main()

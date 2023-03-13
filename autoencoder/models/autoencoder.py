@@ -1,4 +1,3 @@
-from typing import Any
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch
 from pytorch_lightning import LightningModule
@@ -70,7 +69,7 @@ class EncoderAE(nn.Module):
 
         self.layers = []
         for i in range(num_layers):
-            cout = base_channels * (2 ** i)
+            cout = base_channels * (2**i)
             cin = in_channels if i == 0 else cout // 2
             self.layers.append(EncoderBlock(cin, cout, 2, 2))
         self.layers = nn.Sequential(*self.layers)
@@ -117,8 +116,8 @@ class AE(LightningModule):
         val_loader=None,
     ) -> None:
         super().__init__()
-        self.train_loader=train_loader,
-        self.val_loader=val_loader,
+        self.train_loader = (train_loader,)
+        self.val_loader = (val_loader,)
         self.default_monitor = "val/loss"
         # Access params with 'self.hparams' attribute
         self.save_hyperparameters()
@@ -127,9 +126,9 @@ class AE(LightningModule):
         self.decoder = DecoderAE(in_channels, base_channels, num_layers)
 
         self.criterion = criterion
-        
+
         self.optimizer = torch.optim.Adam(
-            params=[{'params': self.encoder.parameters()}, {'params': self.decoder.parameters()}],
+            params=[{"params": self.encoder.parameters()}, {"params": self.decoder.parameters()}],
             lr=1e-4,
             weight_decay=1e-4,
         )
@@ -168,19 +167,18 @@ class AE(LightningModule):
         loss = self.criterion(preds, x)
         return loss, preds
 
-    def training_step(self, batch: Any, batch_idx: int):
+    def training_step(self, batch, batch_idx: int):
         loss, preds = self.step(batch[0])
         # Log train metrics
-        self.log("train/loss", loss, on_epoch=True,prog_bar=True,sync_dist=True)
+        self.log("train/loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
         return {"loss": loss, "preds": preds}
 
-    def validation_step(self, batch: Any, batch_idx: int):
+    def validation_step(self, batch, batch_idx: int):
         loss, preds = self.step(batch)
         # Log train metrics
-        self.log("val/loss", loss, on_step=False,on_epoch=True,prog_bar=True,sync_dist=True)
-        self.log("lr",self.optimizer.param_groups[0]["lr"],on_epoch=True,prog_bar=True,sync_dist=True)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log("lr", self.optimizer.param_groups[0]["lr"], on_epoch=True, prog_bar=True, sync_dist=True)
         return {"loss": loss, "preds": preds}
-
 
     def train_dataloader(self):
         """Training dataloader"""
@@ -219,7 +217,6 @@ class AE(LightningModule):
 
 
 if __name__ == "__main__":
-
     model = AE(in_channels=1, base_channels=4, num_layers=3)
 
     batch = 2
