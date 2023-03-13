@@ -171,7 +171,7 @@ class CTCNet(BaseAVModel):
         macs = profile(self.context_dec, inputs=(audio, res, squeeze_rest), verbose=False)[0] / 1000000
         print("Number of MACs in context decoder: {:,.0f}M".format(macs))
 
-        macs = profile(self.mask_generator, inputs=(audio, encoded_audio), verbose=False)[0] / 1000000
+        macs = profile(self.mask_generator, inputs=(bn_audio, encoded_audio), verbose=False)[0] / 1000000
         print("Number of MACs in mask generator: {:,.0f}M".format(macs))
 
         macs = profile(self.decoder, inputs=(separated_audio_embedding, encoded_audio.shape), verbose=False)[0] / 1000000
