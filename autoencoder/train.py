@@ -9,6 +9,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import os
+import json
 import torch
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
@@ -51,7 +52,7 @@ def main():
     callbacks.append(EarlyStopping(monitor="val/loss", patience=10, verbose=True))
 
     # Don't ask GPU if they are not available.
-    gpus = [0, 1, 2]
+    gpus = [0, 1, 2, 3, 4, 5, 6, 7]
     distributed_backend = "gpu" if torch.cuda.is_available() else None
 
     # default logger used by trainer
@@ -70,6 +71,19 @@ def main():
     )
     trainer.fit(system)
     print("Finished Training")
+
+    # Save best_k models
+    best_k = {k: v.item() for k, v in checkpoint.best_k_models.items()}
+    with open(os.path.join(checkpoint_dir, "best_k_models.json"), "w") as f:
+        json.dump(best_k, f, indent=0)
+
+    # put on cpu and serialize
+    state_dict = torch.load(checkpoint.best_model_path)
+    system.load_state_dict(state_dict=state_dict["state_dict"])
+    system.cpu()
+
+    to_save = system.encoder.serialize()
+    torch.save(to_save, os.path.join(checkpoint_dir, "best_model.pth"))
 
 
 if __name__ == "__main__":
