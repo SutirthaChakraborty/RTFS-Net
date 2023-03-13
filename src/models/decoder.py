@@ -89,8 +89,8 @@ class STFTDecoder(BaseDecoder):
         self.hop_length = hop_length
         self.in_chan = in_chan
         self.n_src = n_src
-        self.kernel_size = (kernel_size, 3)
-        self.padding = ((self.kernel_size - 1) // 2, 1)
+        self.kernel_size = kernel_size
+        self.padding = (self.kernel_size - 1) // 2
         self.stride = stride
         self.bias = bias
 

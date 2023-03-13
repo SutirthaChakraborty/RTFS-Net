@@ -37,9 +37,7 @@ class ConvNormAct(nn.Module):
         self.xavier_init = xavier_init
         self.bias = bias
 
-        if kernel_size < 1:
-            self.conv = nn.Identity()
-        else:
+        if kernel_size > 0:
             conv = nn.Conv2d if is2d else nn.Conv1d
 
             self.conv = conv(
@@ -54,6 +52,8 @@ class ConvNormAct(nn.Module):
             )
             if self.xavier_init:
                 nn.init.xavier_uniform_(self.conv.weight)
+        else:
+            self.conv = nn.Identity()
 
         self.norm = normalizations.get(self.norm_type)(self.out_chan)
         self.act = activations.get(self.act_type)()

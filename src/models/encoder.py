@@ -145,8 +145,8 @@ class STFTEncoder(BaseEncoder):
         self.win = win
         self.hop_length = hop_length
         self.out_chan = out_chan
-        self.kernel_size = (kernel_size, 3)
-        self.padding = ((self.kernel_size - 1) // 2, 1)
+        self.kernel_size = kernel_size
+        self.padding = (kernel_size - 1) // 2
         self.stride = stride
         self.bias = bias
         self.act_type = act_type

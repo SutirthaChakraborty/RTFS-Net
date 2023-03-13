@@ -8,14 +8,6 @@ audionet:
     n_src: 1
     pretrained_vout_chan: 512                  # output from pretrained model
 
-    gc3_params:
-      audio:
-        group_size: 1                          # 128/8=16, 512/16=32
-        context_size: 1                       # 128/32=4, 512/4=128
-      video:    
-        group_size: 1                          # 128/8=16, 64/16=4
-        context_size: 1                       # 128/32=4, 64/4=16 
-
     video_bn_params:
       out_chan: 64
       kernel_size: 3

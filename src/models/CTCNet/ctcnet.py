@@ -18,7 +18,6 @@ class CTCNet(BaseAVModel):
         self,
         n_src: int,
         pretrained_vout_chan: int,
-        gc3_params: dict,
         audio_bn_params: dict,
         video_bn_params: dict,
         enc_dec_params: dict,
@@ -26,6 +25,7 @@ class CTCNet(BaseAVModel):
         video_params: dict,
         fusion_params: dict,
         mask_generation_params: dict,
+        gc3_params: dict = dict(),
         *args,
         **kwargs,
     ):
@@ -42,11 +42,6 @@ class CTCNet(BaseAVModel):
         self.mask_generation_params = mask_generation_params
         self.gc3_params = gc3_params
 
-        self.audio_bn_chan = self.audio_bn_params["out_chan"]
-        self.video_bn_chan = self.video_bn_params["out_chan"]
-        self.audio_hid_chan = self.audio_params["hid_chan"]
-        self.video_hid_chan = self.video_params["hid_chan"]
-
         self.encoder = encoder.get(self.enc_dec_params["encoder_type"])(
             **self.enc_dec_params,
             in_chan=1,
@@ -54,19 +49,25 @@ class CTCNet(BaseAVModel):
         )
         self.enc_out_chan = self.encoder.out_chan
 
-        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan)
+        self.audio_bn_chan = self.audio_bn_params.get("out_chan", self.enc_out_chan)
+        self.audio_bn_params.pop("out_chan", True)
+        self.video_bn_chan = self.video_bn_params["out_chan"]
+        self.audio_hid_chan = self.audio_params["hid_chan"]
+        self.video_hid_chan = self.video_params["hid_chan"]
+
+        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan, out_chan=self.audio_bn_chan)
         self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
 
         self.audio_context_enc = ContextEncoder(
             in_chan=self.audio_bn_chan,
             hid_chan=self.audio_hid_chan,
-            gc3_params=self.gc3_params["audio"],
+            gc3_params=self.gc3_params.get("audio", dict()),
         )
 
         self.video_context_enc = ContextEncoder(
             in_chan=self.video_bn_chan,
             hid_chan=self.video_hid_chan,
-            gc3_params=self.gc3_params["video"],
+            gc3_params=self.gc3_params.get("video", dict()),
         )
 
         self.refinement_module = RefinementModule(
@@ -81,7 +82,7 @@ class CTCNet(BaseAVModel):
         self.context_dec = ContextDecoder(
             in_chan=self.audio_bn_chan,
             hid_chan=self.audio_hid_chan,
-            gc3_params=self.gc3_params["audio"],
+            gc3_params=self.gc3_params.get("audio", dict()),
         )
 
         self.mask_generator = MaskGenerator(
@@ -93,17 +94,11 @@ class CTCNet(BaseAVModel):
 
         self.decoder = decoder.get(self.enc_dec_params["decoder_type"])(
             **self.enc_dec_params,
-            in_chan=self.enc_out_chan * self.n_src,
+            in_chan=self.enc_out_chan * self.n_src if self.mask_generation_params.get("kernel_size", 1) > 0 else self.audio_bn_chan,
             n_src=self.n_src,
         )
 
         self.get_MACs()
-
-    def __apply_masks(self, masks: torch.Tensor, audio_mixture_embedding: torch.Tensor):
-        shape = audio_mixture_embedding.shape
-        separated_audio_embedding = masks * audio_mixture_embedding.unsqueeze(1)
-        separated_audio_embedding = separated_audio_embedding.view(shape[0], self.n_src * self.enc_out_chan, *shape[-(len(shape) // 2) :])
-        return separated_audio_embedding
 
     def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor):
         audio_mixture_embedding = self.encoder(audio_mixture)  # B, 1, L -> B, N, T, (F)
@@ -120,8 +115,7 @@ class CTCNet(BaseAVModel):
         # context decoding
         refined_features = self.context_dec(refined_features, res, squeeze_rest)
 
-        masks = self.mask_generator(refined_features)  # B, C, T, (F) -> B, n_src, N, T, (F)
-        separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)  # B, n_src, N, T, (F) -> B, n_src*N, T, (F)
+        separated_audio_embedding = self.mask_generator(refined_features, audio_mixture_embedding)  # B, C, T, (F) -> B, n_src*N, T, (F)
 
         separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)  # B, n_src*N, T, (F) -> B, n_src, L
 
@@ -154,8 +148,7 @@ class CTCNet(BaseAVModel):
 
         audio, res, squeeze_rest = self.audio_context_enc(bn_audio)
 
-        masks = self.mask_generator(bn_audio)
-        separated_audio_embedding = self.__apply_masks(masks, encoded_audio)
+        separated_audio_embedding = self.mask_generator(bn_audio, encoded_audio)
 
         macs = profile(self.encoder, inputs=(audio_input,), verbose=False)[0] / 1000000
         print("Number of MACs in encoder: {:,.0f}M".format(macs))
@@ -178,7 +171,7 @@ class CTCNet(BaseAVModel):
         macs = profile(self.context_dec, inputs=(audio, res, squeeze_rest), verbose=False)[0] / 1000000
         print("Number of MACs in context decoder: {:,.0f}M".format(macs))
 
-        macs = profile(self.mask_generator, inputs=(audio,), verbose=False)[0] / 1000000
+        macs = profile(self.mask_generator, inputs=(audio, encoded_audio), verbose=False)[0] / 1000000
         print("Number of MACs in mask generator: {:,.0f}M".format(macs))
 
         macs = profile(self.decoder, inputs=(separated_audio_embedding, encoded_audio.shape), verbose=False)[0] / 1000000
