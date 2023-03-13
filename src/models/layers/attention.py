@@ -145,6 +145,7 @@ class GlobalAttention2D(nn.Module):
                 self.kernel_size,
                 groups=self.in_chan,
                 padding=((self.kernel_size - 1) // 2),
+                is2d=True,
             )
         else:
             self.mhsa = nn.Identity()
@@ -163,5 +164,25 @@ class GlobalAttention2D(nn.Module):
         x = x + self.drop_path_layer(self.ffn(x))
 
         x = x.view(*shape)
+
+        return x
+
+
+class ConvMod(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+
+        self.norm = nn.LayerNorm(dim, eps=1e-6)
+        self.a = nn.Sequential(nn.Conv2d(dim, dim, 1), nn.GELU(), nn.Conv2d(dim, dim, 11, padding=5, groups=dim))
+
+        self.v = nn.Conv2d(dim, dim, 1)
+        self.proj = nn.Conv2d(dim, dim, 1)
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        x = self.norm(x)
+        a = self.a(x)  # A=QK^T
+        x = a * self.v(x)
+        x = self.proj(x)
 
         return x
