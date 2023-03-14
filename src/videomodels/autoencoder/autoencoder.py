@@ -1,7 +1,8 @@
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch
+import torch.nn as nn
+
 from pytorch_lightning import LightningModule
-from torch import nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 class EncoderBlock(nn.Module):
@@ -218,6 +219,7 @@ class AE(LightningModule):
 
 
 if __name__ == "__main__":
+
     model = AE(in_channels=1, base_channels=4, num_layers=3)
 
     batch = 2

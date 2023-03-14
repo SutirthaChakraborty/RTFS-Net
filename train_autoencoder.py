@@ -12,22 +12,24 @@ import os
 import json
 import torch
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.callbacks.progress.rich_progress import *
-from pytorch_lightning.loggers import TensorBoardLogger
 
-from utils.datamodule import AVSpeechDataModule
-from models.autoencoder import AE
+from src.videomodels.autoencoder.datamodule import AVSpeechDataModule
+from src.videomodels.autoencoder.autoencoder import AE
 
-ckpt_name = "epoch=199.ckpt"
+# ckpt_name = "epoch=199.ckpt"
+ckpt_name = None
 
 
 def main():
     # dataloader
     datamodule = AVSpeechDataModule(
-        "../data-preprocess/LRS2/tr",
-        "../data-preprocess/LRS2/cv",
-        "../data-preprocess/LRS2/tt",
+        "data-preprocess/LRS2/tr",
+        "data-preprocess/LRS2/cv",
+        "data-preprocess/LRS2/tt",
         segment=2,
         batch_size=40,
     )
@@ -39,7 +41,7 @@ def main():
     # Define callbacks
     print("Instantiating ModelCheckpoint")
     callbacks = []
-    checkpoint_dir = os.path.join("../../experiments/autoencoder", "default")
+    checkpoint_dir = os.path.join("../experiments/autoencoder", "default")
     checkpoint = ModelCheckpoint(
         checkpoint_dir,
         filename="{epoch}",
@@ -54,7 +56,7 @@ def main():
     callbacks.append(EarlyStopping(monitor="val/loss", patience=10, verbose=True))
 
     # Don't ask GPU if they are not available.
-    gpus = [0, 1, 2, 3, 4, 5, 6]
+    gpus = [0, 1, 2, 3, 4, 5, 6, 7]
     distributed_backend = "gpu" if torch.cuda.is_available() else None
 
     # default logger used by trainer
@@ -66,12 +68,12 @@ def main():
         default_root_dir=checkpoint_dir,
         devices=gpus,
         accelerator=distributed_backend,
-        strategy="ddp",
+        strategy=DDPStrategy(find_unused_parameters=False),
         limit_train_batches=1.0,  # Useful for fast experiment
         logger=comet_logger,
         # fast_dev_run=True,
     )
-    trainer.fit(system, ckpt_path=os.path.join(checkpoint_dir, ckpt_name))
+    trainer.fit(system, ckpt_path=os.path.join(checkpoint_dir, ckpt_name) if ckpt_name else None)
     print("Finished Training")
 
     best_k = {k: v.item() for k, v in checkpoint.best_k_models.items()}
