@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 
+from .attention import GlobalAttention
+from .cnn_layers import ConvolutionalRNN
+
 
 class TAC(nn.Module):
     def __init__(self, input_size: int, hidden_size: int):
@@ -13,8 +16,10 @@ class TAC(nn.Module):
         self.TAC_output = nn.Sequential(nn.Linear(self.hidden_size * 2, self.input_size), nn.PReLU())
         self.TAC_norm = nn.GroupNorm(1, self.input_size)
 
-    def forward(self, x):
-        # input shape: batch, group, N, seq_length
+    def forward(self, x: torch.Tensor):
+        shape = x.shape
+        x = x.view(*shape[:3], -1)
+        # input shape: batch, group, N, seq_length, (freq)
 
         batch_size, groups, n_chan, seq_len = x.shape
         residual = x
@@ -35,6 +40,8 @@ class TAC(nn.Module):
         group_output = self.TAC_norm(group_output.view(batch_size * groups, n_chan, seq_len))  # B*G, N, T
         output = residual + group_output.view(x.shape)
 
+        output = output.view(*shape)
+
         return output
 
 
@@ -46,6 +53,8 @@ class RNNProjection(nn.Module):
         rnn_type: str = "LSTM",
         dropout: float = 0,
         bidirectional: bool = False,
+        *args,
+        **kwargs,
     ):
         super(RNNProjection, self).__init__()
 
@@ -65,12 +74,12 @@ class RNNProjection(nn.Module):
         )
         self.proj = nn.Linear(self.hidden_size * self.num_direction, self.input_size)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         batch_size, num_group, _, seq_len = x.shape  # B, G, N, L
 
         x = x.transpose(2, 3).contiguous().view(batch_size * num_group, seq_len, -1)  # B*G, L, N
-        rnn_output = self.rnn(x)[0]  # B*G, L, num_direction * H
-        rnn_output = rnn_output.contiguous().view(-1, self.num_direction * self.hidden_size)  # B*G*L, num_direction * H
+        rnn_output = self.rnn(x)[0].contiguous()  # B*G, L, num_direction * H
+        rnn_output = rnn_output.view(-1, self.num_direction * self.hidden_size)  # B*G*L, num_direction * H
         proj_output = self.proj(rnn_output)  # B*G*L, N
         proj_output = proj_output.view(batch_size, num_group, seq_len, -1).transpose(2, 3).contiguous()  # B, G, N, L
 
@@ -78,57 +87,62 @@ class RNNProjection(nn.Module):
 
 
 class GC_RNN(nn.Module):
-    def __init__(
-        self,
-        input_size: int,
-        hidden_size: int,
-        rnn_type: str = "LSTM",
-        num_group: int = 2,
-        dropout: float = 0,
-        num_layers: int = 1,
-        bidirectional: bool = True,
-    ):
+    def __init__(self, input_size: int, hidden_size: int, gc3_params: dict):
         super(GC_RNN, self).__init__()
 
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.rnn_type = rnn_type
-        self.num_group = num_group
-        self.dropout = dropout
-        self.num_layers = num_layers
-        self.bidirectional = bidirectional
+        self.rnn_type = gc3_params.get("rnn_type", "LSTM")
+        self.group_size = gc3_params.get("group_size", 1)
+        self.num_layers = gc3_params.get("num_layers", 2)
+        self.tac_multiplier = gc3_params.get("tac_multiplier", 2)
 
         self.TAC = nn.ModuleList([])
         self.rnn = nn.ModuleList([])
         self.LN = nn.ModuleList([])
 
-        for _ in range(num_layers):
+        for _ in range(self.num_layers):
             self.TAC.append(
                 TAC(
-                    input_size=self.input_size // self.num_group,
-                    hidden_size=self.hidden_size * 3 // self.num_group,
+                    input_size=self.input_size // self.group_size,
+                    hidden_size=self.hidden_size * self.tac_multiplier // self.group_size,
                 )
             )
-            self.rnn.append(
-                RNNProjection(
-                    input_size=self.input_size // self.num_group,
-                    hidden_size=self.hidden_size // self.num_group,
-                    rnn_type=self.rnn_type,
-                    dropout=self.dropout,
-                    bidirectional=self.bidirectional,
+            if self.rnn_type == "GlobalAttention":
+                self.rnn.append(
+                    GlobalAttention(
+                        in_chan=self.input_size // self.group_size,
+                        hid_chan=self.hidden_size // self.group_size,
+                        **gc3_params,
+                    )
                 )
-            )
-            self.LN.append(nn.GroupNorm(num_groups=1, num_channels=self.input_size // self.num_group))
+            elif self.rnn_type == "ConvolutionalRNN":
+                self.rnn.append(
+                    ConvolutionalRNN(
+                        in_chan=self.input_size // self.group_size,
+                        hid_chan=self.hidden_size // self.group_size,
+                        **gc3_params,
+                    )
+                )
+            else:
+                self.rnn.append(
+                    RNNProjection(
+                        input_size=self.input_size // self.group_size,
+                        hidden_size=self.hidden_size // self.group_size,
+                        **gc3_params,
+                    )
+                )
+            self.LN.append(nn.GroupNorm(num_groups=1, num_channels=self.input_size // self.group_size))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         batch_size, dim, seq_len = x.shape
-        x = x.view(batch_size, self.num_group, -1, seq_len)
+        x = x.view(batch_size, self.group_size, -1, seq_len)
 
         for i in range(self.num_layers):
             x = self.TAC[i](x)
             res = x
             x = self.rnn[i](x)
-            x = self.LN[i](x.view(batch_size * self.num_group, -1, seq_len)).view(batch_size, self.num_group, -1, seq_len)
+            x = self.LN[i](x.view(batch_size * self.group_size, -1, seq_len)).view(batch_size, self.group_size, -1, seq_len)
             x = res + x
 
         x = x.view(batch_size, dim, seq_len)

@@ -51,7 +51,7 @@ class FRCNNVideoModel(nn.Module):
         if pretrain:
             self.init_from(pretrain)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         B, C, T, H, W = x.size()
         x = self.frontend3D(x)
         Tnew = x.shape[2]  # outpu should be B x C2 x Tnew x H x W
@@ -59,8 +59,9 @@ class FRCNNVideoModel(nn.Module):
         x = self.trunk(x)
         if self.backbone_type == "shufflenet":
             x = x.view(-1, self.stage_out_channels)
-        x = x.view(B, Tnew, x.size(1))
-        return x.transpose(1, 2)
+        x = x.view(B, Tnew, x.size(1)).transpose(1, 2).contiguous()
+
+        return x
 
     def init_from(self, path):
         pretrained_dict = torch.load(path, map_location="cpu")["model_state_dict"]

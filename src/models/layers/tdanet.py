@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from .rnn_layers import TAC
 from .cnn_layers import ConvNormAct
-from .attention import GlobalAttention
+from .attention import GlobalAttention, GlobalAttention2D
 
 
 class InjectionMultiSum(nn.Module):
@@ -14,12 +14,14 @@ class InjectionMultiSum(nn.Module):
         hid_chan: int,
         kernel_size: int,
         norm_type: str = "gLN",
+        is2d: bool = False,
     ):
         super(InjectionMultiSum, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.norm_type = norm_type
+        self.is2d = is2d
 
         self.groups = in_chan if in_chan == hid_chan else 1
 
@@ -31,6 +33,7 @@ class InjectionMultiSum(nn.Module):
             padding=((self.kernel_size - 1) // 2),
             norm_type=self.norm_type,
             bias=False,
+            is2d=self.is2d,
         )
         self.global_embedding = ConvNormAct(
             in_chan=self.in_chan,
@@ -40,6 +43,7 @@ class InjectionMultiSum(nn.Module):
             padding=((self.kernel_size - 1) // 2),
             norm_type=self.norm_type,
             bias=False,
+            is2d=self.is2d,
         )
         self.global_gate = ConvNormAct(
             in_chan=self.in_chan,
@@ -50,10 +54,11 @@ class InjectionMultiSum(nn.Module):
             norm_type=self.norm_type,
             act_type="Sigmoid",
             bias=False,
+            is2d=self.is2d,
         )
 
-    def forward(self, local_features, global_features):
-        length = local_features.shape[-1]
+    def forward(self, local_features: torch.Tensor, global_features: torch.Tensor):
+        length = local_features.shape[-(len(local_features.shape) // 2) :]
 
         local_emb = self.local_embedding(local_features)
         global_emb = F.interpolate(self.global_embedding(global_features), size=length, mode="nearest")
@@ -84,6 +89,7 @@ class TDANetBlock(nn.Module):
         dropout: int = 0.1,
         drop_path: int = 0.1,
         group_size: int = 1,
+        is2d: bool = False,
     ):
         super(TDANetBlock, self).__init__()
         self.in_chan = in_chan
@@ -97,6 +103,10 @@ class TDANetBlock(nn.Module):
         self.dropout = dropout
         self.drop_path = drop_path
         self.group_size = group_size
+        self.is2d = is2d
+
+        self.att = GlobalAttention2D if self.is2d else GlobalAttention
+        self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
         self.projection = ConvNormAct(
             in_chan=self.in_chan // self.group_size,
@@ -104,16 +114,17 @@ class TDANetBlock(nn.Module):
             kernel_size=1,
             norm_type=self.norm_type,
             act_type=self.act_type,
+            is2d=self.is2d,
         )
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
-        self.residual_conv = nn.Conv1d(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1)
+        self.residual_conv = ConvNormAct(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1, is2d=self.is2d)
 
-        self.globalatt = GlobalAttention(
+        self.globalatt = self.att(
             in_chan=self.hid_chan // self.group_size,
-            n_head=self.n_head,
             kernel_size=self.kernel_size,
+            n_head=self.n_head,
             dropout=self.dropout,
             drop_path=self.drop_path,
         )
@@ -131,6 +142,7 @@ class TDANetBlock(nn.Module):
                     groups=self.hid_chan // self.group_size,
                     padding=(self.kernel_size - 1) // 2,
                     norm_type=self.norm_type,
+                    is2d=self.is2d,
                 )
             )
 
@@ -145,6 +157,7 @@ class TDANetBlock(nn.Module):
                     hid_chan=self.hid_chan // self.group_size,
                     kernel_size=1,
                     norm_type=self.norm_type,
+                    is2d=self.is2d,
                 )
             )
 
@@ -159,13 +172,14 @@ class TDANetBlock(nn.Module):
                     hid_chan=self.hid_chan // self.group_size,
                     kernel_size=self.kernel_size,
                     norm_type=self.norm_type,
+                    is2d=self.is2d,
                 )
             )
 
         return out
 
     def forward(self, x):
-        # x: shape (B, C, T)
+        # x: B, C, T, (F)
         residual = x
         x_enc = self.projection(x)
 
@@ -179,8 +193,8 @@ class TDANetBlock(nn.Module):
         shape = downsampled_outputs[-1].shape
         global_features = torch.zeros(shape, requires_grad=True, device=x_enc.device)
         for features in downsampled_outputs:
-            global_features = global_features + F.adaptive_avg_pool1d(features, output_size=shape[-1])
-        global_features = self.globalatt(global_features)  # [B, N, T]
+            global_features = global_features + self.pool(features, output_size=shape[-(len(shape) // 2) :])
+        global_features = self.globalatt(global_features)  # B, N, T, (F)
 
         x_fused = []
         # Gather them now in reverse order
@@ -213,6 +227,8 @@ class TDANet(nn.Module):
         dropout: float = 0.1,
         drop_path: float = 0.1,
         group_size: int = 1,
+        tac_multiplier: int = 2,
+        is2d: bool = False,
         *args,
         **kwargs,
     ):
@@ -230,12 +246,32 @@ class TDANet(nn.Module):
         self.dropout = dropout
         self.drop_path = drop_path
         self.group_size = group_size
+        self.tac_multiplier = tac_multiplier
+        self.is2d = is2d
 
-        self.blocks = self.__build_tdanet()
+        self.tac = self.__build_tac()
+        self.blocks = self.__build_blocks()
         self.concat_block = self.__build_concat_block()
-        self.tac = TAC(self.in_chan // self.group_size, self.hid_chan * 3 // self.group_size) if self.group_size > 1 else nn.Identity()
 
-    def __build_tdanet(self):
+    def __build_tac(self):
+        if self.shared:
+            out = (
+                TAC(self.in_chan // self.group_size, self.hid_chan * self.tac_multiplier // self.group_size)
+                if self.group_size > 1
+                else nn.Identity()
+            )
+        else:
+            out = nn.ModuleList()
+            for _ in range(self.repeats):
+                out.append(
+                    TAC(self.in_chan // self.group_size, self.hid_chan * self.tac_multiplier // self.group_size)
+                    if self.group_size > 1
+                    else nn.Identity()
+                )
+
+        return out
+
+    def __build_blocks(self):
         if self.shared:
             out = TDANetBlock(
                 in_chan=self.in_chan,
@@ -249,6 +285,7 @@ class TDANet(nn.Module):
                 dropout=self.dropout,
                 drop_path=self.drop_path,
                 group_size=self.group_size,
+                is2d=self.is2d,
             )
         else:
             out = nn.ModuleList()
@@ -266,6 +303,7 @@ class TDANet(nn.Module):
                         dropout=self.dropout,
                         drop_path=self.drop_path,
                         group_size=self.group_size,
+                        is2d=self.is2d,
                     )
                 )
 
@@ -279,6 +317,7 @@ class TDANet(nn.Module):
                 kernel_size=1,
                 groups=self.in_chan // self.group_size,
                 act_type=self.act_type,
+                is2d=self.is2d,
             )
         else:
             out = nn.ModuleList([None])
@@ -290,30 +329,39 @@ class TDANet(nn.Module):
                         kernel_size=1,
                         groups=self.in_chan // self.group_size,
                         act_type=self.act_type,
+                        is2d=self.is2d,
                     )
                 )
 
         return out
 
-    def get_block(self, i):
+    def get_tac(self, i: int):
+        if self.shared:
+            return self.tac
+        else:
+            return self.tac[i]
+
+    def get_block(self, i: int):
         if self.shared:
             return self.blocks
         else:
             return self.blocks[i]
 
-    def get_concat_block(self, i):
+    def get_concat_block(self, i: int):
         if self.shared:
             return self.concat_block
         else:
             return self.concat_block[i]
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         # x: shape (B, C, T)
-        batch_size, _, T = x.shape
-        x = self.tac(x.view(batch_size, self.group_size, -1, T)).view(batch_size * self.group_size, -1, T)
+        batch_size = x.shape[0]
+        T = x.shape[-(len(x.shape) // 2) :]
 
-        res = x
+        res = x.view(batch_size * self.group_size, -1, *T)
+
         for i in range(self.repeats):
+            x = self.get_tac(i)(x.view(batch_size, self.group_size, -1, *T)).view(batch_size * self.group_size, -1, *T)
             frcnn = self.get_block(i)
             concat_block = self.get_concat_block(i)
             if i == 0:
@@ -321,4 +369,4 @@ class TDANet(nn.Module):
             else:
                 x = frcnn(concat_block(res + x))
 
-        return x.view(batch_size, -1, T)
+        return x.view(batch_size, -1, *T)

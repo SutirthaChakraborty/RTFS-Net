@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from ..utils import split_feature, merge_feature
 from ..layers import GC_RNN
@@ -8,36 +9,20 @@ class ContextEncoder(nn.Module):
         self,
         in_chan: int,
         hid_chan: int,
-        rnn_type: str = "LSTM",
-        group_size: int = 2,
-        context_size: int = 2,
-        dropout: float = 0,
-        num_layers: int = 1,
-        bidirectional: bool = True,
+        gc3_params: dict = dict(),
     ):
         super(ContextEncoder, self).__init__()
 
         self.in_chan = in_chan
         self.hid_chan = hid_chan
-        self.rnn_type = rnn_type
-        self.group_size = group_size
-        self.context_size = context_size
-        self.dropout = dropout
-        self.num_layers = num_layers
-        self.bidirectional = bidirectional
+        self.gc3_params = gc3_params
+
+        self.context_size = gc3_params.get("context_size", 1)
 
         if self.context_size > 1:
-            self.group_context_rnn = GC_RNN(
-                input_size=self.in_chan,
-                hidden_size=self.hid_chan,
-                rnn_type=self.rnn_type,
-                num_group=self.group_size,
-                dropout=self.dropout,
-                num_layers=self.num_layers,
-                bidirectional=self.bidirectional,
-            )
+            self.group_context_rnn = GC_RNN(input_size=self.in_chan, hidden_size=self.hid_chan, gc3_params=self.gc3_params)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         if self.context_size > 1:
             squeeze_block, squeeze_rest = split_feature(x, self.context_size)  # B, N, context, L
             batch_size, bn_dim, _, seq_len = squeeze_block.shape
@@ -55,36 +40,20 @@ class ContextDecoder(nn.Module):
         self,
         in_chan: int,
         hid_chan: int,
-        rnn_type: str = "LSTM",
-        group_size: int = 2,
-        context_size: int = 2,
-        dropout: float = 0,
-        num_layers: int = 1,
-        bidirectional: bool = True,
+        gc3_params: dict = dict(),
     ):
         super().__init__()
 
         self.in_chan = in_chan
         self.hid_chan = hid_chan
-        self.rnn_type = rnn_type
-        self.group_size = group_size
-        self.context_size = context_size
-        self.dropout = dropout
-        self.num_layers = num_layers
-        self.bidirectional = bidirectional
+        self.gc3_params = gc3_params
+
+        self.context_size = gc3_params.get("context_size", 1)
 
         if self.context_size > 1:
-            self.context_dec = GC_RNN(
-                input_size=self.in_chan,
-                hidden_size=self.hid_chan,
-                rnn_type=self.rnn_type,
-                num_group=self.group_size,
-                dropout=self.dropout,
-                num_layers=self.num_layers,
-                bidirectional=self.bidirectional,
-            )
+            self.context_dec = GC_RNN(input_size=self.in_chan, hidden_size=self.hid_chan, gc3_params=self.gc3_params)
 
-    def forward(self, x, res, squeeze_rest):
+    def forward(self, x: torch.Tensor, res: torch.Tensor, squeeze_rest: torch.Tensor):
         if self.context_size > 1:
             x = x.unsqueeze(2) + res  # B, N, context, L
             batch_size, bn_dim, _, seq_len = x.shape

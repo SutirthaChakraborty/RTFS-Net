@@ -10,29 +10,35 @@ audionet:
 
     gc3_params:
       audio:
-        group_size: 64                         # 128/16
-        context_size: 128                      # 128/32 
+        group_size: 32
+        context_size: 128
+        tac_multiplier: 2
         num_layers: 2
+        rnn_type: LSTM
         bidirectional: True
       video:    
         group_size: 1
         context_size: 1
-        num_layers: 1
-        bidirectional: True
 
     video_bn_params:
-      video_bn_chan: 64
+      out_chan: 64
+      kernel_size: 3
+      padding: 1
 
     audio_bn_params:
-      norm_type: gLN
-      audio_bn_chan: 512
+      out_chan: 512
+      kernel_size: 1
 
     enc_dec_params:
+      encoder_type: ConvolutionalEncoder
+      decoder_type: ConvolutionalDecoder
       out_chan: 512
       kernel_size: 21
       stride: 10
       bias: False
       act_type: 
+      norm_type: gLN
+      layers: 1
       
     audio_params:
       audio_net: TDANet
@@ -48,17 +54,17 @@ audionet:
       n_head: 8
     
     video_params:
-        video_net: TDANet
+      video_net: TDANet
       # in_chan same as video_bn_chan
-        hid_chan: 64
-        upsampling_depth: 4
-        shared: True
-        repeats: 1
-        norm_type: BatchNorm1d
-        act_type: PReLU
-        kernel_size: 3
-        stride: 2
-        n_head: 8
+      hid_chan: 64
+      upsampling_depth: 4
+      shared: True
+      repeats: 1
+      norm_type: BatchNorm1d
+      act_type: PReLU
+      kernel_size: 3
+      stride: 2
+      n_head: 8
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -71,7 +77,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 4
+    batch_size: 3
     num_workers: 8
     half_lr: yes
     early_stop: yes
@@ -97,4 +103,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_context_26_02_23
+    exp_name: ctcnet_small_tdanet_context_06_03_23

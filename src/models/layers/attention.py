@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from timm.models.layers import DropPath
-from .cnn_layers import ConvNormAct
+from .cnn_layers import ConvNormAct, FeedForwardNetwork
 
 
 class PositionalEncoding(nn.Module):
@@ -48,11 +48,11 @@ class MultiHeadSelfAttention(nn.Module):
 
         self.norm1 = nn.LayerNorm(self.in_chan)
         self.pos_enc = PositionalEncoding(self.in_chan)
-        self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout)
+        self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout, batch_first=True)
         self.dropout_layer = nn.Dropout(self.dropout)
         self.norm2 = nn.LayerNorm(self.in_chan)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         x = x.transpose(1, 2)
 
         x = self.norm1(x)
@@ -62,36 +62,7 @@ class MultiHeadSelfAttention(nn.Module):
         x = self.dropout_layer(x) + residual
         x = self.norm2(x)
 
-        return x.transpose(2, 1)
-
-
-class FeedForwardNetwork(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        hid_chan: int,
-        kernel_size: int = 5,
-        dropout: float = 0.1,
-    ):
-        super(FeedForwardNetwork, self).__init__()
-        self.in_chan = in_chan
-        self.hid_chan = hid_chan
-        self.kernel_size = kernel_size
-        self.dropout = dropout
-
-        self.encoder = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type="gLN", bias=False)
-        self.refiner = ConvNormAct(
-            self.hid_chan, self.hid_chan, self.kernel_size, groups=self.hid_chan, padding=((self.kernel_size - 1) // 2), act_type="ReLU"
-        )
-        self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type="gLN", bias=False)
-        self.dropout_layer = nn.Dropout(self.dropout)
-
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.refiner(x)
-        x = self.dropout_layer(x)
-        x = self.decoder(x)
-        x = self.dropout_layer(x)
+        x = x.transpose(2, 1)
         return x
 
 
@@ -99,23 +70,98 @@ class GlobalAttention(nn.Module):
     def __init__(
         self,
         in_chan: int,
-        n_head: int = 8,
+        hid_chan: int = None,
         kernel_size: int = 5,
+        n_head: int = 8,
         dropout: float = 0.1,
         drop_path: float = 0.1,
+        *args,
+        **kwargs,
     ):
         super(GlobalAttention, self).__init__()
         self.in_chan = in_chan
-        self.n_head = n_head
+        self.hid_chan = hid_chan if hid_chan is not None else 2 * self.in_chan
         self.kernel_size = kernel_size
+        self.n_head = n_head
         self.dropout = dropout
         self.drop_path = drop_path
 
-        self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        self.ffn = FeedForwardNetwork(self.in_chan, self.in_chan * 2, self.kernel_size, self.dropout)
+        if self.n_head > 0:
+            self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
+        elif self.n_head == 0:
+            self.mhsa = ConvNormAct(
+                self.in_chan,
+                self.in_chan,
+                self.kernel_size,
+                groups=self.in_chan,
+                padding=((self.kernel_size - 1) // 2),
+            )
+        else:
+            self.mhsa = nn.Identity()
+
+        self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
+        shape = x.shape
+        if len(shape) == 4:
+            x = x.view(shape[0] * shape[1], shape[2], shape[3])
+
         x = x + self.drop_path_layer(self.mhsa(x))
         x = x + self.drop_path_layer(self.ffn(x))
+
+        if len(shape) == 4:
+            x = x.view(*shape)
+
+        return x
+
+
+class GlobalAttention2D(nn.Module):
+    def __init__(
+        self,
+        in_chan: int,
+        hid_chan: int = None,
+        kernel_size: int = 5,
+        n_head: int = 8,
+        dropout: float = 0.1,
+        drop_path: float = 0.1,
+        *args,
+        **kwargs,
+    ):
+        super(GlobalAttention2D, self).__init__()
+        self.in_chan = in_chan
+        self.hid_chan = hid_chan if hid_chan is not None else 2 * self.in_chan
+        self.kernel_size = kernel_size
+        self.n_head = n_head
+        self.dropout = dropout
+        self.drop_path = drop_path
+
+        if self.n_head > 0:
+            self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
+        elif self.n_head == 0:
+            self.mhsa = ConvNormAct(
+                self.in_chan,
+                self.in_chan,
+                self.kernel_size,
+                groups=self.in_chan,
+                padding=((self.kernel_size - 1) // 2),
+            )
+        else:
+            self.mhsa = nn.Identity()
+
+        self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
+        self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
+
+    def forward(self, x: torch.Tensor):
+        shape = x.shape
+        if len(shape) == 5:
+            x = x.view(shape[0] * shape[1], shape[2], shape[3] * shape[4])
+        else:
+            x = x.view(shape[0], shape[1], -1)
+
+        x = x + self.drop_path_layer(self.mhsa(x))
+        x = x + self.drop_path_layer(self.ffn(x))
+
+        x = x.view(*shape)
+
         return x

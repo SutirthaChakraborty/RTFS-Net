@@ -5,15 +5,16 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
-from thop import profile
+
+from time import time
 from torch.utils.data import DataLoader, Dataset
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
+from src.models import CTCNet
 from src.system.core import System
 from src.datas import AVSpeechDataset
-from src.models import CTCNet
 from src.videomodels import FRCNNVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
@@ -33,7 +34,7 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(100)
+    train_set = AVSpeechDataset(250)
     val_set = AVSpeechDataset(100)
 
     train_loader = DataLoader(
@@ -55,7 +56,6 @@ def build_dataloaders(conf):
 
 
 def main(conf, model=CTCNet, epochs=1):
-
     train_loader, val_loader = build_dataloaders(conf)
 
     # Define model and optimizer
@@ -130,10 +130,6 @@ def main(conf, model=CTCNet, epochs=1):
         sync_batchnorm=True,
     )
 
-    mouth = videomodel(torch.rand((1, 1, 50, 88, 88)))
-    macs = profile(audiomodel, inputs=(torch.rand(1, 32000), mouth), verbose=False)[0] / 1000000
-    print("Number of MACs: {:,.0f}M".format(macs))
-
     trainer.fit(system)
 
     # Save best_k models
@@ -149,10 +145,13 @@ def main(conf, model=CTCNet, epochs=1):
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
 
+    return audiomodel.macs
+
 
 if __name__ == "__main__":
+    t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_frcnn_context_com.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -166,4 +165,46 @@ if __name__ == "__main__":
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)
 
-    main(def_conf)
+    macs1 = main(def_conf)
+
+    t1 = time()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d.yml")
+    parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    parser.add_argument("--nodes", type=int, default=1, help="#node")
+
+    args = parser.parse_args()
+
+    with open(args.conf_dir) as f:
+        def_conf = yaml.safe_load(f)
+    if args.name is not None:
+        def_conf["log"]["exp_name"] = args.name
+
+    arg_dic = parse_args_as_dict(parser)
+    def_conf.update(arg_dic)
+
+    macs2 = main(def_conf)
+
+    t2 = time()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
+    # parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    # parser.add_argument("--nodes", type=int, default=1, help="#node")
+
+    # args = parser.parse_args()
+
+    # with open(args.conf_dir) as f:
+    #     def_conf = yaml.safe_load(f)
+    # if args.name is not None:
+    #     def_conf["log"]["exp_name"] = args.name
+
+    # arg_dic = parse_args_as_dict(parser)
+    # def_conf.update(arg_dic)
+
+    # macs3 = main(def_conf)
+
+    t3 = time()
+
+    print("TDANet: {:.2f} seconds, {} million MACs".format(t2 - t1, macs2))
+    print("TDANet2D: {:.2f} seconds, {} million MACs".format(t1 - t0, macs1))
+    # print("TDANet with Attention Context: {:.2f} seconds, {} million MACs".format(t3 - t2, macs3))

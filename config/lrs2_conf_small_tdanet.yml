@@ -8,31 +8,25 @@ audionet:
     n_src: 1
     pretrained_vout_chan: 512                  # output from pretrained model
 
-    gc3_params:
-      audio:
-        group_size: 1                          # 128/8=16, 512/16=32
-        context_size: 1                       # 128/32=4, 512/4=128 
-        num_layers: 1
-        bidirectional: True
-      video:    
-        group_size: 1                          # 128/8=16, 64/16=4
-        context_size: 1                       # 128/32=4, 64/4=16 
-        num_layers: 1
-        bidirectional: True
-
     video_bn_params:
-      video_bn_chan: 64
+      out_chan: 64
+      kernel_size: 3
+      padding: 1
 
     audio_bn_params:
-      norm_type: gLN
-      audio_bn_chan: 512
+      out_chan: 512
+      kernel_size: 1
 
     enc_dec_params:
+      encoder_type: ConvolutionalEncoder
+      decoder_type: ConvolutionalDecoder
       out_chan: 512
       kernel_size: 21
       stride: 10
       bias: False
       act_type: 
+      norm_type: gLN
+      layers: 1
       
     audio_params:
       audio_net: TDANet
@@ -48,17 +42,17 @@ audionet:
       n_head: 8
     
     video_params:
-        video_net: TDANet
+      video_net: TDANet
       # in_chan same as video_bn_chan
-        hid_chan: 64
-        upsampling_depth: 4
-        shared: True
-        repeats: 1
-        norm_type: BatchNorm1d
-        act_type: PReLU
-        kernel_size: 3
-        stride: 2
-        n_head: 8
+      hid_chan: 64
+      upsampling_depth: 4
+      shared: True
+      repeats: 1
+      norm_type: BatchNorm1d
+      act_type: PReLU
+      kernel_size: 3
+      stride: 2
+      n_head: 8
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -97,4 +91,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_23_02_23_gc3_refactor
+    exp_name: ctcnet_small_tdanet_08_03_2023

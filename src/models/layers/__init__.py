@@ -1,7 +1,8 @@
 from .cnn_layers import ConvNormAct
-from .rnn_layers import GC_RNN
+from .rnn_layers import GC_RNN, TAC
 from .frcnn import FRCNN
 from .tdanet import TDANet
+from .attention import GlobalAttention
 
 
 def get(identifier):
