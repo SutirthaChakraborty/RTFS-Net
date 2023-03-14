@@ -1,6 +1,9 @@
 # Video network config
 videonet:
     model_name: EncoderAE
+    in_channels: 1
+    base_channels: 4
+    num_layers: 3
     pretrain: ../experiments/autoencoder/default/best_model.pth
 audionet:
     n_src: 1
