@@ -10,6 +10,7 @@ from .shufflenetv2 import ShuffleNetV2
 from .resnet1D import ResNet1D, BasicBlock1D
 from .frcnn_videomodel import FRCNNVideoModel, update_frcnn_parameter
 from .wujian_videomodel import WujianVideoModel, update_wujian_parameter
+from .autoencoder_videomodel import AEVideoModel
 
 __all__ = [
     "WujianVideoModel",
@@ -20,6 +21,7 @@ __all__ = [
     "BasicBlock1D",
     "ShuffleNetV2",
     "FRCNNVideoModel",
+    "AEVideoModel",
     "update_frcnn_parameter",
 ]
 

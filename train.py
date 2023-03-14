@@ -22,7 +22,7 @@ from src.system.core import System
 from src.datas import AVSpeechDataset
 from src.models import CTCNet
 from src.videomodels import FRCNNVideoModel
-from autoencoder.models.autoencoder import EncoderAE
+from src.videomodels import AEVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
@@ -70,9 +70,8 @@ def main(conf):
     if conf["videonet"].get("model_name", "FRCNNVideoModel") == "FRCNNVideoModel":
         videomodel = FRCNNVideoModel(**conf["videonet"])
     elif conf["videonet"].get("model_name", "FRCNNVideoModel") == "EncoderAE":
-        videomodel = EncoderAE(1, 4, 3)
-        videomodel.load_state_dict(conf["videonet"]["pretrain"])
-        assert conf["audionet"]["pretrained_vout_chan"] == videomodel.out_chan
+        videomodel = AEVideoModel(**conf["videonet"])
+        assert conf["audionet"]["pretrained_vout_chan"] == videomodel.out_channels
 
     audiomodel = CTCNet(**conf["audionet"])
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
