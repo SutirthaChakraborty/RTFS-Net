@@ -73,6 +73,7 @@ class EncoderAE(nn.Module):
             cin = in_channels if i == 0 else cout // 2
             self.layers.append(EncoderBlock(cin, cout, 2, 2))
         self.layers = nn.Sequential(*self.layers)
+        self.out_chan = cout
 
     def forward(self, x):
         for l in self.layers:

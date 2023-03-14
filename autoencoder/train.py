@@ -19,13 +19,15 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from utils.datamodule import AVSpeechDataModule
 from models.autoencoder import AE
 
+ckpt_name = "epoch=199.ckpt"
+
 
 def main():
     # dataloader
     datamodule = AVSpeechDataModule(
-        "/home/likai/Autoencoder/code/LRS2/tr",
-        "/home/likai/Autoencoder/code/LRS2/cv",
-        "/home/likai/Autoencoder/code/LRS2/tt",
+        "../data-preprocess/LRS2/tr",
+        "../data-preprocess/LRS2/cv",
+        "../data-preprocess/LRS2/tt",
         segment=2,
         batch_size=40,
     )
@@ -37,7 +39,7 @@ def main():
     # Define callbacks
     print("Instantiating ModelCheckpoint")
     callbacks = []
-    checkpoint_dir = os.path.join("/home/likai/Autoencoder/exp")
+    checkpoint_dir = os.path.join("../../experiments/autoencoder", "default")
     checkpoint = ModelCheckpoint(
         checkpoint_dir,
         filename="{epoch}",
@@ -52,7 +54,7 @@ def main():
     callbacks.append(EarlyStopping(monitor="val/loss", patience=10, verbose=True))
 
     # Don't ask GPU if they are not available.
-    gpus = [0, 1, 2, 3, 4, 5, 6, 7]
+    gpus = [0, 1, 2, 3, 4, 5, 6]
     distributed_backend = "gpu" if torch.cuda.is_available() else None
 
     # default logger used by trainer
@@ -61,18 +63,17 @@ def main():
     trainer = pl.Trainer(
         max_epochs=200,
         callbacks=callbacks,
-        default_root_dir="/home/likai/Autoencoder/exp",
-        devices=[1],
+        default_root_dir=checkpoint_dir,
+        devices=gpus,
         accelerator=distributed_backend,
         strategy="ddp",
         limit_train_batches=1.0,  # Useful for fast experiment
         logger=comet_logger,
         # fast_dev_run=True,
     )
-    trainer.fit(system)
+    trainer.fit(system, ckpt_path=os.path.join(checkpoint_dir, ckpt_name))
     print("Finished Training")
 
-    # Save best_k models
     best_k = {k: v.item() for k, v in checkpoint.best_k_models.items()}
     with open(os.path.join(checkpoint_dir, "best_k_models.json"), "w") as f:
         json.dump(best_k, f, indent=0)
@@ -82,8 +83,7 @@ def main():
     system.load_state_dict(state_dict=state_dict["state_dict"])
     system.cpu()
 
-    to_save = system.encoder.serialize()
-    torch.save(to_save, os.path.join(checkpoint_dir, "best_model.pth"))
+    torch.save(system.encoder.state_dict(), os.path.join(checkpoint_dir, "best_model.pth"))
 
 
 if __name__ == "__main__":
