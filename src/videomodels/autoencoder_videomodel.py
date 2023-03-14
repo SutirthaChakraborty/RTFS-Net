@@ -4,7 +4,15 @@ from .autoencoder import EncoderAE
 
 
 class AEVideoModel(nn.Module):
-    def __init__(self, in_channels: int, base_channels: int, num_layers: int, pretrain: str = None):
+    def __init__(
+        self,
+        in_channels: int = 1,
+        base_channels: int = 4,
+        num_layers: int = 3,
+        pretrain: str = None,
+        *args,
+        **kwargs,
+    ):
         super(AEVideoModel, self).__init__()
         self.in_channels = in_channels
         self.base_channels = base_channels

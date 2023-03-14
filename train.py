@@ -66,14 +66,17 @@ def main(conf):
 
     train_loader, val_loader = build_dataloaders(conf)
 
+    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
+
     # Define model and optimizer
-    if conf["videonet"].get("model_name", "FRCNNVideoModel") == "FRCNNVideoModel":
+    if conf["videonet"]["model_name"] == "FRCNNVideoModel":
         videomodel = FRCNNVideoModel(**conf["videonet"])
-    elif conf["videonet"].get("model_name", "FRCNNVideoModel") == "EncoderAE":
+    elif conf["videonet"]["model_name"] == "EncoderAE":
         videomodel = AEVideoModel(**conf["videonet"])
         assert conf["audionet"]["pretrained_vout_chan"] == videomodel.out_channels
 
     audiomodel = CTCNet(**conf["audionet"])
+
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
     # Define scheduler
