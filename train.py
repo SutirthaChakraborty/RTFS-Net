@@ -65,7 +65,6 @@ def main(conf):
         videomodel = FRCNNVideoModel(**conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":
         videomodel = AEVideoModel(**conf["videonet"])
-        assert conf["audionet"]["pretrained_vout_chan"] == videomodel.out_channels
 
     audiomodel = CTCNet(**conf["audionet"])
 

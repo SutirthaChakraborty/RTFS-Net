@@ -53,10 +53,6 @@ class RefinementModule(nn.Module):
         T1 = audio.shape[-(len(audio.shape) // 2) :]
         T2 = video.shape[-(len(video.shape) // 2) :]
 
-        if len(T1) > len(T2):
-            video = video.unsqueeze(-1)
-            T2 = video.shape[-(len(video.shape) // 2) :]
-
         audio_residual = audio
         video_residual = video
 

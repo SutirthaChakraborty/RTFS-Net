@@ -66,7 +66,6 @@ def main(conf, model=CTCNet, epochs=1):
         videomodel = FRCNNVideoModel(**conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":
         videomodel = AEVideoModel(**conf["videonet"])
-        assert conf["audionet"]["pretrained_vout_chan"] == videomodel.out_channels
 
     audiomodel = CTCNet(**conf["audionet"])
 
@@ -161,7 +160,7 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d copy.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_ae.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 

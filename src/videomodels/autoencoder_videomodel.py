@@ -10,6 +10,7 @@ class AEVideoModel(nn.Module):
         base_channels: int = 4,
         num_layers: int = 3,
         pretrain: str = None,
+        is2d: bool = False,
         *args,
         **kwargs,
     ):
@@ -18,6 +19,7 @@ class AEVideoModel(nn.Module):
         self.base_channels = base_channels
         self.num_layers = num_layers
         self.pretrain = pretrain
+        self.is2d = is2d
 
         self.encoder = EncoderAE(
             in_channels=self.in_channels,
@@ -25,7 +27,8 @@ class AEVideoModel(nn.Module):
             num_layers=self.num_layers,
         )
 
-        self.out_channels = self.encoder.out_chan
+        self.out_channels = self.encoder.out_channels
+
         if self.pretrain:
             self.init_from(self.pretrain)
 
@@ -36,7 +39,13 @@ class AEVideoModel(nn.Module):
 
         z = self.encoder.forward(x)  # B*F, 1, H, W -> B*F, C, H', W'
 
-        z = z.view(batch, frames, -1)  # B*F, C, H', W' -> B, F, C*H'*W'
+        if self.is2d:
+            z = z.view(batch, frames, self.out_channels, -1)  # B*F, C, H', W' -> B, F, C, H'*W'
+            z = z.transpose(1, 3).contiguous()  # B, F, C, H'*W' ->  B, H'*W', C, F
+        else:
+
+            z = z.view(batch, frames, -1)  # B*F, C, H', W' -> B, F, C*H'*W'
+            z = z.transpose(1, 2).contiguous()  # B, F, C*H'*W' ->  B, C*H'*W', F
 
         return z
 

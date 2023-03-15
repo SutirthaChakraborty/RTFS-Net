@@ -7,7 +7,7 @@ videonet:
     pretrain: ../experiments/autoencoder/default/best_model.pth
 audionet:
     n_src: 1
-    pretrained_vout_chan: 512                  # output from pretrained model
+    pretrained_vout_chan: 1936                  # output from pretrained model
 
     video_bn_params:
       out_chan: 64
