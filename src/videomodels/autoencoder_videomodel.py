@@ -51,3 +51,6 @@ class AEVideoModel(nn.Module):
     def init_from(self, pretrain):
         self.encoder.load_state_dict(torch.load(pretrain, map_location="cpu"))
         self.encoder.eval()
+
+        for p in self.encoder.parameters():
+            p.requires_grad = False
