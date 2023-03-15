@@ -1,17 +1,17 @@
 # Video network config
 videonet:
-    backbone_type: resnet
-    relu_type: prelu
-    width_mult: 1.0
-    pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
+    model_name: EncoderAE
+    in_channels: 1
+    base_channels: 4
+    num_layers: 3
+    pretrain: ../experiments/autoencoder/default/best_model.pth
 audionet:
     n_src: 1
-    pretrained_vout_chan: 512                  # output from pretrained model
+    pretrained_vout_chan: 1936                  # output from pretrained model
 
     video_bn_params:
       out_chan: 64
-      kernel_size: 3
-      padding: 1
+      kernel_size: 1
 
     audio_bn_params:
       kernel_size: -1
@@ -21,7 +21,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 128
       hop_length: 64
-      out_chan: 32
+      out_chan: 64
       kernel_size: 3
       stride: 1
       bias: False
@@ -49,12 +49,12 @@ audionet:
       upsampling_depth: 4
       shared: True
       repeats: 1
-      norm_type: BatchNorm2d
+      norm_type: BatchNorm1d
       act_type: PReLU
       kernel_size: 3
       stride: 2
       n_head: 8
-      is2d: True
+      is2d: False
 
     fusion_params:
       fusion_type: ConcatFusion

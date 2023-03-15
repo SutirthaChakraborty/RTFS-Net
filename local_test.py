@@ -160,11 +160,12 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_ae.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d copy.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
     args = parser.parse_args()
+    cf_dir1 = str(args.conf_dir).split("/")[-1]
 
     with open(args.conf_dir) as f:
         def_conf = yaml.safe_load(f)
@@ -183,6 +184,7 @@ if __name__ == "__main__":
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
     args = parser.parse_args()
+    cf_dir2 = str(args.conf_dir).split("/")[-1]
 
     with open(args.conf_dir) as f:
         def_conf = yaml.safe_load(f)
@@ -214,6 +216,6 @@ if __name__ == "__main__":
 
     t3 = time()
 
-    print("TDANet: {:.2f} seconds, {} million MACs".format(t2 - t1, macs2))
-    print("TDANet2D: {:.2f} seconds, {} million MACs".format(t1 - t0, macs1))
+    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0, macs1))
+    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t2 - t1, macs2))
     # print("TDANet with Attention Context: {:.2f} seconds, {} million MACs".format(t3 - t2, macs3))

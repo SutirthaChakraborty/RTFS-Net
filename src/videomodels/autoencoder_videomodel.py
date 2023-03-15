@@ -41,9 +41,8 @@ class AEVideoModel(nn.Module):
 
         if self.is2d:
             z = z.view(batch, frames, self.out_channels, -1)  # B*F, C, H', W' -> B, F, C, H'*W'
-            z = z.transpose(1, 3).contiguous()  # B, F, C, H'*W' ->  B, H'*W', C, F
+            z = z.permute(0, 3, 1, 2).contiguous()  # B, F, C, H'*W' ->  B, H'*W', F, C
         else:
-
             z = z.view(batch, frames, -1)  # B*F, C, H', W' -> B, F, C*H'*W'
             z = z.transpose(1, 2).contiguous()  # B, F, C*H'*W' ->  B, C*H'*W', F
 

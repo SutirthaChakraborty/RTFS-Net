@@ -139,7 +139,10 @@ class CTCNet(BaseAVModel):
         seconds = 2
 
         audio_input = torch.rand(batch_size, seconds * 16000)
-        video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25)
+        if self.video_bn_params.get("is2d", False):
+            video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25, 16)
+        else:
+            video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25)
 
         encoded_audio = self.encoder(audio_input)
 
