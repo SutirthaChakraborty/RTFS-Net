@@ -15,6 +15,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from src.models import CTCNet
 from src.system.core import System
 from src.datas import AVSpeechDataset
+from src.videomodels import AEVideoModel
 from src.videomodels import FRCNNVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
@@ -58,9 +59,17 @@ def build_dataloaders(conf):
 def main(conf, model=CTCNet, epochs=1):
     train_loader, val_loader = build_dataloaders(conf)
 
+    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
+
     # Define model and optimizer
-    videomodel = FRCNNVideoModel(**conf["videonet"])
-    audiomodel = model(**conf["audionet"])
+    if conf["videonet"]["model_name"] == "FRCNNVideoModel":
+        videomodel = FRCNNVideoModel(**conf["videonet"])
+    elif conf["videonet"]["model_name"] == "EncoderAE":
+        videomodel = AEVideoModel(**conf["videonet"])
+        assert conf["audionet"]["pretrained_vout_chan"] == videomodel.out_channels
+
+    audiomodel = CTCNet(**conf["audionet"])
+
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
     # Define scheduler
@@ -81,6 +90,7 @@ def main(conf, model=CTCNet, epochs=1):
         "train": PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx"),
         "val": PITLossWrapper(pairwise_neg_sisdr, pit_from="pw_mtx"),
     }
+
     # define system
     system = System(
         audio_model=audiomodel,
@@ -111,7 +121,7 @@ def main(conf, model=CTCNet, epochs=1):
 
     # Don't ask GPU if they are not available.
     gpus = [0] if torch.cuda.is_available() else None
-    distributed_backend = "gpu" if torch.cuda.is_available() else None
+    distributed_backend = "cuda" if torch.cuda.is_available() else None
 
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])

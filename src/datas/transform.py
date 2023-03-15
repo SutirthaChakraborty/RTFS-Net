@@ -80,9 +80,7 @@ class Normalize(object):
         return frames
 
     def __repr__(self):
-        return self.__class__.__name__ + "(mean={0}, std={1})".format(
-            self.mean, self.std
-        )
+        return self.__class__.__name__ + "(mean={0}, std={1})".format(self.mean, self.std)
 
 
 class CenterCrop(object):
@@ -164,8 +162,6 @@ def get_preprocessing_pipelines():
             Normalize(mean, std),
         ]
     )
-    preprocessing["val"] = Compose(
-        [Normalize(0.0, 255.0), CenterCrop(crop_size), Normalize(mean, std)]
-    )
+    preprocessing["val"] = Compose([Normalize(0.0, 255.0), CenterCrop(crop_size), Normalize(mean, std)])
     preprocessing["test"] = preprocessing["val"]
     return preprocessing

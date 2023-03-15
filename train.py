@@ -1,10 +1,3 @@
-###
-# Author: Kai Li
-# Date: 2021-06-20 00:21:33
-# LastEditors: Kai Li
-# LastEditTime: 2021-09-09 23:12:28
-###
-
 import os
 import yaml
 import json
@@ -15,14 +8,13 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
+from src.models import CTCNet
 from src.system.core import System
 from src.datas import AVSpeechDataset
-from src.models import CTCNet
-from src.videomodels import FRCNNVideoModel
 from src.videomodels import AEVideoModel
+from src.videomodels import FRCNNVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
@@ -128,7 +120,7 @@ def main(conf):
 
     # Don't ask GPU if they are not available.
     gpus = conf["training"]["gpus"] if torch.cuda.is_available() else None
-    distributed_backend = "gpu" if torch.cuda.is_available() else None
+    distributed_backend = "cuda" if torch.cuda.is_available() else None
 
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
@@ -141,7 +133,6 @@ def main(conf):
         gpus=gpus,
         num_nodes=conf["main_args"]["nodes"],
         accelerator=distributed_backend,
-        strategy=DDPStrategy(),
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,

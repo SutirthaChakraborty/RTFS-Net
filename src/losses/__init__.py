@@ -15,7 +15,6 @@ from .matrix import multisrc_neg_sisdr
 from .matrix import multisrc_neg_sdsdr
 from .matrix import multisrc_neg_snr
 from .pit_wrapper import PITLossWrapper
-from .mixit import MixITLossWrapper
 from .matrix import PairwiseNegSDR
 from .matrix import SingleSrcNegSDR
 
