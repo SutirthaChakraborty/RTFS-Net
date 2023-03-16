@@ -52,7 +52,7 @@ class RNNProjection(nn.Module):
         hidden_size: int,
         rnn_type: str = "LSTM",
         dropout: float = 0,
-        bidirectional: bool = False,
+        bidirectional: bool = True,
         *args,
         **kwargs,
     ):
@@ -68,22 +68,35 @@ class RNNProjection(nn.Module):
             input_size=self.input_size,
             hidden_size=self.hidden_size,
             num_layers=1,
-            dropout=self.dropout,
             batch_first=True,
             bidirectional=bidirectional,
         )
-        self.proj = nn.Linear(self.hidden_size * self.num_direction, self.input_size)
+        self.proj = nn.Sequential(
+            nn.ReLU(),
+            nn.Dropout(self.dropout),
+            nn.Linear(self.hidden_size * self.num_direction, self.input_size),
+            nn.Dropout(self.dropout),
+        )
+        self.norm = nn.LayerNorm(self.input_size)
 
     def forward(self, x: torch.Tensor):
-        batch_size, num_group, _, seq_len = x.shape  # B, G, N, L
+        shape = x.shape
+        if len(shape) == 4:
+            batch_size, num_group, _, seq_len = shape  # B, G, N, L
+        else:
+            num_group = 1
+            batch_size, _, seq_len = shape  # B, N, L
 
-        x = x.transpose(2, 3).contiguous().view(batch_size * num_group, seq_len, -1)  # B*G, L, N
+        x = x.view(batch_size * num_group, -1, seq_len)  # B*G, N, L
+        x = x.transpose(1, 2).contiguous()  # B*G, L, N
         rnn_output = self.rnn(x)[0].contiguous()  # B*G, L, num_direction * H
-        rnn_output = rnn_output.view(-1, self.num_direction * self.hidden_size)  # B*G*L, num_direction * H
-        proj_output = self.proj(rnn_output)  # B*G*L, N
-        proj_output = proj_output.view(batch_size, num_group, seq_len, -1).transpose(2, 3).contiguous()  # B, G, N, L
+        x = self.norm(x + self.proj(rnn_output))  # B*G, L, N
+        x = x.transpose(1, 2).contiguous()  # B*G, N, L
 
-        return proj_output
+        if len(shape) == 4:
+            x = x.view(batch_size, num_group, -1, seq_len)  # B, G, N, L
+
+        return x
 
 
 class GC_RNN(nn.Module):

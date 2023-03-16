@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 from timm.models.layers import DropPath
 from .cnn_layers import ConvNormAct, FeedForwardNetwork
+from .rnn_layers import RNNProjection
 
 
 class PositionalEncoding(nn.Module):
@@ -162,25 +163,29 @@ class GlobalAttention2D(nn.Module):
             self.mhsa_height = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
             self.mhsa_width = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
 
-        self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout, is2d=True)
+        if self.kernel_size == -1:
+            self.ffn = RNNProjection(self.in_chan, self.hid_chan, dropout=dropout, bidirectional=True)
+        else:
+            self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout, is2d=True)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
 
         if self.n_head == -1:
-            output = self.mhsa(x)
-            x = x + self.drop_path_layer(output)
+            x = x + self.drop_path_layer(self.mhsa(x))
+            x = x + self.drop_path_layer(self.ffn(x))
         else:
             h_input = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
             h_output = self.mhsa_height.forward(h_input).view(B, W, C, H)
             h_output = h_output.permute(0, 2, 3, 1).contiguous()
+            x = x + self.drop_path_layer(h_output)
+            x = x + self.drop_path_layer(self.ffn(x))
 
-            w_input = h_output.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
+            w_input = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
             w_output = self.mhsa_width.forward(w_input).view(B, H, C, W)
             w_output = w_output.permute(0, 2, 1, 3).contiguous()
             x = x + self.drop_path_layer(w_output)
-
-        x = x + self.drop_path_layer(self.ffn(x))
+            x = x + self.drop_path_layer(self.ffn(x))
 
         return x
