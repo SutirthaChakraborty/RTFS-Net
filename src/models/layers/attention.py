@@ -53,7 +53,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.norm2 = nn.LayerNorm(self.in_chan)
 
     def forward(self, x: torch.Tensor):
-        x = x.transpose(1, 2)
+        x = x.transpose(1, 2)  # B, C, T -> B, T, C
 
         x = self.norm1(x)
         x = self.pos_enc(x)
@@ -62,7 +62,27 @@ class MultiHeadSelfAttention(nn.Module):
         x = self.dropout_layer(x) + residual
         x = self.norm2(x)
 
-        x = x.transpose(2, 1)
+        x = x.transpose(2, 1)  # B, T, C -> B, C, T
+        return x
+
+
+class ConvMod(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+
+        self.norm = nn.GroupNorm(1, dim, eps=1e-6)
+        self.a = nn.Sequential(nn.Conv2d(dim, dim, 1), nn.GELU(), nn.Conv2d(dim, dim, 11, padding=5, groups=dim))
+
+        self.v = nn.Conv2d(dim, dim, 1)
+        self.proj = nn.Conv2d(dim, dim, 1)
+
+    def forward(self, x: torch.Tensor):
+        B, C, H, W = x.shape
+        x = self.norm(x)
+        a = self.a(x)  # A=QK^T
+        x = a * self.v(x)
+        x = self.proj(x)
+
         return x
 
 
@@ -136,53 +156,31 @@ class GlobalAttention2D(nn.Module):
         self.dropout = dropout
         self.drop_path = drop_path
 
-        if self.n_head > 0:
-            self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        elif self.n_head == 0:
-            self.mhsa = ConvNormAct(
-                self.in_chan,
-                self.in_chan,
-                self.kernel_size,
-                groups=self.in_chan,
-                padding=((self.kernel_size - 1) // 2),
-                is2d=True,
-            )
+        if self.n_head == -1:
+            self.mhsa = ConvMod(self.in_chan)
         else:
-            self.mhsa = nn.Identity()
+            self.mhsa_height = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
+            self.mhsa_width = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
 
-        self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
+        self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout, is2d=True)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 
     def forward(self, x: torch.Tensor):
-        shape = x.shape
-        if len(shape) == 5:
-            x = x.view(shape[0] * shape[1], shape[2], shape[3] * shape[4])
+        B, C, H, W = x.size()
+
+        if self.n_head == -1:
+            output = self.mhsa(x)
+            x = x + self.drop_path_layer(output)
         else:
-            x = x.view(shape[0], shape[1], -1)
+            h_input = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
+            h_output = self.mhsa_height.forward(h_input).view(B, W, C, H)
+            h_output = h_output.permute(0, 2, 3, 1).contiguous()
 
-        x = x + self.drop_path_layer(self.mhsa(x))
+            w_input = h_output.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
+            w_output = self.mhsa_width.forward(w_input).view(B, H, C, W)
+            w_output = w_output.permute(0, 2, 1, 3).contiguous()
+            x = x + self.drop_path_layer(w_output)
+
         x = x + self.drop_path_layer(self.ffn(x))
-
-        x = x.view(*shape)
-
-        return x
-
-
-class ConvMod(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-
-        self.norm = nn.LayerNorm(dim, eps=1e-6)
-        self.a = nn.Sequential(nn.Conv2d(dim, dim, 1), nn.GELU(), nn.Conv2d(dim, dim, 11, padding=5, groups=dim))
-
-        self.v = nn.Conv2d(dim, dim, 1)
-        self.proj = nn.Conv2d(dim, dim, 1)
-
-    def forward(self, x):
-        B, C, H, W = x.shape
-        x = self.norm(x)
-        a = self.a(x)  # A=QK^T
-        x = a * self.v(x)
-        x = self.proj(x)
 
         return x

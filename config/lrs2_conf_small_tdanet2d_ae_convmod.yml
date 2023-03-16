@@ -41,7 +41,7 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
-      n_head: 8
+      n_head: -1
       is2d: True
     
     video_params:
@@ -55,7 +55,7 @@ audionet:
       act_type: PReLU
       kernel_size: 3
       stride: 2
-      n_head: 8
+      n_head: -1
       is2d: True
 
     fusion_params:

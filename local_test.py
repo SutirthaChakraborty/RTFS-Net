@@ -10,7 +10,6 @@ from time import time
 from torch.utils.data import DataLoader, Dataset
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
@@ -36,8 +35,8 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(250)
-    val_set = AVSpeechDataset(100)
+    train_set = AVSpeechDataset(500)
+    val_set = AVSpeechDataset(200)
 
     train_loader = DataLoader(
         train_set,
@@ -121,7 +120,7 @@ def main(conf, model=CTCNet, epochs=1):
 
     # Don't ask GPU if they are not available.
     gpus = [0] if torch.cuda.is_available() else None
-    distributed_backend = "gpu" if torch.cuda.is_available() else None
+    distributed_backend = "cuda" if torch.cuda.is_available() else None
 
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
@@ -134,7 +133,6 @@ def main(conf, model=CTCNet, epochs=1):
         gpus=gpus,
         num_nodes=conf["main_args"]["nodes"],
         accelerator=distributed_backend,
-        strategy=DDPStrategy(),
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,
@@ -162,7 +160,7 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_convmod.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -181,7 +179,7 @@ if __name__ == "__main__":
 
     t1 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
