@@ -115,9 +115,9 @@ class CTCNet(BaseAVModel):
         # context decoding
         refined_features = self.context_dec(refined_features, res, squeeze_rest)
 
-        separated_audio_embedding = self.mask_generator(refined_features, audio_mixture_embedding)  # B, C, T, (F) -> B, n_src*N, T, (F)
+        separated_audio_embedding = self.mask_generator(refined_features, audio_mixture_embedding)  # B, C, T, (F) -> B, n_src, N, T, (F)
 
-        separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)  # B, n_src*N, T, (F) -> B, n_src, L
+        separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)  # B, n_src, N, T, (F) -> B, n_src, L
 
         return separated_audio
 

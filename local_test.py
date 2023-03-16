@@ -35,8 +35,8 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(500)
-    val_set = AVSpeechDataset(200)
+    train_set = AVSpeechDataset(3000)
+    val_set = AVSpeechDataset(1000)
 
     train_loader = DataLoader(
         train_set,
@@ -160,7 +160,7 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_convmod.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
     t1 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
