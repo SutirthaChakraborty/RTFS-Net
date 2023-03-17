@@ -16,14 +16,16 @@ audionet:
       is2d: True
 
     audio_bn_params:
-      kernel_size: -1
+      out_chan: 64
+      kernel_size: 1
+      is2d: True
 
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
       win: 128
       hop_length: 64
-      out_chan: 64
+      out_chan: 256
       kernel_size: 3
       stride: 1
       bias: False
@@ -33,7 +35,7 @@ audionet:
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 64                       # TDANet hidden channels
+      hid_chan: 128                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
       repeats: 4
@@ -69,7 +71,7 @@ audionet:
       
 # Training config
 training:
-    gpus: [0,1,2,3,4,5,6]
+    gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
     batch_size: 4
     num_workers: 8

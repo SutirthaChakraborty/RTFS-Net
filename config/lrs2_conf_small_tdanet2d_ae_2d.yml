@@ -26,7 +26,7 @@ audionet:
       win: 128
       hop_length: 64
       out_chan: 256
-      kernel_size: 2
+      kernel_size: 3
       stride: 1
       bias: False
       act_type: 
@@ -71,7 +71,7 @@ audionet:
       
 # Training config
 training:
-    gpus: [0,1,2,3,4,5,6]
+    gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
     batch_size: 4
     num_workers: 8
@@ -99,4 +99,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_16_03_2023_ConvMod
+    exp_name: ctcnet_small_tdanet2d_16_03_2023_DFT
