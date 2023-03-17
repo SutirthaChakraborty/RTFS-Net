@@ -3,7 +3,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import normalizations, activations
+from .. import normalizations, activations
 
 
 class ConvNormAct(nn.Module):
