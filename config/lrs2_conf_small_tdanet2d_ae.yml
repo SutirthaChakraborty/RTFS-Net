@@ -12,7 +12,6 @@ audionet:
     video_bn_params:
       out_chan: 64
       kernel_size: 1
-      is2d: True
 
     audio_bn_params:
       out_chan: 64
