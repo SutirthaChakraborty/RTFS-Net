@@ -50,12 +50,12 @@ class CTCNet(BaseAVModel):
         self.enc_out_chan = self.encoder.out_chan
 
         self.audio_bn_chan = self.audio_bn_params.get("out_chan", self.enc_out_chan)
-        self.audio_bn_params.pop("out_chan", True)
+        self.audio_bn_params["out_chan"] = self.audio_bn_chan
         self.video_bn_chan = self.video_bn_params["out_chan"]
         self.audio_hid_chan = self.audio_params["hid_chan"]
         self.video_hid_chan = self.video_params["hid_chan"]
 
-        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan, out_chan=self.audio_bn_chan)
+        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan)
         self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
 
         self.audio_context_enc = ContextEncoder(

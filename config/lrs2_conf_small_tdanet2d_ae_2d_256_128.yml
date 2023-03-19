@@ -23,8 +23,8 @@ audionet:
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
-      win: 128
-      hop_length: 64
+      win: 256
+      hop_length: 128
       out_chan: 256
       kernel_size: 3
       stride: 1
@@ -43,7 +43,7 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
-      n_head: -1
+      n_head: 8
       is2d: True
     
     video_params:
@@ -57,7 +57,7 @@ audionet:
       act_type: PReLU
       kernel_size: 3
       stride: 2
-      n_head: -1
+      n_head: 8
       is2d: True
 
     fusion_params:
@@ -99,4 +99,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_16_03_2023_ConvMod
+    exp_name: ctcnet_small_tdanet2d_20_03_23_square
