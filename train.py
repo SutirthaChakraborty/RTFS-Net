@@ -148,7 +148,7 @@ def main(conf):
         json.dump(best_k, f, indent=0)
 
     # put on cpu and serialize
-    state_dict = torch.load(checkpoint.best_model_path)
+    state_dict = torch.load(checkpoint.best_model_path, map_location="cpu")
     system.load_state_dict(state_dict=state_dict["state_dict"])
     system.cpu()
 
