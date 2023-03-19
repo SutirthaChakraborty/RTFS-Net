@@ -6,7 +6,7 @@
 ###
 
 from .separator import Separator, separate
-from .torch_utils import pad_x_to_y, shape_reconstructed, tensors_to_device
+from .torch_utils import pad_x_to_y, shape_reconstructed, tensors_to_device, get_free_gpu_indices
 from .parser_utils import prepare_parser_from_dict, parse_args_as_dict, str_int_float, str2bool_arg, str2bool, isfloat, isint
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "separate",
     "pad_x_to_y",
     "shape_reconstructed",
+    "get_free_gpu_indices",
     "tensors_to_device",
     "prepare_parser_from_dict",
     "parse_args_as_dict",
