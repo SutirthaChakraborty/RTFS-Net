@@ -7,18 +7,14 @@
 
 from .resnet import ResNet, BasicBlock
 from .shufflenetv2 import ShuffleNetV2
-from .resnet1D import ResNet1D, BasicBlock1D
+from .autoencoder_videomodel import AEVideoModel
 from .frcnn_videomodel import FRCNNVideoModel, update_frcnn_parameter
-from .wujian_videomodel import WujianVideoModel, update_wujian_parameter
 
 __all__ = [
-    "WujianVideoModel",
-    "update_wujian_parameter",
     "ResNet",
     "BasicBlock",
-    "ResNet1D",
-    "BasicBlock1D",
     "ShuffleNetV2",
+    "AEVideoModel",
     "FRCNNVideoModel",
     "update_frcnn_parameter",
 ]

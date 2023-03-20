@@ -1,6 +1,5 @@
-from .cnn_layers import ConvNormAct, ConvolutionalRNN, FeedForwardNetwork
-from .rnn_layers import TAC, RNNProjection
-from .attention import GlobalAttention, GlobalAttention2D
+from .frcnn import FRCNN
+from .tdanet import TDANet
 
 
 def get(identifier):

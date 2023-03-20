@@ -15,6 +15,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from src.models import CTCNet
 from src.system.core import System
 from src.datas import AVSpeechDataset
+from src.videomodels import AEVideoModel
 from src.videomodels import FRCNNVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
@@ -34,8 +35,8 @@ class AVSpeechDataset(Dataset):
 
 
 def build_dataloaders(conf):
-    train_set = AVSpeechDataset(250)
-    val_set = AVSpeechDataset(100)
+    train_set = AVSpeechDataset(3000)
+    val_set = AVSpeechDataset(1000)
 
     train_loader = DataLoader(
         train_set,
@@ -58,9 +59,16 @@ def build_dataloaders(conf):
 def main(conf, model=CTCNet, epochs=1):
     train_loader, val_loader = build_dataloaders(conf)
 
+    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
+
     # Define model and optimizer
-    videomodel = FRCNNVideoModel(**conf["videonet"])
-    audiomodel = model(**conf["audionet"])
+    if conf["videonet"]["model_name"] == "FRCNNVideoModel":
+        videomodel = FRCNNVideoModel(**conf["videonet"])
+    elif conf["videonet"]["model_name"] == "EncoderAE":
+        videomodel = AEVideoModel(**conf["videonet"])
+
+    audiomodel = CTCNet(**conf["audionet"])
+
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
     # Define scheduler
@@ -81,6 +89,7 @@ def main(conf, model=CTCNet, epochs=1):
         "train": PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx"),
         "val": PITLossWrapper(pairwise_neg_sisdr, pit_from="pw_mtx"),
     }
+
     # define system
     system = System(
         audio_model=audiomodel,
@@ -111,7 +120,7 @@ def main(conf, model=CTCNet, epochs=1):
 
     # Don't ask GPU if they are not available.
     gpus = [0] if torch.cuda.is_available() else None
-    distributed_backend = "gpu" if torch.cuda.is_available() else None
+    distributed_backend = "cuda" if torch.cuda.is_available() else None
 
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
@@ -151,11 +160,12 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
     args = parser.parse_args()
+    cf_dir1 = str(args.conf_dir).split("/")[-1]
 
     with open(args.conf_dir) as f:
         def_conf = yaml.safe_load(f)
@@ -169,11 +179,12 @@ if __name__ == "__main__":
 
     t1 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae copy.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
     args = parser.parse_args()
+    cf_dir2 = str(args.conf_dir).split("/")[-1]
 
     with open(args.conf_dir) as f:
         def_conf = yaml.safe_load(f)
@@ -205,6 +216,6 @@ if __name__ == "__main__":
 
     t3 = time()
 
-    print("TDANet: {:.2f} seconds, {} million MACs".format(t2 - t1, macs2))
-    print("TDANet2D: {:.2f} seconds, {} million MACs".format(t1 - t0, macs1))
+    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0, macs1))
+    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t2 - t1, macs2))
     # print("TDANet with Attention Context: {:.2f} seconds, {} million MACs".format(t3 - t2, macs3))

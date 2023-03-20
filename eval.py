@@ -12,13 +12,13 @@ import warnings
 
 from tqdm import tqdm
 
-from src.utils import tensors_to_device
-from src.metrics import ALLMetricsTracker
-from src.videomodels import FRCNNVideoModel
 from src.models import CTCNet
+from src.utils import tensors_to_device, get_free_gpu_indices
+from src.metrics import ALLMetricsTracker
 from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
+from src.videomodels import FRCNNVideoModel, AEVideoModel
 
 
 warnings.filterwarnings("ignore")
@@ -29,13 +29,26 @@ def main(conf):
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
     audiomodel: torch.nn.Module = CTCNet.from_pretrain(model_path, **conf["audionet"])
-    videomodel = FRCNNVideoModel(**conf["videonet"])
+    if conf["videonet"]["model_name"] == "FRCNNVideoModel":
+        videomodel = FRCNNVideoModel(**conf["videonet"])
+    elif conf["videonet"]["model_name"] == "EncoderAE":
+        videomodel = AEVideoModel(**conf["videonet"])
 
     # Handle device placement
     audiomodel.eval()
     videomodel.eval()
-    audiomodel.cuda()
-    videomodel.cuda()
+
+    device = get_free_gpu_indices()
+    if len(device):
+        device = device[0]
+        audiomodel.cuda(device)
+        videomodel.cuda(device)
+    else:
+        print("No free gpus available, using CPU")
+        device = device[0]
+        audiomodel.cpu()
+        videomodel.cpu()
+
     model_device = next(audiomodel.parameters()).device
 
     test_set = AVSpeechDataset(

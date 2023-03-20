@@ -1,10 +1,3 @@
-###
-# Author: Kai Li
-# Date: 2021-06-20 00:21:33
-# LastEditors: Kai Li
-# LastEditTime: 2021-09-09 23:12:28
-###
-
 import os
 import yaml
 import json
@@ -18,9 +11,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
+from src.models import CTCNet
 from src.system.core import System
 from src.datas import AVSpeechDataset
-from src.models import CTCNet
+from src.videomodels import AEVideoModel
 from src.videomodels import FRCNNVideoModel
 from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
@@ -65,9 +59,16 @@ def main(conf):
 
     train_loader, val_loader = build_dataloaders(conf)
 
+    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
+
     # Define model and optimizer
-    videomodel = FRCNNVideoModel(**conf["videonet"])
+    if conf["videonet"]["model_name"] == "FRCNNVideoModel":
+        videomodel = FRCNNVideoModel(**conf["videonet"])
+    elif conf["videonet"]["model_name"] == "EncoderAE":
+        videomodel = AEVideoModel(**conf["videonet"])
+
     audiomodel = CTCNet(**conf["audionet"])
+
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
     # Define scheduler
@@ -147,7 +148,7 @@ def main(conf):
         json.dump(best_k, f, indent=0)
 
     # put on cpu and serialize
-    state_dict = torch.load(checkpoint.best_model_path)
+    state_dict = torch.load(checkpoint.best_model_path, map_location="cpu")
     system.load_state_dict(state_dict=state_dict["state_dict"])
     system.cpu()
 

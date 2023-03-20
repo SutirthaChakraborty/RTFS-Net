@@ -16,6 +16,24 @@ class FusionBasemodule(nn.Module):
     def forward(self, audio, video):
         raise NotImplementedError
 
+    def wrangle_dims(self, audio: torch.Tensor, video: torch.Tensor):
+        T1 = audio.shape[-(len(audio.shape) // 2) :]
+        T2 = video.shape[-(len(video.shape) // 2) :]
+
+        self.x = len(T1) > len(T2)
+        self.y = len(T2) > len(T1)
+
+        video = video.unsqueeze(-1) if self.x else video
+        audio = audio.unsqueeze(-1) if self.y else audio
+
+        return audio, video
+
+    def unwrangle_dims(self, audio: torch.Tensor, video: torch.Tensor):
+        video = video.squeeze(-1) if self.x else video
+        audio = audio.squeeze(-1) if self.y else audio
+
+        return audio, video
+
 
 class ConcatFusion(FusionBasemodule):
     def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False):
@@ -25,6 +43,7 @@ class ConcatFusion(FusionBasemodule):
         self.video_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
+        audio, video = self.wrangle_dims(audio, video)
 
         video_interp = F.interpolate(video, size=audio.shape[-(len(audio.shape) // 2) :], mode="nearest")
         audio_video_concat = torch.cat([audio, video_interp], dim=1)
@@ -33,6 +52,8 @@ class ConcatFusion(FusionBasemodule):
         audio_interp = F.interpolate(audio, size=video.shape[-(len(video.shape) // 2) :], mode="nearest")
         video_audio_concat = torch.cat([audio_interp, video], dim=1)
         video_fused = self.video_conv(video_audio_concat)
+
+        audio_fused, video_fused = self.unwrangle_dims(audio_fused, video_fused)
 
         return audio_fused, video_fused
 
@@ -45,12 +66,15 @@ class SumFusion(FusionBasemodule):
         self.audio_conv = ConvNormAct(self.ain_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
+        audio, video = self.wrangle_dims(audio, video)
 
         audio_interp = F.interpolate(audio, size=video.shape[-(len(video.shape) // 2) :], mode="nearest")
         video_fused = self.audio_conv(audio_interp) + video
 
         video_interp = F.interpolate(video, size=audio.shape[-(len(audio.shape) // 2) :], mode="nearest")
         audio_fused = self.video_conv(video_interp) + audio
+
+        audio_fused, video_fused = self.unwrangle_dims(audio_fused, video_fused)
 
         return audio_fused, video_fused
 

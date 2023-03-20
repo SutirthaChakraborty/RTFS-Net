@@ -8,9 +8,6 @@ class BaseDecoder(nn.Module):
         output_frames = separated_audio.shape[-1]
         return nn.functional.pad(separated_audio, [0, input_frames - output_frames])
 
-    def reconstruct_to_original_dimensions(self, separated_audio, input_shape):
-        return separated_audio.squeeze(0) if len(input_shape) == 1 else separated_audio
-
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -42,7 +39,7 @@ class ConvolutionalDecoder(BaseDecoder):
 
         self.decoder = nn.ConvTranspose1d(
             in_channels=self.in_chan,
-            out_channels=self.n_src,
+            out_channels=1,
             kernel_size=self.kernel_size,
             stride=self.stride,
             padding=self.padding,
@@ -52,10 +49,15 @@ class ConvolutionalDecoder(BaseDecoder):
 
         torch.nn.init.xavier_uniform_(self.decoder.weight)
 
-    def forward(self, separated_audio_embedding, input_shape):
-        separated_audio = self.decoder(separated_audio_embedding)
-        separated_audio = self.pad_to_input_length(separated_audio, input_shape[-1])
-        separated_audio = self.reconstruct_to_original_dimensions(separated_audio, input_shape)
+    def forward(self, separated_audio_embedding: torch.Tensor, input_shape: torch.Size):
+        # B, n_src, N, T
+        batch_size, length = input_shape[0], input_shape[-1]
+
+        separated_audio_embedding = separated_audio_embedding.view(batch_size * self.n_src, self.in_chan, -1)
+
+        separated_audio = self.decoder(separated_audio_embedding)  # B * n_src, N, T -> B*n_src, 1, L
+        separated_audio = self.pad_to_input_length(separated_audio, length)
+        separated_audio = separated_audio.view(batch_size, self.n_src, -1)
 
         return separated_audio
 
@@ -96,7 +98,7 @@ class STFTDecoder(BaseDecoder):
 
         self.decoder = nn.ConvTranspose2d(
             in_channels=in_chan,
-            out_channels=2 * self.n_src,
+            out_channels=2,
             kernel_size=self.kernel_size,
             stride=self.stride,
             padding=self.padding,
@@ -107,15 +109,13 @@ class STFTDecoder(BaseDecoder):
         self.window = torch.hann_window(self.win)
 
     def forward(self, x: torch.Tensor, input_shape: torch.Size):
-        # B, n_src*N, T, F
+        # B, n_src, N, T, F
 
         batch_size, length = input_shape[0], input_shape[-1]
 
-        decoded_separated_audio = self.decoder(x)  # B, n_src * 2, T, F
+        x = x.view(batch_size * self.n_src, self.in_chan, *x.shape[-2:])  # B, n_src, N, T, F -> # B * n_src, N, T, F
+        decoded_separated_audio = self.decoder(x)  # B * n_src, N, T, F - > B * n_src, 2, T, F
 
-        _, _, n_frame, fft_size = decoded_separated_audio.shape
-
-        decoded_separated_audio = decoded_separated_audio.view(-1, 2, n_frame, fft_size)  # B* n_src, 2, T, F
         spec = torch.complex(decoded_separated_audio[:, 0], decoded_separated_audio[:, 1])  # B*n_src, T, F
         spec = torch.stack([spec.real, spec.imag], dim=-1)  # B*n_src, T, F
         spec = spec.transpose(1, 2).contiguous()  # B*n_src, F, T

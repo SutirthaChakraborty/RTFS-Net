@@ -1,7 +1,71 @@
 import torch
 import torch.nn as nn
 from ..utils import split_feature, merge_feature
-from ..layers import GC_RNN
+from ..layers import TAC, GlobalAttention, ConvolutionalRNN, RNNProjection
+
+
+class GC_RNN(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, gc3_params: dict):
+        super(GC_RNN, self).__init__()
+
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.rnn_type = gc3_params.get("rnn_type", "LSTM")
+        self.group_size = gc3_params.get("group_size", 1)
+        self.num_layers = gc3_params.get("num_layers", 2)
+        self.tac_multiplier = gc3_params.get("tac_multiplier", 2)
+
+        self.TAC = nn.ModuleList([])
+        self.rnn = nn.ModuleList([])
+        self.LN = nn.ModuleList([])
+
+        for _ in range(self.num_layers):
+            self.TAC.append(
+                TAC(
+                    input_size=self.input_size // self.group_size,
+                    hidden_size=self.hidden_size * self.tac_multiplier // self.group_size,
+                )
+            )
+            if self.rnn_type == "GlobalAttention":
+                self.rnn.append(
+                    GlobalAttention(
+                        in_chan=self.input_size // self.group_size,
+                        hid_chan=self.hidden_size // self.group_size,
+                        **gc3_params,
+                    )
+                )
+            elif self.rnn_type == "ConvolutionalRNN":
+                self.rnn.append(
+                    ConvolutionalRNN(
+                        in_chan=self.input_size // self.group_size,
+                        hid_chan=self.hidden_size // self.group_size,
+                        **gc3_params,
+                    )
+                )
+            else:
+                self.rnn.append(
+                    RNNProjection(
+                        input_size=self.input_size // self.group_size,
+                        hidden_size=self.hidden_size // self.group_size,
+                        **gc3_params,
+                    )
+                )
+            self.LN.append(nn.GroupNorm(num_groups=1, num_channels=self.input_size // self.group_size))
+
+    def forward(self, x: torch.Tensor):
+        batch_size, dim, seq_len = x.shape
+        x = x.view(batch_size, self.group_size, -1, seq_len)
+
+        for i in range(self.num_layers):
+            x = self.TAC[i](x)
+            res = x
+            x = self.rnn[i](x)
+            x = self.LN[i](x.view(batch_size * self.group_size, -1, seq_len)).view(batch_size, self.group_size, -1, seq_len)
+            x = res + x
+
+        x = x.view(batch_size, dim, seq_len)
+
+        return x
 
 
 class ContextEncoder(nn.Module):

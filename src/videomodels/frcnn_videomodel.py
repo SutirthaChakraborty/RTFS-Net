@@ -18,6 +18,8 @@ class FRCNNVideoModel(nn.Module):
         relu_type="prelu",
         width_mult=1.0,
         pretrain=None,
+        *args,
+        **kwargs,
     ):
         super(FRCNNVideoModel, self).__init__()
         self.backbone_type = backbone_type

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from .fusion import MultiModalFusion
-from .. import layers
+from .. import separators
 
 
 class RefinementModule(nn.Module):
@@ -27,13 +27,13 @@ class RefinementModule(nn.Module):
         self.fusion_repeats = self.video_params["repeats"]
         self.audio_repeats = self.audio_params["repeats"] - self.fusion_repeats
 
-        self.video_net = layers.get(self.video_params["video_net"])(
+        self.video_net = separators.get(self.video_params["video_net"])(
             **self.video_params,
             in_chan=self.video_bn_chan,
             group_size=self.gc3_params.get("video", dict()).get("group_size", 1),
             tac_multiplier=self.gc3_params.get("video", dict()).get("tac_multiplier", 2),
         )
-        self.audio_net = layers.get(self.audio_params["audio_net"])(
+        self.audio_net = separators.get(self.audio_params["audio_net"])(
             **self.audio_params,
             in_chan=self.audio_bn_chan,
             group_size=self.gc3_params.get("audio", dict()).get("group_size", 1),
@@ -52,10 +52,6 @@ class RefinementModule(nn.Module):
         batch_size = audio.shape[0]
         T1 = audio.shape[-(len(audio.shape) // 2) :]
         T2 = video.shape[-(len(video.shape) // 2) :]
-
-        if len(T1) > len(T2):
-            video = video.unsqueeze(-1)
-            T2 = video.shape[-(len(video.shape) // 2) :]
 
         audio_residual = audio
         video_residual = video

@@ -50,12 +50,12 @@ class CTCNet(BaseAVModel):
         self.enc_out_chan = self.encoder.out_chan
 
         self.audio_bn_chan = self.audio_bn_params.get("out_chan", self.enc_out_chan)
-        self.audio_bn_params.pop("out_chan", True)
+        self.audio_bn_params["out_chan"] = self.audio_bn_chan
         self.video_bn_chan = self.video_bn_params["out_chan"]
         self.audio_hid_chan = self.audio_params["hid_chan"]
         self.video_hid_chan = self.video_params["hid_chan"]
 
-        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan, out_chan=self.audio_bn_chan)
+        self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan)
         self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
 
         self.audio_context_enc = ContextEncoder(
@@ -115,9 +115,9 @@ class CTCNet(BaseAVModel):
         # context decoding
         refined_features = self.context_dec(refined_features, res, squeeze_rest)
 
-        separated_audio_embedding = self.mask_generator(refined_features, audio_mixture_embedding)  # B, C, T, (F) -> B, n_src*N, T, (F)
+        separated_audio_embedding = self.mask_generator(refined_features, audio_mixture_embedding)  # B, C, T, (F) -> B, n_src, N, T, (F)
 
-        separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)  # B, n_src*N, T, (F) -> B, n_src, L
+        separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)  # B, n_src, N, T, (F) -> B, n_src, L
 
         return separated_audio
 
@@ -139,7 +139,10 @@ class CTCNet(BaseAVModel):
         seconds = 2
 
         audio_input = torch.rand(batch_size, seconds * 16000)
-        video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25)
+        if self.video_bn_params.get("is2d", False):
+            video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25, 16)
+        else:
+            video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25)
 
         encoded_audio = self.encoder(audio_input)
 

@@ -3,7 +3,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from . import normalizations, activations
+from .. import normalizations, activations
 
 
 class ConvNormAct(nn.Module):
@@ -84,6 +84,7 @@ class FeedForwardNetwork(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "ReLU",
         dropout: float = 0,
+        is2d: bool = False,
     ):
         super(FeedForwardNetwork, self).__init__()
         self.in_chan = in_chan
@@ -92,8 +93,9 @@ class FeedForwardNetwork(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.dropout = dropout
+        self.is2d = is2d
 
-        self.encoder = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False)  # FC 1
+        self.encoder = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False, is2d=self.is2d)  # FC 1
         self.refiner = ConvNormAct(
             self.hid_chan,
             self.hid_chan,
@@ -101,8 +103,9 @@ class FeedForwardNetwork(nn.Module):
             groups=self.hid_chan,
             padding=((self.kernel_size - 1) // 2),
             act_type=self.act_type,
+            is2d=self.is2d,
         )  # DW seperable conv
-        self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
+        self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False, is2d=self.is2d)  # FC 2
         self.dropout_layer = nn.Dropout(self.dropout)
 
     def forward(self, x: torch.Tensor):
