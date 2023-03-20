@@ -14,9 +14,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
-from src.system import System, make_optimizer
+from src.system.core import System
 from src.datas import AVSpeechDataset
 from src.videomodels import AEVideoModel, FRCNNVideoModel
+from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
@@ -66,7 +67,7 @@ def main(conf, model=CTCNet, epochs=1):
     elif conf["videonet"]["model_name"] == "EncoderAE":
         videomodel = AEVideoModel(**conf["videonet"])
 
-    audiomodel = model(**conf["audionet"])
+    audiomodel = CTCNet(**conf["audionet"])
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 

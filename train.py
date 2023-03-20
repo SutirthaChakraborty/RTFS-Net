@@ -162,7 +162,7 @@ if __name__ == "__main__":
     # By default train.py will use all available GPUs. The `id` option in run.sh
     # will limit the number of available GPUs for train.py .
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_config_new_frcnn.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
     parser.add_argument("--checkpoint", type=str, default=None, help="path to checkpoint if training crashes")
