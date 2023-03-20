@@ -102,6 +102,9 @@ def main(conf, model=CTCNet, epochs=1):
         config=conf,
     )
 
+    # if torch.__version__.startswith("2"):
+    #     system = torch.compile(system, mode="reduce-overhead")
+
     # Define callbacks
     callbacks = []
     checkpoint_dir = os.path.join(exp_dir, "checkpoints/")
@@ -120,7 +123,7 @@ def main(conf, model=CTCNet, epochs=1):
 
     # Don't ask GPU if they are not available.
     gpus = [0] if torch.cuda.is_available() else None
-    distributed_backend = "cuda" if torch.cuda.is_available() else None
+    distributed_backend = "gpu" if torch.cuda.is_available() else None
 
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
@@ -130,7 +133,7 @@ def main(conf, model=CTCNet, epochs=1):
         max_epochs=epochs,
         callbacks=callbacks,
         default_root_dir=exp_dir,
-        gpus=gpus,
+        devices=gpus,
         num_nodes=conf["main_args"]["nodes"],
         accelerator=distributed_backend,
         limit_train_batches=1.0,
@@ -179,7 +182,7 @@ if __name__ == "__main__":
 
     t1 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae copy.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_2d.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 

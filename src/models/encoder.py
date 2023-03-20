@@ -152,7 +152,7 @@ class STFTEncoder(BaseEncoder):
         self.act_type = act_type
         self.norm_type = norm_type
 
-        self.window = torch.hann_window(self.win)
+        self.register_buffer("window", torch.hann_window(self.win), False)
         self.conv = ConvNormAct(
             in_chan=2,
             out_chan=self.out_chan,
@@ -173,7 +173,7 @@ class STFTEncoder(BaseEncoder):
             x,
             n_fft=self.win,
             hop_length=self.hop_length,
-            window=self.window.to(x.device).type(x.type()),
+            window=self.window,
             return_complex=True,
         )
 
