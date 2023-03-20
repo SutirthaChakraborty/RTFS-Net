@@ -4,7 +4,9 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
+from numpy import floor, ceil
 from .layers import ConvNormAct
+from . import normalizations
 
 
 class BaseEncoder(nn.Module):
@@ -152,7 +154,6 @@ class STFTEncoder(BaseEncoder):
         self.act_type = act_type
         self.norm_type = norm_type
 
-        self.register_buffer("window", torch.hann_window(self.win), False)
         self.conv = ConvNormAct(
             in_chan=2,
             out_chan=self.out_chan,
@@ -165,6 +166,8 @@ class STFTEncoder(BaseEncoder):
             bias=self.bias,
             is2d=True,
         )
+
+        self.register_buffer("window", torch.hann_window(self.win), False)
 
     def forward(self, x: torch.Tensor):
         x = self.unsqueeze_to_2D(x)
@@ -205,3 +208,115 @@ def get(identifier):
         return cls
     else:
         raise ValueError("Could not interpret normalization identifier: " + str(identifier))
+
+
+class BSRNNEncoder(BaseEncoder):
+    def __init__(
+        self,
+        win: int,
+        hop_length: int,
+        out_chan: int,
+        norm_type: str = "gLN",
+        sample_rate: int = 16000,
+        context: int = 0,
+        *args,
+        **kwargs,
+    ):
+        super(BSRNNEncoder, self).__init__(0, 0, 0)
+
+        self.win = win
+        self.hop_length = hop_length
+        self.out_chan = out_chan
+        self.norm_type = norm_type
+        self.sample_rate = sample_rate
+        self.context = context
+
+        self.register_buffer("window", torch.hann_window(self.win), False)
+
+        bandwidth_100 = int(floor(100 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
+        multiplier = int(ceil(10 / 44100 * self.sr))
+        self.band_width = [bandwidth_100] * multiplier
+
+        bandwidth_250 = int(floor(250 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
+        multiplier = int(ceil(12 / 44100 * self.sr))
+        if sum(self.band_width + [bandwidth_250] * multiplier) < (self.win // 2 + 1):
+            self.band_width += [bandwidth_250] * multiplier
+
+        bandwidth_500 = int(floor(500 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
+        multiplier = int(ceil(8 / 44100 * self.sr))
+        if sum(self.band_width + [bandwidth_500] * multiplier) < (self.win // 2 + 1):
+            self.band_width += [bandwidth_500] * multiplier
+
+        if self.sample_rate > 8000:
+            bandwidth_1k = int(floor(1000 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
+            multiplier = int(ceil(8 / 44100 * self.sr))
+            if sum(self.band_width + [bandwidth_1k] * multiplier) < (self.win // 2 + 1):
+                self.band_width += [bandwidth_1k] * multiplier
+
+        if self.sample_rate > 16000:
+            bandwidth_2k = int(floor(2000 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
+            multiplier = int(ceil(2 / 44100 * self.sr))
+            if sum(self.band_width + [bandwidth_2k] * multiplier) < (self.win // 2 + 1):
+                self.band_width += [bandwidth_2k] * multiplier
+
+        self.band_width.append((self.win // 2 + 1) - sum(self.band_width))
+        self.nband = len(self.band_width)
+
+        assert self.band_width[-1] > 0, f"{(self.win // 2 + 1)}, {sum(self.band_width)}"
+
+        self.BN = nn.ModuleList([])
+        for i in range(self.nband):
+            self.BN.append(nn.Sequential(normalizations.get(self.norm_type), ConvNormAct(self.band_width[i] * 2, self.out_chan, 1)))
+
+    def forward(self, x: torch.Tensor):
+        x = self.unsqueeze_to_2D(x)
+        batch_size, nsample = x.size()
+
+        spec = torch.stft(
+            x,
+            n_fft=self.win,
+            hop_length=self.hop_length,
+            window=self.window,
+            return_complex=True,
+        )
+
+        # get a context
+        prev_context = []
+        post_context = []
+        zero_pad = torch.zeros_like(spec)
+        for i in range(self.context):
+            this_prev_context = torch.cat([zero_pad[:, : i + 1], spec[:, : -1 - i]], 1)
+            this_post_context = torch.cat([spec[:, i + 1 :], zero_pad[:, : i + 1]], 1)
+            prev_context.append(this_prev_context)
+            post_context.append(this_post_context)
+        mixture_context = torch.stack(prev_context + [spec] + post_context, 1)  # B, Context, F, T
+
+        # concat real and imag, split to subbands
+        spec_RI = torch.stack([spec.real, spec.imag], 1)  # B, 2, F, T
+        subband_spec = []
+        subband_spec_context = []
+        subband_power = []
+        band_idx = 0
+        for i in range(len(self.band_width)):
+            subband_spec.append(spec_RI[:, :, band_idx : band_idx + self.band_width[i]].contiguous())
+            subband_spec_context.append(mixture_context[:, :, band_idx : band_idx + self.band_width[i]])  # B, Context, BW, T
+            subband_power.append((subband_spec_context[-1].abs().pow(2).mean(1).mean(1) + self.eps).sqrt())  # B, T
+            band_idx += self.band_width[i]
+
+        # normalization and bottleneck
+        subband_feature = []
+        for i in range(len(self.band_width)):
+            subband_feature.append(self.BN[i](subband_spec[i].view(batch_size, self.band_width[i] * 2, -1)))
+        subband_feature = torch.stack(subband_feature, 1)  # B, nband, N, T
+
+        subband_feature = subband_feature.view(batch_size, self.band_width * self.out_chan, -1)
+
+    def get_config(self):
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
