@@ -25,11 +25,11 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
 
-from pytorch_lightning.core.lightning import LightningModule
+from pytorch_lightning import LightningModule
 from pytorch_lightning.core.saving import save_hparams_to_yaml
-from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
+from pytorch_lightning.loggers.logger import Logger, rank_zero_experiment
 from pytorch_lightning.utilities import _OMEGACONF_AVAILABLE, rank_zero_only, rank_zero_warn
-from pytorch_lightning.utilities.cloud_io import get_filesystem
+from lightning_fabric.utilities.cloud_io import get_filesystem
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ if _OMEGACONF_AVAILABLE:
     from omegaconf import Container, OmegaConf
 
 
-class TensorBoardLogger(LightningLoggerBase):
+class TensorBoardLogger(Logger):
     r"""
     Log to local file system in `TensorBoard <https://www.tensorflow.org/tensorboard>`_ format.
 
@@ -72,8 +72,8 @@ class TensorBoardLogger(LightningLoggerBase):
             :class:`SummaryWriter` can be passed as keyword arguments in this logger.
 
     """
-    NAME_HPARAMS_FILE = 'hparams.yaml'
-    LOGGER_JOIN_CHAR = '-'
+    NAME_HPARAMS_FILE = "hparams.yaml"
+    LOGGER_JOIN_CHAR = "-"
 
     def __init__(
         self,
@@ -82,12 +82,12 @@ class TensorBoardLogger(LightningLoggerBase):
         version: Optional[Union[int, str]] = None,
         log_graph: bool = False,
         default_hp_metric: bool = True,
-        prefix: str = '',
-        **kwargs
+        prefix: str = "",
+        **kwargs,
     ):
         super().__init__()
         self._save_dir = save_dir
-        self._name = name or ''
+        self._name = name or ""
         self._version = version
         self._log_graph = log_graph
         self._default_hp_metric = default_hp_metric
@@ -141,7 +141,7 @@ class TensorBoardLogger(LightningLoggerBase):
         if self._experiment is not None:
             return self._experiment
 
-        assert rank_zero_only.rank == 0, 'tried to init log dirs in non global_rank=0'
+        assert rank_zero_only.rank == 0, "tried to init log dirs in non global_rank=0"
         if self.root_dir:
             self._fs.makedirs(self.root_dir, exist_ok=True)
         self._experiment = SummaryWriter(log_dir=self.log_dir, **self._kwargs)
@@ -189,10 +189,9 @@ class TensorBoardLogger(LightningLoggerBase):
             writer.add_summary(ssi)
             writer.add_summary(sei)
 
-
     @rank_zero_only
     def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None) -> None:
-        assert rank_zero_only.rank == 0, 'experiment tried to log from global_rank != 0'
+        assert rank_zero_only.rank == 0, "experiment tried to log from global_rank != 0"
 
         metrics = self._add_prefix(metrics)
 
@@ -207,18 +206,18 @@ class TensorBoardLogger(LightningLoggerBase):
                     self.experiment.add_scalar(k, v, step)
                 # todo: specify the possible exception
                 except Exception as ex:
-                    m = f'\n you tried to log {v} which is not currently supported. Try a dict or a scalar/tensor.'
+                    m = f"\n you tried to log {v} which is not currently supported. Try a dict or a scalar/tensor."
                     raise ValueError(m) from ex
-    
+
     @rank_zero_only
     def log_embedding(self, perm, label):
-        assert rank_zero_only.rank == 0, 'experiment tried to log from global_rank != 0'
+        assert rank_zero_only.rank == 0, "experiment tried to log from global_rank != 0"
 
         self.experiment.add_embedding(perm, label)
 
     @rank_zero_only
     def log_histogram(self, name, perm):
-        assert rank_zero_only.rank == 0, 'experiment tried to log from global_rank != 0'
+        assert rank_zero_only.rank == 0, "experiment tried to log from global_rank != 0"
 
         self.experiment.add_histogram(name, perm)
 
@@ -233,11 +232,11 @@ class TensorBoardLogger(LightningLoggerBase):
                 self.experiment.add_graph(model, input_array)
             else:
                 rank_zero_warn(
-                    'Could not log computational graph since the'
-                    ' `model.example_input_array` attribute is not set'
-                    ' or `input_array` was not given', UserWarning
+                    "Could not log computational graph since the"
+                    " `model.example_input_array` attribute is not set"
+                    " or `input_array` was not given",
+                    UserWarning,
                 )
-
 
     @rank_zero_only
     def save(self) -> None:
@@ -251,13 +250,11 @@ class TensorBoardLogger(LightningLoggerBase):
         if self._fs.isdir(dir_path) and not self._fs.isfile(hparams_file):
             save_hparams_to_yaml(hparams_file, self.hparams)
 
-
     @rank_zero_only
     def finalize(self, status: str) -> None:
         self.experiment.flush()
         self.experiment.close()
         self.save()
-
 
     @property
     def name(self) -> str:
@@ -275,7 +272,7 @@ class TensorBoardLogger(LightningLoggerBase):
         try:
             listdir_info = self._fs.listdir(root_dir)
         except OSError:
-            log.warning('Missing logger folder: %s', root_dir)
+            log.warning("Missing logger folder: %s", root_dir)
             return 0
 
         existing_versions = []
@@ -283,7 +280,7 @@ class TensorBoardLogger(LightningLoggerBase):
             d = listing["name"]
             bn = os.path.basename(d)
             if self._fs.isdir(d) and bn.startswith("version_"):
-                dir_ver = bn.split("_")[1].replace('/', '')
+                dir_ver = bn.split("_")[1].replace("/", "")
                 existing_versions.append(int(dir_ver))
         if len(existing_versions) == 0:
             return 0

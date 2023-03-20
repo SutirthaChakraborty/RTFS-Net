@@ -3,7 +3,7 @@ from time import time
 from tqdm import tqdm
 from src.models import encoder
 
-from src.models.layers.tdanet import TDANet
+from src.models.separators.tdanet import TDANet
 from src.models.layers.cnn_layers import ConvNormAct, FeedForwardNetwork, ConvolutionalRNN
 from src.models.layers.rnn_layers import RNNProjection
 from src.models.layers.attention import GlobalAttention
