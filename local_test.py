@@ -12,9 +12,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
-from src.system import System, make_optimizer
+from src.system.core import System
 from src.datas import AVSpeechDataset
 from src.videomodels import AEVideoModel, FRCNNVideoModel
+from src.system.optimizers import make_optimizer
 from src.utils.parser_utils import parse_args_as_dict
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
@@ -66,7 +67,7 @@ def main(conf, model=CTCNet, epochs=1):
     elif conf["videonet"]["model_name"] == "EncoderAE":
         videomodel = AEVideoModel(**conf["videonet"])
 
-    audiomodel = model(**conf["audionet"])
+    audiomodel = CTCNet(**conf["audionet"])
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
@@ -76,7 +77,7 @@ def main(conf, model=CTCNet, epochs=1):
         scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.5, patience=10)
 
     # Just after instantiating, save the args. Easy loading in the future.
-    conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
+    conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", "testing")
     exp_dir = conf["main_args"]["exp_dir"]
     os.makedirs(exp_dir, exist_ok=True)
     conf_path = os.path.join(exp_dir, "conf.yml")
@@ -130,7 +131,7 @@ def main(conf, model=CTCNet, epochs=1):
         default_root_dir=exp_dir,
         devices=[0],
         num_nodes=conf["main_args"]["nodes"],
-        accelerator="gpu",
+        accelerator="cuda",
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,
