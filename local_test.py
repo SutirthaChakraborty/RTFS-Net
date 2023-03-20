@@ -5,7 +5,6 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
-
 from time import time
 from torch.utils.data import DataLoader, Dataset
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -13,11 +12,9 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
-from src.system.core import System
+from src.system import System, make_optimizer
 from src.datas import AVSpeechDataset
-from src.videomodels import AEVideoModel
-from src.videomodels import FRCNNVideoModel
-from src.system.optimizers import make_optimizer
+from src.videomodels import AEVideoModel, FRCNNVideoModel
 from src.utils.parser_utils import parse_args_as_dict
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
@@ -41,14 +38,16 @@ def build_dataloaders(conf):
     train_loader = DataLoader(
         train_set,
         shuffle=True,
-        batch_size=conf["training"]["batch_size"],
+        # batch_size=conf["training"]["batch_size"],
+        batch_size=1,
         num_workers=conf["training"]["num_workers"],
         drop_last=True,
     )
     val_loader = DataLoader(
         val_set,
         shuffle=False,
-        batch_size=conf["training"]["batch_size"],
+        # batch_size=conf["training"]["batch_size"],
+        batch_size=1,
         num_workers=conf["training"]["num_workers"],
         drop_last=True,
     )
@@ -67,7 +66,7 @@ def main(conf, model=CTCNet, epochs=1):
     elif conf["videonet"]["model_name"] == "EncoderAE":
         videomodel = AEVideoModel(**conf["videonet"])
 
-    audiomodel = CTCNet(**conf["audionet"])
+    audiomodel = model(**conf["audionet"])
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
@@ -121,10 +120,6 @@ def main(conf, model=CTCNet, epochs=1):
     if conf["training"]["early_stop"]:
         callbacks.append(EarlyStopping(monitor="val_loss", mode="min", patience=15, verbose=True))
 
-    # Don't ask GPU if they are not available.
-    gpus = [0] if torch.cuda.is_available() else None
-    distributed_backend = "gpu" if torch.cuda.is_available() else None
-
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
 
@@ -133,9 +128,9 @@ def main(conf, model=CTCNet, epochs=1):
         max_epochs=epochs,
         callbacks=callbacks,
         default_root_dir=exp_dir,
-        devices=gpus,
+        devices=[0],
         num_nodes=conf["main_args"]["nodes"],
-        accelerator=distributed_backend,
+        accelerator="gpu",
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,
@@ -150,9 +145,8 @@ def main(conf, model=CTCNet, epochs=1):
         json.dump(best_k, f, indent=0)
 
     # put on cpu and serialize
-    state_dict = torch.load(checkpoint.best_model_path)
+    state_dict = torch.load(checkpoint.best_model_path, map_location="cpu")
     system.load_state_dict(state_dict=state_dict["state_dict"])
-    system.cpu()
 
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
@@ -163,7 +157,7 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_2d.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 

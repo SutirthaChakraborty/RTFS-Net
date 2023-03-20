@@ -12,11 +12,9 @@ from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
-from src.system.core import System
+from src.system import System, make_optimizer
 from src.datas import AVSpeechDataset
-from src.videomodels import AEVideoModel
-from src.videomodels import FRCNNVideoModel
-from src.system.optimizers import make_optimizer
+from src.videomodels import AEVideoModel, FRCNNVideoModel
 from src.utils.parser_utils import parse_args_as_dict
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
@@ -102,6 +100,9 @@ def main(conf):
         config=conf,
     )
 
+    # if torch.__version__.startswith("2"):
+    #     system = torch.compile(system, mode="reduce-overhead")
+
     # Define callbacks
     callbacks = []
     checkpoint_dir = os.path.join(exp_dir, "checkpoints/")
@@ -118,10 +119,6 @@ def main(conf):
     if conf["training"]["early_stop"]:
         callbacks.append(EarlyStopping(monitor="val_loss", mode="min", patience=15, verbose=True))
 
-    # Don't ask GPU if they are not available.
-    gpus = conf["training"]["gpus"] if torch.cuda.is_available() else None
-    distributed_backend = "gpu" if torch.cuda.is_available() else None
-
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
 
@@ -130,10 +127,10 @@ def main(conf):
         max_epochs=conf["training"]["epochs"],
         callbacks=callbacks,
         default_root_dir=exp_dir,
-        gpus=gpus,
+        devices=conf["training"]["gpus"],
         num_nodes=conf["main_args"]["nodes"],
-        accelerator=distributed_backend,
-        strategy=DDPStrategy(),
+        accelerator="auto",
+        strategy=DDPStrategy(find_unused_parameters=False),
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,
@@ -150,7 +147,6 @@ def main(conf):
     # put on cpu and serialize
     state_dict = torch.load(checkpoint.best_model_path, map_location="cpu")
     system.load_state_dict(state_dict=state_dict["state_dict"])
-    system.cpu()
 
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
