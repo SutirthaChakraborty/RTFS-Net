@@ -67,7 +67,7 @@ def main(conf, model=CTCNet, epochs=1):
     elif conf["videonet"]["model_name"] == "EncoderAE":
         videomodel = AEVideoModel(**conf["videonet"])
 
-    audiomodel = CTCNet(**conf["audionet"])
+    audiomodel = model(**conf["audionet"])
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
