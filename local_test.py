@@ -5,6 +5,8 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
+torch.set_float32_matmul_precision("high")
+
 from time import time
 from torch.utils.data import DataLoader, Dataset
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -38,16 +40,14 @@ def build_dataloaders(conf):
     train_loader = DataLoader(
         train_set,
         shuffle=True,
-        # batch_size=conf["training"]["batch_size"],
-        batch_size=1,
+        batch_size=conf["training"]["batch_size"],
         num_workers=conf["training"]["num_workers"],
         drop_last=True,
     )
     val_loader = DataLoader(
         val_set,
         shuffle=False,
-        # batch_size=conf["training"]["batch_size"],
-        batch_size=1,
+        batch_size=conf["training"]["batch_size"],
         num_workers=conf["training"]["num_workers"],
         drop_last=True,
     )
@@ -76,7 +76,7 @@ def main(conf, model=CTCNet, epochs=1):
         scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.5, patience=10)
 
     # Just after instantiating, save the args. Easy loading in the future.
-    conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
+    conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", "testing")
     exp_dir = conf["main_args"]["exp_dir"]
     os.makedirs(exp_dir, exist_ok=True)
     conf_path = os.path.join(exp_dir, "conf.yml")
@@ -128,9 +128,9 @@ def main(conf, model=CTCNet, epochs=1):
         max_epochs=epochs,
         callbacks=callbacks,
         default_root_dir=exp_dir,
-        devices=[0],
+        devices="auto",
         num_nodes=conf["main_args"]["nodes"],
-        accelerator="gpu",
+        accelerator="auto",
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,

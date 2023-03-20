@@ -5,6 +5,8 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
+torch.set_float32_matmul_precision("high")
+
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger

@@ -3,6 +3,8 @@ import json
 import torch
 import pytorch_lightning as pl
 
+torch.set_float32_matmul_precision("high")
+
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
