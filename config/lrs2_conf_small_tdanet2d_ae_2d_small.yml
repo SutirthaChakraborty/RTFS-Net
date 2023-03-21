@@ -16,7 +16,7 @@ audionet:
       is2d: True
 
     audio_bn_params:
-      out_chan: 64
+      out_chan: 16
       kernel_size: 1
       is2d: True
 
@@ -25,7 +25,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 128
       hop_length: 64
-      out_chan: 256
+      out_chan: 128
       kernel_size: 3
       stride: 1
       bias: False
@@ -35,7 +35,7 @@ audionet:
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 128                       # TDANet hidden channels
+      hid_chan: 64                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
       repeats: 4
@@ -99,4 +99,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_22_03_23
+    exp_name: ctcnet_small_tdanet2d_22_03_23_small
