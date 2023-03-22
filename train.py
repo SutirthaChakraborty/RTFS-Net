@@ -56,7 +56,6 @@ def build_dataloaders(conf):
 
 
 def main(conf):
-
     train_loader, val_loader = build_dataloaders(conf)
 
     conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
@@ -102,9 +101,6 @@ def main(conf):
         config=conf,
     )
 
-    # if torch.__version__.startswith("2"):
-    #     system = torch.compile(system, mode="reduce-overhead")
-
     # Define callbacks
     callbacks = []
     checkpoint_dir = os.path.join(exp_dir, "checkpoints/")
@@ -131,8 +127,8 @@ def main(conf):
         default_root_dir=exp_dir,
         devices=conf["training"]["gpus"],
         num_nodes=conf["main_args"]["nodes"],
-        accelerator="auto",
-        strategy=DDPStrategy(find_unused_parameters=False),
+        accelerator="gpu",
+        strategy=DDPStrategy(find_unused_parameters=True),
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,

@@ -1,0 +1,11 @@
+opencv-python
+soundfile
+scipy
+pypesq
+pystoi
+thop
+timm
+pytorch-lightning
+torch-optimizer
+tensorboard
+black
