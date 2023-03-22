@@ -66,9 +66,6 @@ class System(pl.LightningModule):
         # Save lightning"s AttributeDict under self.hparams
         self.save_hyperparameters(self.config_to_hparams(self.config))
 
-        self.training_step_outputs = []
-        self.validation_step_outputs = []
-
     def forward(self, wav, mouth=None):
         """Applies forward pass of the model.
 
@@ -111,11 +108,10 @@ class System(pl.LightningModule):
     def training_step(self, batch, batch_nb):
         loss = self.common_step(batch, batch_nb)
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.training_step_outputs.append({"loss": loss})
         return {"loss": loss}
 
-    def on_training_epoch_end(self):
-        avg_loss = torch.stack([x["loss"] for x in self.training_step_outputs]).mean()
+    def training_step_end(self, outputs):
+        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
         train_loss = torch.mean(self.all_gather(avg_loss))
         # import pdb; pdb.set_trace()
         self.logger.experiment.add_scalar("train_sisnr", -train_loss, self.current_epoch)
@@ -123,11 +119,10 @@ class System(pl.LightningModule):
     def validation_step(self, batch, batch_nb):
         loss = self.common_step(batch, batch_nb, is_train=False)
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.validation_step_outputs.append({"val_loss": loss})
         return {"val_loss": loss}
 
-    def on_validation_epoch_end(self):
-        avg_loss = torch.stack([x["val_loss"] for x in self.validation_step_outputs]).mean()
+    def validation_step_end(self, outputs):
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         val_loss = torch.mean(self.all_gather(avg_loss))
         self.log(
             "lr",
