@@ -55,7 +55,7 @@ def main():
         default_root_dir=exp_dir,
         devices="auto",
         accelerator="auto",
-        strategy=DDPStrategy(find_unused_parameters=False),
+        strategy=DDPStrategy(),
         limit_train_batches=1.0,
         logger=comet_logger,
     )
