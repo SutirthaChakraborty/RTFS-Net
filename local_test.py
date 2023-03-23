@@ -67,9 +67,6 @@ def main(conf, model=CTCNet, epochs=1):
         videomodel = AEVideoModel(**conf["videonet"])
 
     audiomodel = model(**conf["audionet"])
-    if torch.__version__.startswith("2"):
-        torch._dynamo.config.suppress_errors = True
-        audiomodel = torch.compile(audiomodel, mode="reduce-overhead")
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
@@ -122,6 +119,9 @@ def main(conf, model=CTCNet, epochs=1):
 
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
+
+    if torch.__version__.startswith("2"):
+        system = torch.compile(system, mode="reduce-overhead")
 
     # instantiate ptl trainer
     trainer = pl.Trainer(
