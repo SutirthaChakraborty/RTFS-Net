@@ -37,13 +37,12 @@ class MaskGenerator(nn.Module):
                 ),
             )
             if self.output_gate:
-                self.output = ConvNormAct(self.in_chan, self.in_chan, 1, act_type="Tanh")
-                self.gate = ConvNormAct(self.in_chan, self.in_chan, 1, "Sigmoid")
+                self.output = ConvNormAct(self.in_chan, self.in_chan, 1, act_type="Tanh", is2d=self.is2d)
+                self.gate = ConvNormAct(self.in_chan, self.in_chan, 1, act_type="Sigmoid", is2d=self.is2d)
         else:
             self.mask_generator = nn.Identity()
 
     def __apply_masks(self, masks: torch.Tensor, audio_mixture_embedding: torch.Tensor):
-
         separated_audio_embedding = masks * audio_mixture_embedding.unsqueeze(1)
 
         return separated_audio_embedding
