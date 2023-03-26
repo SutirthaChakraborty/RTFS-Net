@@ -1,3 +1,4 @@
+conda remove -n av --all --yes
 conda create -n av pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia --yes
 conda activate av
 python -m pip3 install --upgrade pip3
