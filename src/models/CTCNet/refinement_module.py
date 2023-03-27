@@ -53,16 +53,16 @@ class RefinementModule(nn.Module):
         T1 = audio.shape[-(len(audio.shape) // 2) :]
         T2 = video.shape[-(len(video.shape) // 2) :]
 
-        audio_residual = audio
-        video_residual = video
-
         audio_fused = audio
         video_fused = video
 
         for i in range(self.fusion_repeats):
+            audio_residual = audio_fused
+            video_residual = video_fused
+
             if i > 0:
-                audio_fused = audio_fused + audio_residual
-                video_fused = video_fused + video_residual
+                audio_fused = self.audio_net.get_concat_block(i)(audio_fused + audio_residual)
+                video_fused = self.video_net.get_concat_block(i)(video_fused + video_residual)
 
             audio_fused = self.audio_net.get_tac(i)(audio_fused.view(batch_size, self.audio_net.group_size, -1, *T1))
             audio_fused = audio_fused.view(batch_size * self.audio_net.group_size, -1, *T1)
@@ -70,17 +70,21 @@ class RefinementModule(nn.Module):
             video_fused = self.video_net.get_tac(i)(video_fused.view(batch_size, self.video_net.group_size, -1, *T2))
             video_fused = video_fused.view(batch_size * self.video_net.group_size, -1, *T2)
 
-            audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused)).view(batch_size, -1, *T1)
-            video_fused = self.video_net.get_block(i)(self.video_net.get_concat_block(i)(video_fused)).view(batch_size, -1, *T2)
+            audio_fused = self.audio_net.get_block(i)(audio_fused).view(batch_size, -1, *T1)
+            video_fused = self.video_net.get_block(i)(video_fused).view(batch_size, -1, *T2)
             audio_fused, video_fused = self.crossmodal_fusion.get_fusion_block(i)(audio_fused, video_fused)
 
         for j in range(self.audio_repeats):
             i = j + self.fusion_repeats
-            audio_fused = audio_fused + audio_residual
+            if j > 0:
+                audio_residual = audio_fused
+
+            audio_fused = self.audio_net.get_concat_block(i)(audio_fused + audio_residual)
 
             audio_fused = self.audio_net.get_tac(i)(audio_fused.view(batch_size, self.audio_net.group_size, -1, *T1))
             audio_fused = audio_fused.view(batch_size * self.audio_net.group_size, -1, *T1)
-            audio_fused = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio_fused)).view(batch_size, -1, *T1)
+
+            audio_fused = self.audio_net.get_block(i)(audio_fused).view(batch_size, -1, *T1)
 
         return audio_fused
 

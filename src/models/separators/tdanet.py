@@ -309,13 +309,17 @@ class TDANet(nn.Module):
 
     def __build_concat_block(self):
         if self.shared:
-            out = ConvNormAct(
-                in_chan=self.in_chan // self.group_size,
-                out_chan=self.in_chan // self.group_size,
-                kernel_size=1,
-                groups=self.in_chan // self.group_size,
-                act_type=self.act_type,
-                is2d=self.is2d,
+            out = (
+                ConvNormAct(
+                    in_chan=self.in_chan // self.group_size,
+                    out_chan=self.in_chan // self.group_size,
+                    kernel_size=1,
+                    groups=self.in_chan // self.group_size,
+                    act_type=self.act_type,
+                    is2d=self.is2d,
+                )
+                if self.repeats > 1
+                else nn.Identity()
             )
         else:
             out = nn.ModuleList([None])
