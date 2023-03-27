@@ -122,7 +122,6 @@ class CTCNet(BaseAVModel):
         return separated_audio
 
     def get_config(self):
-
         model_args = {}
         model_args["encoder"] = self.encoder.get_config()
         model_args["audio_bottleneck"] = self.audio_bottleneck.get_config()
@@ -134,7 +133,6 @@ class CTCNet(BaseAVModel):
         return model_args
 
     def get_MACs(self):
-
         batch_size = 1
         seconds = 2
 
@@ -181,4 +179,8 @@ class CTCNet(BaseAVModel):
         print("Number of MACs in decoder: {:,.0f}M".format(macs))
 
         self.macs = profile(self, inputs=(audio_input, video_input), verbose=False)[0] / 1000000
+        self.trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        self.non_trainable_params = sum(p.numel() for p in self.parameters() if not p.requires_grad)
         print("Number of MACs in total: {:,.0f}M".format(self.macs))
+        print("Number of trainable parameters: {:,.0f}M".format(self.trainable_params))
+        print("Number of non trainable parameters: {:,.0f}M".format(self.non_trainable_params))

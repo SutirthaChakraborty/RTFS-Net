@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+
+from thop import profile
+
 from .autoencoder import EncoderAE
 
 
@@ -32,10 +35,12 @@ class AEVideoModel(nn.Module):
         if self.pretrain:
             self.init_from(self.pretrain)
 
+        self.get_MACs()
+
     def forward(self, x: torch.Tensor):
         batch, chan, frames, h, w = x.size()
 
-        x = x.transpose(1, 2).contiguous().view(batch * frames, chan, h, w)  # B, F, H, W -> B*F, 1, H, W
+        x = x.transpose(1, 2).contiguous().view(batch * frames, chan, h, w)  # B, 1, F, H, W -> B*F, 1, H, W
 
         z = self.encoder.forward(x)  # B*F, 1, H, W -> B*F, C, H', W'
 
@@ -54,3 +59,16 @@ class AEVideoModel(nn.Module):
 
         for p in self.encoder.parameters():
             p.requires_grad = False
+
+    def get_MACs(self):
+        batch_size = 1
+        seconds = 2
+        h, w = 88, 88
+        video_input = torch.rand(batch_size, 1, seconds * 25, h, w)
+
+        self.macs = profile(self, inputs=(video_input,), verbose=False)[0] / 1000000
+        self.trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        self.non_trainable_params = sum(p.numel() for p in self.parameters() if not p.requires_grad)
+        print("Number of MACs in total: {:,.0f}M".format(self.macs))
+        print("Number of trainable parameters: {:,.0f}M".format(self.trainable_params))
+        print("Number of non trainable parameters: {:,.0f}M".format(self.non_trainable_params))

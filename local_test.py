@@ -120,9 +120,6 @@ def main(conf, model=CTCNet, epochs=1):
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
 
-    if torch.__version__.startswith("2"):
-        system = torch.compile(system, mode="reduce-overhead")
-
     # instantiate ptl trainer
     trainer = pl.Trainer(
         max_epochs=epochs,

@@ -9,6 +9,7 @@ import yaml
 import torch
 import argparse
 import warnings
+import pandas as pd
 
 from tqdm import tqdm
 
@@ -127,10 +128,23 @@ def main(conf):
         except ValueError:
             return 100
 
+    results_dict = {"Model": conf["log"]["exp_name"]}
+
     keys.sort(key=get_order)
     for k in keys:
         m, s = mean[k], std[k]
+        results_dict[k] = m
+        results_dict[k + "_std"] = s
         print(f"{k}\tmean: {m:.4f}  std: {s:.4f}")
+
+    for k, v in conf["audionet"].items():
+        if isinstance(v, dict):
+            for kk, vv in v.items():
+                results_dict[k + "_" + kk] = v
+        else:
+            results_dict[k] = v
+
+    df = pd.DataFrame.from_dict(results_dict)
 
 
 if __name__ == "__main__":
