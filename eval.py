@@ -145,6 +145,7 @@ def main(conf):
             results_dict[k] = v
 
     df = pd.DataFrame.from_dict(results_dict)
+    df.to_csv(os.path.join(ex_save_dir, "results.csv"), encoding="utf-8", index=False)
 
 
 if __name__ == "__main__":
