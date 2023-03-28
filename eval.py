@@ -129,6 +129,10 @@ def main(conf):
             return 100
 
     results_dict = {"Model": [conf["log"]["exp_name"]]}
+    results_dict["CTCNet MACs"] = [audiomodel.macs]
+    results_dict["CTCNet Params"] = [audiomodel.trainable_params]
+    results_dict["Videomodel MACs"] = [videomodel.macs]
+    results_dict["Videomodel Params"] = [videomodel.trainable_params]
 
     keys.sort(key=get_order)
     for k in keys:
