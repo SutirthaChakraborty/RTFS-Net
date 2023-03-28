@@ -29,7 +29,7 @@ def main(conf):
     conf["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
-    audiomodel: torch.nn.Module = CTCNet.from_pretrain(model_path, **conf["audionet"])
+    audiomodel: CTCNet = CTCNet.from_pretrain(model_path, **conf["audionet"])
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":
         videomodel = FRCNNVideoModel(**conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":

@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from thop import profile
+
 from .shufflenetv2 import ShuffleNetV2
 from .resnet import ResNet, BasicBlock
 
@@ -53,6 +55,8 @@ class FRCNNVideoModel(nn.Module):
         if pretrain:
             self.init_from(pretrain)
 
+        self.get_MACs()
+
     def forward(self, x: torch.Tensor):
         B, C, T, H, W = x.size()
         x = self.frontend3D(x)
@@ -75,6 +79,19 @@ class FRCNNVideoModel(nn.Module):
             for m in self.modules():
                 if isinstance(m, nn.modules.batchnorm._BatchNorm):
                     m.eval()
+
+    def get_MACs(self):
+        batch_size = 1
+        seconds = 2
+        h, w = 88, 88
+        video_input = torch.rand(batch_size, 1, seconds * 25, h, w)
+
+        self.macs = profile(self, inputs=(video_input,), verbose=False)[0] / 1000000
+        self.trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        self.non_trainable_params = sum(p.numel() for p in self.parameters() if not p.requires_grad)
+        print("Number of MACs in total: {:,.0f}M".format(self.macs))
+        print("Number of trainable parameters: {:,.0f}M".format(self.trainable_params))
+        print("Number of non trainable parameters: {:,.0f}M".format(self.non_trainable_params))
 
 
 def update_frcnn_parameter(model, pretrained_dict):
