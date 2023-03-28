@@ -10,7 +10,6 @@ from ..base_av_model import BaseAVModel
 from ..mask_generator import MaskGenerator
 
 from .refinement_module import RefinementModule
-from .contextcodec import ContextEncoder, ContextDecoder
 
 
 class CTCNet(BaseAVModel):
@@ -25,7 +24,6 @@ class CTCNet(BaseAVModel):
         video_params: dict,
         fusion_params: dict,
         mask_generation_params: dict,
-        gc3_params: dict = dict(),
         *args,
         **kwargs,
     ):
@@ -40,7 +38,6 @@ class CTCNet(BaseAVModel):
         self.video_params = video_params
         self.fusion_params = fusion_params
         self.mask_generation_params = mask_generation_params
-        self.gc3_params = gc3_params
 
         self.encoder = encoder.get(self.enc_dec_params["encoder_type"])(
             **self.enc_dec_params,
@@ -58,31 +55,12 @@ class CTCNet(BaseAVModel):
         self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan)
         self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
 
-        self.audio_context_enc = ContextEncoder(
-            in_chan=self.audio_bn_chan,
-            hid_chan=self.audio_hid_chan,
-            gc3_params=self.gc3_params.get("audio", dict()),
-        )
-
-        self.video_context_enc = ContextEncoder(
-            in_chan=self.video_bn_chan,
-            hid_chan=self.video_hid_chan,
-            gc3_params=self.gc3_params.get("video", dict()),
-        )
-
         self.refinement_module = RefinementModule(
             fusion_params=self.fusion_params,
             audio_params=self.audio_params,
             video_params=self.video_params,
             audio_bn_chan=self.audio_bn_chan,
             video_bn_chan=self.video_bn_chan,
-            gc3_params=self.gc3_params,
-        )
-
-        self.context_dec = ContextDecoder(
-            in_chan=self.audio_bn_chan,
-            hid_chan=self.audio_hid_chan,
-            gc3_params=self.gc3_params.get("audio", dict()),
         )
 
         self.mask_generator = MaskGenerator(
@@ -106,14 +84,7 @@ class CTCNet(BaseAVModel):
         audio = self.audio_bottleneck(audio_mixture_embedding)  # B, N, T, (F) -> B, C, T, (F)
         video = self.video_bottleneck(mouth_embedding)  # B, N2, T2 -> B, C2, T2
 
-        # context encoding
-        audio, res, squeeze_rest = self.audio_context_enc(audio)
-        video = self.video_context_enc(video)[0]
-
         refined_features = self.refinement_module(audio, video)  # B, C, T, (F) -> B, C, T, (F)
-
-        # context decoding
-        refined_features = self.context_dec(refined_features, res, squeeze_rest)
 
         separated_audio_embedding = self.mask_generator(refined_features, audio_mixture_embedding)  # B, C, T, (F) -> B, n_src, N, T, (F)
 
@@ -147,8 +118,6 @@ class CTCNet(BaseAVModel):
         bn_audio = self.audio_bottleneck(encoded_audio)
         bn_video = self.video_bottleneck(video_input)
 
-        audio, res, squeeze_rest = self.audio_context_enc(bn_audio)
-
         separated_audio_embedding = self.mask_generator(bn_audio, encoded_audio)
 
         macs = profile(self.encoder, inputs=(audio_input,), verbose=False)[0] / 1000000
@@ -160,17 +129,8 @@ class CTCNet(BaseAVModel):
         macs = profile(self.video_bottleneck, inputs=(video_input,), verbose=False)[0] / 1000000
         print("Number of MACs in video BN: {:,.0f}M".format(macs))
 
-        macs = profile(self.audio_context_enc, inputs=(bn_audio,), verbose=False)[0] / 1000000
-        print("Number of MACs in audio context encoder: {:,.0f}M".format(macs))
-
-        macs = profile(self.video_context_enc, inputs=(bn_video,), verbose=False)[0] / 1000000
-        print("Number of MACs in video context encoder: {:,.0f}M".format(macs))
-
-        macs = profile(self.refinement_module, inputs=(audio, bn_video), verbose=False)[0] / 1000000
+        macs = profile(self.refinement_module, inputs=(bn_audio, bn_video), verbose=False)[0] / 1000000
         print("Number of MACs in RefinementModule: {:,.0f}M".format(macs))
-
-        macs = profile(self.context_dec, inputs=(audio, res, squeeze_rest), verbose=False)[0] / 1000000
-        print("Number of MACs in context decoder: {:,.0f}M".format(macs))
 
         macs = profile(self.mask_generator, inputs=(bn_audio, encoded_audio), verbose=False)[0] / 1000000
         print("Number of MACs in mask generator: {:,.0f}M".format(macs))
