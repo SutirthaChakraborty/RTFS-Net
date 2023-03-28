@@ -68,10 +68,11 @@ audionet:
     mask_generation_params:
       mask_act: ReLU
       is2d: True
+      output_gate: True
       
 # Training config
 training:
-    gpus: [0,1,2,3,4,5,6]
+    gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
     batch_size: 4
     num_workers: 8
@@ -99,4 +100,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_22_03_23
+    exp_name: ctcnet_small_tdanet2d_27_03_23

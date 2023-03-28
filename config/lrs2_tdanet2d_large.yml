@@ -68,7 +68,7 @@ audionet:
     mask_generation_params:
       mask_act: ReLU
       is2d: True
-      output_gate: true
+      output_gate: True
       
 # Training config
 training:
