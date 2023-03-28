@@ -23,8 +23,8 @@ audionet:
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
-      win: 256
-      hop_length: 128
+      win: 128
+      hop_length: 64
       out_chan: 256
       kernel_size: 3
       stride: 1
@@ -38,7 +38,7 @@ audionet:
       hid_chan: 128                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
-      repeats: 4
+      repeats: 16
       norm_type: gLN
       act_type: PReLU
       kernel_size: 5
@@ -52,7 +52,7 @@ audionet:
       hid_chan: 64
       upsampling_depth: 4
       shared: True
-      repeats: 1
+      repeats: 3
       norm_type: BatchNorm2d
       act_type: PReLU
       kernel_size: 3
@@ -68,10 +68,11 @@ audionet:
     mask_generation_params:
       mask_act: ReLU
       is2d: True
+      output_gate: true
       
 # Training config
 training:
-    gpus: [0,1,2,3,4,5,6]
+    gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
     batch_size: 4
     num_workers: 8
@@ -99,4 +100,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_22_03_23_square
+    exp_name: ctcnet_large_tdanet2d_27_03_23

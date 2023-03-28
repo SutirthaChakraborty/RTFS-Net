@@ -110,7 +110,7 @@ class System(pl.LightningModule):
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
         return {"loss": loss}
 
-    def training_epoch_end(self, outputs):
+    def training_step_end(self, outputs):
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
         train_loss = torch.mean(self.all_gather(avg_loss))
         # import pdb; pdb.set_trace()
@@ -121,7 +121,7 @@ class System(pl.LightningModule):
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
         return {"val_loss": loss}
 
-    def validation_epoch_end(self, outputs):
+    def validation_step_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         val_loss = torch.mean(self.all_gather(avg_loss))
         self.log(

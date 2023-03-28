@@ -63,7 +63,7 @@ audionet:
       
 # Training config
 training:
-    gpus: [0,1,2,3,4,5,6]
+    gpus: [0]
     epochs: 200
     batch_size: 4
     num_workers: 8
@@ -91,4 +91,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_08_03_2023
+    exp_name: test

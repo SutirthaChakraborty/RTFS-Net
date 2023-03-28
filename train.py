@@ -5,6 +5,8 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
+torch.set_float32_matmul_precision("high")
+
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -12,12 +14,10 @@ from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
-from src.system.core import System
 from src.datas import AVSpeechDataset
-from src.videomodels import AEVideoModel
-from src.videomodels import FRCNNVideoModel
-from src.system.optimizers import make_optimizer
-from src.utils.parser_utils import parse_args_as_dict
+from src.utils import parse_args_as_dict
+from src.system import System, make_optimizer
+from src.videomodels import AEVideoModel, FRCNNVideoModel
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
 
@@ -56,7 +56,6 @@ def build_dataloaders(conf):
 
 
 def main(conf):
-
     train_loader, val_loader = build_dataloaders(conf)
 
     conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
@@ -118,10 +117,6 @@ def main(conf):
     if conf["training"]["early_stop"]:
         callbacks.append(EarlyStopping(monitor="val_loss", mode="min", patience=15, verbose=True))
 
-    # Don't ask GPU if they are not available.
-    gpus = conf["training"]["gpus"] if torch.cuda.is_available() else None
-    distributed_backend = "gpu" if torch.cuda.is_available() else None
-
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
 
@@ -130,10 +125,10 @@ def main(conf):
         max_epochs=conf["training"]["epochs"],
         callbacks=callbacks,
         default_root_dir=exp_dir,
-        gpus=gpus,
+        devices=conf["training"]["gpus"],
         num_nodes=conf["main_args"]["nodes"],
-        accelerator=distributed_backend,
-        strategy=DDPStrategy(),
+        accelerator="gpu",
+        strategy=DDPStrategy(find_unused_parameters=True),
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,
@@ -150,7 +145,6 @@ def main(conf):
     # put on cpu and serialize
     state_dict = torch.load(checkpoint.best_model_path, map_location="cpu")
     system.load_state_dict(state_dict=state_dict["state_dict"])
-    system.cpu()
 
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
@@ -164,7 +158,7 @@ if __name__ == "__main__":
     # By default train.py will use all available GPUs. The `id` option in run.sh
     # will limit the number of available GPUs for train.py .
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_config_new_frcnn.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
     parser.add_argument("--checkpoint", type=str, default=None, help="path to checkpoint if training crashes")

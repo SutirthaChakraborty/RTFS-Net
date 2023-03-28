@@ -5,6 +5,7 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
+torch.set_float32_matmul_precision("high")
 
 from time import time
 from torch.utils.data import DataLoader, Dataset
@@ -13,12 +14,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
-from src.system.core import System
 from src.datas import AVSpeechDataset
-from src.videomodels import AEVideoModel
-from src.videomodels import FRCNNVideoModel
-from src.system.optimizers import make_optimizer
-from src.utils.parser_utils import parse_args_as_dict
+from src.utils import parse_args_as_dict
+from src.system import System, make_optimizer
+from src.videomodels import AEVideoModel, FRCNNVideoModel
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
 
@@ -67,7 +66,10 @@ def main(conf, model=CTCNet, epochs=1):
     elif conf["videonet"]["model_name"] == "EncoderAE":
         videomodel = AEVideoModel(**conf["videonet"])
 
-    audiomodel = CTCNet(**conf["audionet"])
+    audiomodel = model(**conf["audionet"])
+    if torch.__version__.startswith("2"):
+        torch._dynamo.config.suppress_errors = True
+        audiomodel = torch.compile(audiomodel, mode="reduce-overhead")
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
@@ -77,7 +79,7 @@ def main(conf, model=CTCNet, epochs=1):
         scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.5, patience=10)
 
     # Just after instantiating, save the args. Easy loading in the future.
-    conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
+    conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", "testing")
     exp_dir = conf["main_args"]["exp_dir"]
     os.makedirs(exp_dir, exist_ok=True)
     conf_path = os.path.join(exp_dir, "conf.yml")
@@ -118,10 +120,6 @@ def main(conf, model=CTCNet, epochs=1):
     if conf["training"]["early_stop"]:
         callbacks.append(EarlyStopping(monitor="val_loss", mode="min", patience=15, verbose=True))
 
-    # Don't ask GPU if they are not available.
-    gpus = [0] if torch.cuda.is_available() else None
-    distributed_backend = "cuda" if torch.cuda.is_available() else None
-
     # default logger used by trainer
     comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
 
@@ -130,9 +128,9 @@ def main(conf, model=CTCNet, epochs=1):
         max_epochs=epochs,
         callbacks=callbacks,
         default_root_dir=exp_dir,
-        gpus=gpus,
+        devices=[0],
         num_nodes=conf["main_args"]["nodes"],
-        accelerator=distributed_backend,
+        accelerator="auto",
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,
@@ -147,9 +145,8 @@ def main(conf, model=CTCNet, epochs=1):
         json.dump(best_k, f, indent=0)
 
     # put on cpu and serialize
-    state_dict = torch.load(checkpoint.best_model_path)
+    state_dict = torch.load(checkpoint.best_model_path, map_location="cpu")
     system.load_state_dict(state_dict=state_dict["state_dict"])
-    system.cpu()
 
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
@@ -160,7 +157,7 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_2d.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -178,23 +175,23 @@ if __name__ == "__main__":
     macs1 = main(def_conf)
 
     t1 = time()
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae copy.yml")
-    parser.add_argument("-n", "--name", default=None, help="Experiment name")
-    parser.add_argument("--nodes", type=int, default=1, help="#node")
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_2d.yml")
+    # parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    # parser.add_argument("--nodes", type=int, default=1, help="#node")
 
-    args = parser.parse_args()
-    cf_dir2 = str(args.conf_dir).split("/")[-1]
+    # args = parser.parse_args()
+    # cf_dir2 = str(args.conf_dir).split("/")[-1]
 
-    with open(args.conf_dir) as f:
-        def_conf = yaml.safe_load(f)
-    if args.name is not None:
-        def_conf["log"]["exp_name"] = args.name
+    # with open(args.conf_dir) as f:
+    #     def_conf = yaml.safe_load(f)
+    # if args.name is not None:
+    #     def_conf["log"]["exp_name"] = args.name
 
-    arg_dic = parse_args_as_dict(parser)
-    def_conf.update(arg_dic)
+    # arg_dic = parse_args_as_dict(parser)
+    # def_conf.update(arg_dic)
 
-    macs2 = main(def_conf)
+    # macs2 = main(def_conf)
 
     t2 = time()
     # parser = argparse.ArgumentParser()
@@ -217,5 +214,5 @@ if __name__ == "__main__":
     t3 = time()
 
     print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0, macs1))
-    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t2 - t1, macs2))
+    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t2 - t1, macs2))
     # print("TDANet with Attention Context: {:.2f} seconds, {} million MACs".format(t3 - t2, macs3))
