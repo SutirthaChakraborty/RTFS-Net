@@ -21,11 +21,11 @@ audionet:
       is2d: True
 
     enc_dec_params:
-      encoder_type: STFTEncoder
+      encoder_type: BSRNNEncoder
       decoder_type: STFTDecoder
-      win: 128
-      hop_length: 64
-      out_chan: 256
+      win: 256
+      hop_length: 128
+      out_chan: 128
       kernel_size: 3
       stride: 1
       bias: False
@@ -67,8 +67,8 @@ audionet:
 
     mask_generation_params:
       mask_act: ReLU
-      output_gate: True
       is2d: True
+      output_gate: True
       
 # Training config
 training:
@@ -100,4 +100,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_22_03_23_gated
+    exp_name: ctcnet_small_tdanet2d_27_03_23
