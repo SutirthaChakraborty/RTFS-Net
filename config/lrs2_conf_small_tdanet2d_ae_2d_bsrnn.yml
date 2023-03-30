@@ -66,6 +66,7 @@ audionet:
       is2d: True
 
     mask_generation_params:
+      mask_generator_type: BSRNNMaskGenerator
       mask_act: ReLU
       is2d: True
       output_gate: True

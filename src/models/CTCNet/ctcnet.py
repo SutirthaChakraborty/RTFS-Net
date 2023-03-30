@@ -4,10 +4,10 @@ from thop import profile
 
 from ...models import encoder
 from ...models import decoder
+from ...models import mask_generator
 
 from ..layers import ConvNormAct
 from ..base_av_model import BaseAVModel
-from ..mask_generator import MaskGenerator
 
 from .refinement_module import RefinementModule
 
@@ -46,6 +46,12 @@ class CTCNet(BaseAVModel):
         )
         self.enc_out_chan = self.encoder.out_chan
 
+        self.mask_generation_params["mask_generator_type"] = self.mask_generation_params.get("mask_generator_type", "MaskGenerator")
+        if self.mask_generation_params["mask_generator_type"] == "BSRNNMaskGenerator":
+            self.mask_generation_params["nband"] = self.encoder.nband
+            self.mask_generation_params["ratio"] = self.encoder.ratio
+            self.mask_generation_params["band_width"] = self.encoder.band_width
+
         self.audio_bn_chan = self.audio_bn_params.get("out_chan", self.enc_out_chan)
         self.audio_bn_params["out_chan"] = self.audio_bn_chan
         self.video_bn_chan = self.video_bn_params["out_chan"]
@@ -63,7 +69,7 @@ class CTCNet(BaseAVModel):
             video_bn_chan=self.video_bn_chan,
         )
 
-        self.mask_generator = MaskGenerator(
+        self.mask_generator = mask_generator.get(self.mask_generation_params["mask_generator_type"])(
             **self.mask_generation_params,
             n_src=self.n_src,
             audio_emb_dim=self.enc_out_chan,
@@ -79,14 +85,16 @@ class CTCNet(BaseAVModel):
         self.get_MACs()
 
     def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor):
-        audio_mixture_embedding = self.encoder(audio_mixture)  # B, 1, L -> B, N, T, (F)
+        audio_mixture_embedding, context = self.encoder(audio_mixture)  # B, 1, L -> B, N, T, (F)
 
         audio = self.audio_bottleneck(audio_mixture_embedding)  # B, N, T, (F) -> B, C, T, (F)
         video = self.video_bottleneck(mouth_embedding)  # B, N2, T2 -> B, C2, T2
 
         refined_features = self.refinement_module(audio, video)  # B, C, T, (F) -> B, C, T, (F)
 
-        separated_audio_embedding = self.mask_generator(refined_features, audio_mixture_embedding)  # B, C, T, (F) -> B, n_src, N, T, (F)
+        separated_audio_embedding = self.mask_generator(
+            refined_features, audio_mixture_embedding, context
+        )  # B, C, T, (F) -> B, n_src, N, T, (F)
 
         separated_audio = self.decoder(separated_audio_embedding, audio_mixture.shape)  # B, n_src, N, T, (F) -> B, n_src, L
 
@@ -113,12 +121,12 @@ class CTCNet(BaseAVModel):
         else:
             video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25)
 
-        encoded_audio = self.encoder(audio_input)
+        encoded_audio, context = self.encoder(audio_input)
 
         bn_audio = self.audio_bottleneck(encoded_audio)
         bn_video = self.video_bottleneck(video_input)
 
-        separated_audio_embedding = self.mask_generator(bn_audio, encoded_audio)
+        separated_audio_embedding = self.mask_generator(bn_audio, encoded_audio, context)
 
         macs = profile(self.encoder, inputs=(audio_input,), verbose=False)[0] / 1000000
         print("Number of MACs in encoder: {:,.0f}M".format(macs))
