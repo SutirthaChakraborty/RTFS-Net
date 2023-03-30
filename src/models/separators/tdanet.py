@@ -323,16 +323,8 @@ class TDANet(nn.Module):
             return self.concat_block[i]
 
     def forward(self, x: torch.Tensor):
-        # x: shape (B, C, T)
-
-        residual = []
+        residual = x
         for i in range(self.repeats):
-            residual.append(x)
-
-            if i > 0:
-                residual = residual[-2:]
-                x = self.get_concat_block(i)(residual[-1] + residual[-2])
-
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
             x = self.get_block(i)(x)
-
         return x
