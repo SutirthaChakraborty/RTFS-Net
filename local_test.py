@@ -40,16 +40,14 @@ def build_dataloaders(conf):
     train_loader = DataLoader(
         train_set,
         shuffle=True,
-        # batch_size=conf["training"]["batch_size"],
-        batch_size=1,
+        batch_size=conf["training"]["batch_size"],
         num_workers=conf["training"]["num_workers"],
         drop_last=True,
     )
     val_loader = DataLoader(
         val_set,
         shuffle=False,
-        # batch_size=conf["training"]["batch_size"],
-        batch_size=1,
+        batch_size=conf["training"]["batch_size"],
         num_workers=conf["training"]["num_workers"],
         drop_last=True,
     )

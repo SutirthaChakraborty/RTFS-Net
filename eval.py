@@ -46,7 +46,6 @@ def main(conf):
         videomodel.cuda(device)
     else:
         print("No free gpus available, using CPU")
-        device = device[0]
         audiomodel.cpu()
         videomodel.cpu()
 
