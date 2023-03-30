@@ -229,7 +229,9 @@ class BSRNNEncoder(BaseEncoder):
         self.BN = nn.ModuleList([])
         for i in range(self.nband):
             in_chan = self.band_width[i] * 2
-            self.BN.append(nn.Sequential(normalizations.get(self.norm_type)(in_chan), nn.Conv1d(in_chan, self.out_chan, 1)))
+            self.BN.append(
+                nn.Sequential(normalizations.get(self.norm_type)(in_chan), ConvNormAct(in_chan, self.out_chan, 1, xavier_init=True))
+            )
 
     def forward(self, x: torch.Tensor):
         x = self.unsqueeze_to_2D(x)

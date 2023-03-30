@@ -1,7 +1,9 @@
 import torch
 import inspect
+import numpy as np
 import torch.nn as nn
 
+from .normalizations import gLN
 from .layers import ConvNormAct
 
 
@@ -27,6 +29,8 @@ class MaskGenerator(BaseMaskGenerator):
         mask_act: str = "ReLU",
         is2d: bool = False,
         output_gate=False,
+        *args,
+        **kwargs,
     ):
         super(MaskGenerator, self).__init__()
         self.n_src = n_src
@@ -78,33 +82,41 @@ class MaskGenerator(BaseMaskGenerator):
 class BSRNNMaskGenerator(BaseMaskGenerator):
     def __init__(
         self,
-        nband: int,
-        ratio: int,
-        band_width: list,
-        audio_emb_dim: int,
-        bottleneck_chan: int,
+        win: int,
         n_src: int,
+        bottleneck_chan: int,
+        context: int = 0,
+        sample_rate: int = 16000,
         *args,
         **kwargs,
     ):
         super(BSRNNMaskGenerator, self).__init__()
-        self.nband = nband
-        self.ratio = ratio
-        self.band_width = band_width
-        self.audio_emb_dim = audio_emb_dim
-        self.bottleneck_chan = bottleneck_chan
+        self.win = win
         self.n_src = n_src
+        self.bottleneck_chan = bottleneck_chan
+        self.context = context
+        self.sample_rate = sample_rate
+
+        self.ratio = self.context * 2 + 1
+        self.enc_dim = self.win // 2 + 1
+
+        bandwidth_100 = int(np.floor(100 / (self.sample_rate / 2.0) * self.enc_dim))
+        bandwidth_250 = int(np.floor(250 / (self.sample_rate / 2.0) * self.enc_dim))
+        bandwidth_500 = int(np.floor(500 / (self.sample_rate / 2.0) * self.enc_dim))
+        bandwidth_1k = int(np.floor(1000 / (self.sample_rate / 2.0) * self.enc_dim))
+        self.band_width = [bandwidth_100] * 5
+        self.band_width += [bandwidth_250] * 6
+        self.band_width += [bandwidth_500] * 4
+        self.band_width += [bandwidth_1k] * 4
+        self.band_width.append(self.enc_dim - np.sum(self.band_width))
+        self.nband = len(self.band_width)
 
         self.mask = nn.ModuleList([])
         for i in range(self.nband):
             self.mask.append(
                 nn.Sequential(
-                    nn.GroupNorm(1, self.bottleneck_chan, torch.finfo(torch.float32).eps),
-                    nn.Conv1d(self.bottleneck_chan, self.bottleneck_chan * 4, 1),
-                    nn.Tanh(),
-                    nn.Conv1d(self.bottleneck_chan * 4, self.audio_emb_dim * 4, 1),
-                    nn.Tanh(),
-                    nn.Conv1d(self.audio_emb_dim * 4, self.band_width[i] * self.ratio * 4 * self.n_src, 1),
+                    gLN(self.bottleneck_chan),
+                    ConvNormAct(self.bottleneck_chan, self.band_width[i] * self.ratio * 4 * self.n_src, 1, xavier_init=True),
                 )
             )
 
@@ -117,13 +129,14 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
         sep_subband_spec = []
         for i in range(len(self.band_width)):
             this_output = self.mask[i](sep_output[:, i]).view(batch_size, 2, 2, self.n_src, self.ratio, self.band_width[i], -1)
-            this_mask = this_output[:, 0] * torch.sigmoid(this_output[:, 1])  # B*nch, 2, n_src, K, BW, T
-            mask_real = this_mask[:, 0]  # B*nch, n_src, K, BW, T
-            mask_imag = this_mask[:, 1]  # B*nch, n_src, K, BW, T
-            est_spec_real = (context[i].real.unsqueeze(1) * mask_real).mean(1) - (context[i].imag.unsqueeze(1) * mask_imag).mean(1)
-            est_spec_imag = (context[i].real.unsqueeze(1) * mask_imag).mean(1) + (context[i].imag.unsqueeze(1) * mask_real).mean(1)
+            this_mask = this_output[:, 0] * torch.sigmoid(this_output[:, 1])  # B, 2, n_src, K, BW, T
+            mask_real = this_mask[:, 0]  # B, n_src, K, BW, T
+            mask_imag = this_mask[:, 1]  # B, n_src, K, BW, T
+            est_spec_real = (context[i].real.unsqueeze(1) * mask_real).mean(2) - (context[i].imag.unsqueeze(1) * mask_imag).mean(2)
+            est_spec_imag = (context[i].real.unsqueeze(1) * mask_imag).mean(2) + (context[i].imag.unsqueeze(1) * mask_real).mean(2)
             sep_subband_spec.append(torch.complex(est_spec_real, est_spec_imag))
-        est_spec = torch.cat(sep_subband_spec, 1)  # B*nch, n_src, F, T
+
+        est_spec = torch.cat(sep_subband_spec, 2)  # B, n_src, F, T
 
         return est_spec
 

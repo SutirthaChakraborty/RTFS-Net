@@ -47,11 +47,6 @@ class CTCNet(BaseAVModel):
         self.enc_out_chan = self.encoder.out_chan
 
         self.mask_generation_params["mask_generator_type"] = self.mask_generation_params.get("mask_generator_type", "MaskGenerator")
-        if self.mask_generation_params["mask_generator_type"] == "BSRNNMaskGenerator":
-            self.mask_generation_params["nband"] = self.encoder.nband
-            self.mask_generation_params["ratio"] = self.encoder.ratio
-            self.mask_generation_params["band_width"] = self.encoder.band_width
-
         self.audio_bn_chan = self.audio_bn_params.get("out_chan", self.enc_out_chan)
         self.audio_bn_params["out_chan"] = self.audio_bn_chan
         self.video_bn_chan = self.video_bn_params["out_chan"]
@@ -74,6 +69,7 @@ class CTCNet(BaseAVModel):
             n_src=self.n_src,
             audio_emb_dim=self.enc_out_chan,
             bottleneck_chan=self.audio_bn_chan,
+            win=self.enc_dec_params.get("win", 0),
         )
 
         self.decoder: decoder.BaseDecoder = decoder.get(self.enc_dec_params["decoder_type"])(
@@ -140,7 +136,7 @@ class CTCNet(BaseAVModel):
         macs = profile(self.refinement_module, inputs=(bn_audio, bn_video), verbose=False)[0] / 1000000
         print("Number of MACs in RefinementModule: {:,.0f}M".format(macs))
 
-        macs = profile(self.mask_generator, inputs=(bn_audio, encoded_audio), verbose=False)[0] / 1000000
+        macs = profile(self.mask_generator, inputs=(bn_audio, encoded_audio, context), verbose=False)[0] / 1000000
         print("Number of MACs in mask generator: {:,.0f}M".format(macs))
 
         macs = profile(self.decoder, inputs=(separated_audio_embedding, encoded_audio.shape), verbose=False)[0] / 1000000
