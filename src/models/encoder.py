@@ -4,7 +4,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from numpy import floor, ceil
+from numpy import ceil, sum
 from .layers import ConvNormAct
 from . import normalizations
 
@@ -55,7 +55,14 @@ class BaseEncoder(nn.Module):
         raise NotImplementedError
 
     def get_config(self):
-        raise NotImplementedError
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
 
 
 class ConvolutionalEncoder(BaseEncoder):
@@ -117,16 +124,6 @@ class ConvolutionalEncoder(BaseEncoder):
 
         return feature_map
 
-    def get_config(self):
-        encoder_args = {}
-
-        for k, v in (self.__dict__).items():
-            if not k.startswith("_") and k != "training":
-                if not inspect.ismethod(v):
-                    encoder_args[k] = v
-
-        return encoder_args
-
 
 class STFTEncoder(BaseEncoder):
     def __init__(
@@ -142,7 +139,7 @@ class STFTEncoder(BaseEncoder):
         *args,
         **kwargs,
     ):
-        super(STFTEncoder, self).__init__(0, 0, 0)
+        super(STFTEncoder, self).__init__(out_chan, 0, 0)
 
         self.win = win
         self.hop_length = hop_length
@@ -185,16 +182,6 @@ class STFTEncoder(BaseEncoder):
 
         return spec_feature_map
 
-    def get_config(self):
-        encoder_args = {}
-
-        for k, v in (self.__dict__).items():
-            if not k.startswith("_") and k != "training":
-                if not inspect.ismethod(v):
-                    encoder_args[k] = v
-
-        return encoder_args
-
 
 def get(identifier):
     if identifier is None:
@@ -222,7 +209,7 @@ class BSRNNEncoder(BaseEncoder):
         *args,
         **kwargs,
     ):
-        super(BSRNNEncoder, self).__init__(0, 0, 0)
+        super(BSRNNEncoder, self).__init__(out_chan, 0, 0)
 
         self.win = win
         self.hop_length = hop_length
@@ -230,47 +217,44 @@ class BSRNNEncoder(BaseEncoder):
         self.norm_type = norm_type
         self.sample_rate = sample_rate
         self.context = context
+        self.eps = torch.finfo(torch.float32).eps
 
         self.register_buffer("window", torch.hann_window(self.win), False)
 
-        bandwidth_100 = int(floor(100 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
-        multiplier = int(ceil(10 / 44100 * self.sr))
-        self.band_width = [bandwidth_100] * multiplier
-
-        bandwidth_250 = int(floor(250 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
-        multiplier = int(ceil(12 / 44100 * self.sr))
-        if sum(self.band_width + [bandwidth_250] * multiplier) < (self.win // 2 + 1):
-            self.band_width += [bandwidth_250] * multiplier
-
-        bandwidth_500 = int(floor(500 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
-        multiplier = int(ceil(8 / 44100 * self.sr))
-        if sum(self.band_width + [bandwidth_500] * multiplier) < (self.win // 2 + 1):
-            self.band_width += [bandwidth_500] * multiplier
-
-        if self.sample_rate > 8000:
-            bandwidth_1k = int(floor(1000 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
-            multiplier = int(ceil(8 / 44100 * self.sr))
-            if sum(self.band_width + [bandwidth_1k] * multiplier) < (self.win // 2 + 1):
-                self.band_width += [bandwidth_1k] * multiplier
-
-        if self.sample_rate > 16000:
-            bandwidth_2k = int(floor(2000 / (self.sample_rate / 2.0) * (self.win // 2 + 1)))
-            multiplier = int(ceil(2 / 44100 * self.sr))
-            if sum(self.band_width + [bandwidth_2k] * multiplier) < (self.win // 2 + 1):
-                self.band_width += [bandwidth_2k] * multiplier
-
-        self.band_width.append((self.win // 2 + 1) - sum(self.band_width))
+        bandwidth_100 = int(ceil(100 / (self.sample_rate / 2.0) * self.out_chan))
+        bandwidth_250 = int(ceil(250 / (self.sample_rate / 2.0) * self.out_chan))
+        bandwidth_500 = int(ceil(500 / (self.sample_rate / 2.0) * self.out_chan))
+        bandwidth_1k = int(ceil(1000 / (self.sample_rate / 2.0) * self.out_chan))
+        bandwidth_2k = int(ceil(2000 / (self.sample_rate / 2.0) * self.out_chan))
+        # self.band_width = [bandwidth_100] * 10
+        # self.band_width += [bandwidth_250] * 12
+        # self.band_width += [bandwidth_500] * 8
+        # self.band_width += [bandwidth_1k] * 8
+        # self.band_width += [bandwidth_2k] * 2
+        self.band_width = [bandwidth_100] * 3
+        self.band_width += [bandwidth_250] * 4
+        self.band_width += [bandwidth_500] * 2
+        self.band_width += [bandwidth_1k] * 2
+        self.band_width += [bandwidth_2k] * 1
+        self.band_width.append(self.out_chan - sum(self.band_width))
         self.nband = len(self.band_width)
+
+        print(self.band_width)
 
         assert self.band_width[-1] > 0, f"{(self.win // 2 + 1)}, {sum(self.band_width)}"
 
         self.BN = nn.ModuleList([])
         for i in range(self.nband):
-            self.BN.append(nn.Sequential(normalizations.get(self.norm_type), ConvNormAct(self.band_width[i] * 2, self.out_chan, 1)))
+            self.BN.append(
+                nn.Sequential(
+                    normalizations.get(self.norm_type)(self.band_width[i] * 2),
+                    ConvNormAct(self.band_width[i] * 2, self.out_chan, 1),
+                )
+            )
 
     def forward(self, x: torch.Tensor):
         x = self.unsqueeze_to_2D(x)
-        batch_size, nsample = x.size()
+        batch_size = x.shape[0]
 
         spec = torch.stft(
             x,
@@ -308,15 +292,6 @@ class BSRNNEncoder(BaseEncoder):
         for i in range(len(self.band_width)):
             subband_feature.append(self.BN[i](subband_spec[i].view(batch_size, self.band_width[i] * 2, -1)))
         subband_feature = torch.stack(subband_feature, 1)  # B, nband, N, T
+        subband_feature = subband_feature.permute(0, 2, 3, 1).contiguous()
 
-        subband_feature = subband_feature.view(batch_size, self.band_width * self.out_chan, -1)
-
-    def get_config(self):
-        encoder_args = {}
-
-        for k, v in (self.__dict__).items():
-            if not k.startswith("_") and k != "training":
-                if not inspect.ismethod(v):
-                    encoder_args[k] = v
-
-        return encoder_args
+        return subband_feature

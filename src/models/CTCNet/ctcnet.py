@@ -39,7 +39,7 @@ class CTCNet(BaseAVModel):
         self.fusion_params = fusion_params
         self.mask_generation_params = mask_generation_params
 
-        self.encoder = encoder.get(self.enc_dec_params["encoder_type"])(
+        self.encoder: encoder.BaseEncoder = encoder.get(self.enc_dec_params["encoder_type"])(
             **self.enc_dec_params,
             in_chan=1,
             upsampling_depth=self.audio_params["upsampling_depth"],
@@ -70,7 +70,7 @@ class CTCNet(BaseAVModel):
             bottleneck_chan=self.audio_bn_chan,
         )
 
-        self.decoder = decoder.get(self.enc_dec_params["decoder_type"])(
+        self.decoder: decoder.BaseDecoder = decoder.get(self.enc_dec_params["decoder_type"])(
             **self.enc_dec_params,
             in_chan=self.enc_out_chan * self.n_src if self.mask_generation_params.get("kernel_size", 1) > 0 else self.audio_bn_chan,
             n_src=self.n_src,
