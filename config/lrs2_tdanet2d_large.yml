@@ -38,7 +38,7 @@ audionet:
       hid_chan: 128                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
-      repeats: 16
+      repeats: 8
       norm_type: gLN
       act_type: PReLU
       kernel_size: 5
