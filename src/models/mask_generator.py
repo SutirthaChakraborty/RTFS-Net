@@ -87,6 +87,8 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
         bottleneck_chan: int,
         context: int = 0,
         sample_rate: int = 16000,
+        kernel_size: int = 1,
+        mask_act: str = "ReLU",
         *args,
         **kwargs,
     ):
@@ -96,6 +98,8 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
         self.bottleneck_chan = bottleneck_chan
         self.context = context
         self.sample_rate = sample_rate
+        self.mask_act = mask_act
+        self.kernel_size = kernel_size
 
         self.ratio = self.context * 2 + 1
         self.enc_dim = self.win // 2 + 1
@@ -115,8 +119,31 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
         for i in range(self.nband):
             self.mask.append(
                 nn.Sequential(
-                    gLN(self.bottleneck_chan),
-                    ConvNormAct(self.bottleneck_chan, self.band_width[i] * self.ratio * 4 * self.n_src, 1, xavier_init=True),
+                    ConvNormAct(
+                        self.bottleneck_chan,
+                        self.bottleneck_chan * 2,
+                        1,
+                        act_type="PReLU",
+                        norm_type="gLN",
+                        xavier_init=True,
+                    ),
+                    ConvNormAct(
+                        self.bottleneck_chan * 2,
+                        self.bottleneck_chan * 2,
+                        self.kernel_size,
+                        groups=self.bottleneck_chan * 2,
+                        padding=(self.kernel_size - 1) // 2,
+                        act_type="PReLU",
+                        norm_type="gLN",
+                        xavier_init=True,
+                    ),
+                    ConvNormAct(
+                        self.bottleneck_chan * 2,
+                        self.band_width[i] * self.ratio * 4 * self.n_src,
+                        1,
+                        act_type=self.mask_act,
+                        xavier_init=True,
+                    ),
                 )
             )
 
