@@ -43,11 +43,11 @@ class RefinementModule(nn.Module):
         # cross modal fusion
         for i in range(self.fusion_repeats):
             if i > 0:
-                audio = self.audio_net.get_concat_block(i)(audio + audio_residual)
-                video = self.video_net.get_concat_block(i)(video + video_residual)
+                audio = audio + audio_residual
+                video = video + video_residual
 
-            audio = self.audio_net.get_block(i)(audio)
-            video = self.video_net.get_block(i)(video)
+            audio = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio))
+            video = self.video_net.get_block(i)(self.video_net.get_concat_block(i)(video))
             audio, video = self.crossmodal_fusion.get_fusion_block(i)(audio, video)
 
         # further refinement
