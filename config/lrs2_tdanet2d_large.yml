@@ -38,7 +38,7 @@ audionet:
       hid_chan: 128                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
-      repeats: 8
+      repeats: 6
       norm_type: gLN
       act_type: PReLU
       kernel_size: 5
@@ -52,7 +52,7 @@ audionet:
       hid_chan: 64
       upsampling_depth: 4
       shared: True
-      repeats: 3
+      repeats: 2
       norm_type: BatchNorm2d
       act_type: PReLU
       kernel_size: 3
@@ -74,7 +74,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 4
+    batch_size: 2
     num_workers: 8
     half_lr: yes
     early_stop: yes
