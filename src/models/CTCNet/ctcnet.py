@@ -2,14 +2,12 @@ import torch
 
 from thop import profile
 
-from ...models import encoder
-from ...models import decoder
-from ...models import mask_generator
+from .refinement_module import RefinementModule
 
 from ..layers import ConvNormAct
 from ..base_av_model import BaseAVModel
 
-from .refinement_module import RefinementModule
+from ...models import encoder, decoder, mask_generator
 
 
 class CTCNet(BaseAVModel):
@@ -64,7 +62,7 @@ class CTCNet(BaseAVModel):
             video_bn_chan=self.video_bn_chan,
         )
 
-        self.mask_generator = mask_generator.get(self.mask_generation_params["mask_generator_type"])(
+        self.mask_generator: mask_generator.BaseMaskGenerator = mask_generator.get(self.mask_generation_params["mask_generator_type"])(
             **self.mask_generation_params,
             n_src=self.n_src,
             audio_emb_dim=self.enc_out_chan,
