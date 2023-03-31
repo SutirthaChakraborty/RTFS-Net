@@ -122,7 +122,7 @@ class ConvolutionalEncoder(BaseEncoder):
 
         feature_map = torch.stack(feature_maps).sum(dim=0)
 
-        return feature_map, _
+        return feature_map, False
 
 
 class STFTEncoder(BaseEncoder):
@@ -180,7 +180,7 @@ class STFTEncoder(BaseEncoder):
         spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
         spec_feature_map = self.conv(spec)  # B, C, T, F
 
-        return spec_feature_map, _
+        return spec_feature_map, False
 
 
 class BSRNNEncoder(BaseEncoder):
