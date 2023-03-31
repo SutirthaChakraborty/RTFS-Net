@@ -78,7 +78,7 @@ class CTCNet(BaseAVModel):
 
         self.get_MACs()
 
-    def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor):
+    def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor = None):
         audio_mixture_embedding, context = self.encoder(audio_mixture)  # B, 1, L -> B, N, T, (F)
 
         audio = self.audio_bottleneck(audio_mixture_embedding)  # B, N, T, (F) -> B, C, T, (F)
