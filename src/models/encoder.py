@@ -1,10 +1,10 @@
 import math
 import torch
 import inspect
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
-from numpy import ceil, sum
 from .layers import ConvNormAct
 from . import normalizations
 
@@ -122,7 +122,7 @@ class ConvolutionalEncoder(BaseEncoder):
 
         feature_map = torch.stack(feature_maps).sum(dim=0)
 
-        return feature_map
+        return feature_map, False
 
 
 class STFTEncoder(BaseEncoder):
@@ -180,21 +180,7 @@ class STFTEncoder(BaseEncoder):
         spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
         spec_feature_map = self.conv(spec)  # B, C, T, F
 
-        return spec_feature_map
-
-
-def get(identifier):
-    if identifier is None:
-        return nn.Identity
-    elif callable(identifier):
-        return identifier
-    elif isinstance(identifier, str):
-        cls = globals().get(identifier)
-        if cls is None:
-            raise ValueError("Could not interpret normalization identifier: " + str(identifier))
-        return cls
-    else:
-        raise ValueError("Could not interpret normalization identifier: " + str(identifier))
+        return spec_feature_map, False
 
 
 class BSRNNEncoder(BaseEncoder):
@@ -221,35 +207,30 @@ class BSRNNEncoder(BaseEncoder):
 
         self.register_buffer("window", torch.hann_window(self.win), False)
 
-        bandwidth_100 = int(ceil(100 / (self.sample_rate / 2.0) * self.out_chan))
-        bandwidth_250 = int(ceil(250 / (self.sample_rate / 2.0) * self.out_chan))
-        bandwidth_500 = int(ceil(500 / (self.sample_rate / 2.0) * self.out_chan))
-        bandwidth_1k = int(ceil(1000 / (self.sample_rate / 2.0) * self.out_chan))
-        bandwidth_2k = int(ceil(2000 / (self.sample_rate / 2.0) * self.out_chan))
-        # self.band_width = [bandwidth_100] * 10
-        # self.band_width += [bandwidth_250] * 12
-        # self.band_width += [bandwidth_500] * 8
-        # self.band_width += [bandwidth_1k] * 8
-        # self.band_width += [bandwidth_2k] * 2
-        self.band_width = [bandwidth_100] * 3
-        self.band_width += [bandwidth_250] * 4
-        self.band_width += [bandwidth_500] * 2
-        self.band_width += [bandwidth_1k] * 2
-        self.band_width += [bandwidth_2k] * 1
-        self.band_width.append(self.out_chan - sum(self.band_width))
+        self.ratio = context * 2 + 1
+        self.enc_dim = self.win // 2 + 1
+
+        bandwidth_100 = int(np.floor(100 / (self.sample_rate / 2.0) * self.enc_dim))
+        bandwidth_250 = int(np.floor(250 / (self.sample_rate / 2.0) * self.enc_dim))
+        bandwidth_500 = int(np.floor(500 / (self.sample_rate / 2.0) * self.enc_dim))
+        bandwidth_1k = int(np.floor(1000 / (self.sample_rate / 2.0) * self.enc_dim))
+        self.band_width = [bandwidth_100] * 5
+        self.band_width += [bandwidth_250] * 6
+        self.band_width += [bandwidth_500] * 4
+        self.band_width += [bandwidth_1k] * 4
+
+        assert self.enc_dim > np.sum(self.band_width), f"{(self.enc_dim)}, {np.sum(self.band_width)}"
+
+        self.band_width.append(self.enc_dim - np.sum(self.band_width))
         self.nband = len(self.band_width)
 
         print(self.band_width)
 
-        assert self.band_width[-1] > 0, f"{(self.win // 2 + 1)}, {sum(self.band_width)}"
-
         self.BN = nn.ModuleList([])
         for i in range(self.nband):
+            in_chan = self.band_width[i] * 2
             self.BN.append(
-                nn.Sequential(
-                    normalizations.get(self.norm_type)(self.band_width[i] * 2),
-                    ConvNormAct(self.band_width[i] * 2, self.out_chan, 1),
-                )
+                nn.Sequential(normalizations.get(self.norm_type)(in_chan), ConvNormAct(in_chan, self.out_chan, 1, xavier_init=True))
             )
 
     def forward(self, x: torch.Tensor):
@@ -279,12 +260,10 @@ class BSRNNEncoder(BaseEncoder):
         spec_RI = torch.stack([spec.real, spec.imag], 1)  # B, 2, F, T
         subband_spec = []
         subband_spec_context = []
-        subband_power = []
         band_idx = 0
         for i in range(len(self.band_width)):
             subband_spec.append(spec_RI[:, :, band_idx : band_idx + self.band_width[i]].contiguous())
             subband_spec_context.append(mixture_context[:, :, band_idx : band_idx + self.band_width[i]])  # B, Context, BW, T
-            subband_power.append((subband_spec_context[-1].abs().pow(2).mean(1).mean(1) + self.eps).sqrt())  # B, T
             band_idx += self.band_width[i]
 
         # normalization and bottleneck
@@ -294,4 +273,18 @@ class BSRNNEncoder(BaseEncoder):
         subband_feature = torch.stack(subband_feature, 1)  # B, nband, N, T
         subband_feature = subband_feature.permute(0, 2, 3, 1).contiguous()
 
-        return subband_feature
+        return subband_feature, subband_spec_context
+
+
+def get(identifier):
+    if identifier is None:
+        return nn.Identity
+    elif callable(identifier):
+        return identifier
+    elif isinstance(identifier, str):
+        cls = globals().get(identifier)
+        if cls is None:
+            raise ValueError("Could not interpret normalization identifier: " + str(identifier))
+        return cls
+    else:
+        raise ValueError("Could not interpret normalization identifier: " + str(identifier))

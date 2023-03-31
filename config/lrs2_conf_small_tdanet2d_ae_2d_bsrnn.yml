@@ -22,15 +22,13 @@ audionet:
 
     enc_dec_params:
       encoder_type: BSRNNEncoder
-      decoder_type: STFTDecoder
+      decoder_type: BSRNNDecoder
       win: 256
       hop_length: 128
-      out_chan: 128
-      kernel_size: 3
-      stride: 1
-      bias: False
-      act_type: 
+      out_chan: 256
       norm_type: gLN
+      sample_rate: 16000
+      context: 0
       
     audio_params:
       audio_net: TDANet
@@ -66,9 +64,9 @@ audionet:
       is2d: True
 
     mask_generation_params:
+      mask_generator_type: BSRNNMaskGenerator
       mask_act: ReLU
-      is2d: True
-      output_gate: True
+      kernel_size: 5
       
 # Training config
 training:
@@ -100,4 +98,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_27_03_23
+    exp_name: ctcnet_small_tdanet2d_bsrnn_31_03_23

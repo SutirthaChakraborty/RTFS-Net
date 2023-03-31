@@ -151,24 +151,17 @@ class BSRNNDecoder(BaseDecoder):
         self.sample_rate = sample_rate
         self.context = context
 
-        torch.nn.init.xavier_uniform_(self.decoder.weight)
-
+        self.enc_dim = self.win // 2 + 1
         self.register_buffer("window", torch.hann_window(self.win), False)
 
     def forward(self, x: torch.Tensor, input_shape: torch.Size):
-        # B, n_src, N, T, F
+        # B, n_src, F, T
 
         batch_size, length = input_shape[0], input_shape[-1]
-
-        x = x.view(batch_size * self.n_src, self.in_chan, *x.shape[-2:])  # B, n_src, N, T, F -> # B * n_src, N, T, F
-        decoded_separated_audio = self.decoder(x)  # B * n_src, N, T, F - > B * n_src, 2, T, F
-
-        spec = torch.complex(decoded_separated_audio[:, 0], decoded_separated_audio[:, 1])  # B*n_src, T, F
-        # spec = torch.stack([spec.real, spec.imag], dim=-1)  # B*n_src, T, F
-        spec = spec.transpose(1, 2).contiguous()  # B*n_src, F, T
+        x = x.view(batch_size * self.n_src, self.enc_dim, -1)  # B, n_src, F, T -> # B * n_src, F, T
 
         output = torch.istft(
-            spec,
+            x,
             n_fft=self.win,
             hop_length=self.hop_length,
             window=self.window,
