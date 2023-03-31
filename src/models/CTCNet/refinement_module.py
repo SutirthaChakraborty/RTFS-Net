@@ -48,7 +48,7 @@ class RefinementModule(nn.Module):
 
             audio = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio))
             video = self.video_net.get_block(i)(self.video_net.get_concat_block(i)(video)) if video is not None else video
-            audio, video = self.crossmodal_fusion.get_fusion_block(i)(audio, video) if video is not None else audio, video
+            audio, video = self.crossmodal_fusion.get_fusion_block(i)(audio, video) if video is not None else (audio, video)
 
         # further refinement
         for j in range(self.audio_repeats):

@@ -38,7 +38,7 @@ audionet:
       hid_chan: 128                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
-      repeats: 6
+      repeats: 16
       norm_type: gLN
       act_type: PReLU
       kernel_size: 5
@@ -52,7 +52,7 @@ audionet:
       hid_chan: 64
       upsampling_depth: 4
       shared: True
-      repeats: 2
+      repeats: 3
       norm_type: BatchNorm2d
       act_type: PReLU
       kernel_size: 3
@@ -62,7 +62,7 @@ audionet:
 
     fusion_params:
       fusion_type: ConcatFusion
-      fusion_shared: True
+      fusion_shared: False
       is2d: True
 
     mask_generation_params:
