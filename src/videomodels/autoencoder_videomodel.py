@@ -69,6 +69,12 @@ class AEVideoModel(nn.Module):
         self.macs = profile(self, inputs=(video_input,), verbose=False)[0] / 1000000
         self.trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
         self.non_trainable_params = sum(p.numel() for p in self.parameters() if not p.requires_grad)
-        print("Number of MACs in total: {:,.0f}M".format(self.macs))
-        print("Number of trainable parameters: {:,.0f}M".format(self.trainable_params))
-        print("Number of non trainable parameters: {:,.0f}M".format(self.non_trainable_params))
+
+        s = (
+            "Pretrained Video Backbone\n"
+            "Number of MACs in total: {:,.0f}M\n"
+            "Number of trainable parameters: {:,.0f}M\n"
+            "Number of non trainable parameters: {:,.0f}M\n"
+        ).format(self.macs, self.trainable_params, self.non_trainable_params)
+
+        print(s)
