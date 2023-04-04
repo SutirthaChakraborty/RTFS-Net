@@ -99,4 +99,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_bsrnn_31_03_23
+    exp_name: lrs2_tdanet2d_bsrnn_04_04_23
