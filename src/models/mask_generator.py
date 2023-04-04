@@ -1,10 +1,10 @@
 import torch
 import inspect
-import numpy as np
 import torch.nn as nn
 
-from .normalizations import gLN
 from .layers import ConvNormAct
+from .utils import get_bandwidths
+from .normalizations import gLN
 
 
 class BaseMaskGenerator(nn.Module):
@@ -104,41 +104,33 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
         self.ratio = self.context * 2 + 1
         self.enc_dim = self.win // 2 + 1
 
-        bandwidth_100 = int(np.floor(100 / (self.sample_rate / 2.0) * self.enc_dim))
-        bandwidth_250 = int(np.floor(250 / (self.sample_rate / 2.0) * self.enc_dim))
-        bandwidth_500 = int(np.floor(500 / (self.sample_rate / 2.0) * self.enc_dim))
-        bandwidth_1k = int(np.floor(1000 / (self.sample_rate / 2.0) * self.enc_dim))
-        self.band_width = [bandwidth_100] * 5
-        self.band_width += [bandwidth_250] * 6
-        self.band_width += [bandwidth_500] * 4
-        self.band_width += [bandwidth_1k] * 4
-        self.band_width.append(self.enc_dim - np.sum(self.band_width))
-        self.nband = len(self.band_width)
+        self.band_width = get_bandwidths(self.win, self.sample_rate)
 
         self.mask = nn.ModuleList([])
-        for i in range(self.nband):
+        for i in range(len(self.band_width)):
             self.mask.append(
                 nn.Sequential(
+                    gLN(self.bottleneck_chan),
+                    # ConvNormAct(
+                    #     self.bottleneck_chan,
+                    #     self.bottleneck_chan * 2,
+                    #     1,
+                    #     act_type="PReLU",
+                    #     norm_type="gLN",
+                    #     xavier_init=True,
+                    # ),
+                    # ConvNormAct(
+                    #     self.bottleneck_chan * 2,
+                    #     self.bottleneck_chan * 2,
+                    #     self.kernel_size,
+                    #     groups=self.bottleneck_chan * 2,
+                    #     padding=(self.kernel_size - 1) // 2,
+                    #     act_type="PReLU",
+                    #     norm_type="gLN",
+                    #     xavier_init=True,
+                    # ),
                     ConvNormAct(
-                        self.bottleneck_chan,
-                        self.bottleneck_chan * 2,
-                        1,
-                        act_type="PReLU",
-                        norm_type="gLN",
-                        xavier_init=True,
-                    ),
-                    ConvNormAct(
-                        self.bottleneck_chan * 2,
-                        self.bottleneck_chan * 2,
-                        self.kernel_size,
-                        groups=self.bottleneck_chan * 2,
-                        padding=(self.kernel_size - 1) // 2,
-                        act_type="PReLU",
-                        norm_type="gLN",
-                        xavier_init=True,
-                    ),
-                    ConvNormAct(
-                        self.bottleneck_chan * 2,
+                        self.bottleneck_chan ,
                         self.band_width[i] * self.ratio * 4 * self.n_src,
                         1,
                         act_type=self.mask_act,

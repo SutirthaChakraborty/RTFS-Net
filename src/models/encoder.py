@@ -1,12 +1,12 @@
 import math
 import torch
 import inspect
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .layers import ConvNormAct
 from . import normalizations
+from .layers import ConvNormAct
+from .utils import get_bandwidths
 
 
 class BaseEncoder(nn.Module):
@@ -207,27 +207,12 @@ class BSRNNEncoder(BaseEncoder):
 
         self.register_buffer("window", torch.hann_window(self.win), False)
 
-        self.ratio = context * 2 + 1
-        self.enc_dim = self.win // 2 + 1
-
-        bandwidth_100 = int(np.floor(100 / (self.sample_rate / 2.0) * self.enc_dim))
-        bandwidth_250 = int(np.floor(250 / (self.sample_rate / 2.0) * self.enc_dim))
-        bandwidth_500 = int(np.floor(500 / (self.sample_rate / 2.0) * self.enc_dim))
-        bandwidth_1k = int(np.floor(1000 / (self.sample_rate / 2.0) * self.enc_dim))
-        self.band_width = [bandwidth_100] * 5
-        self.band_width += [bandwidth_250] * 6
-        self.band_width += [bandwidth_500] * 4
-        self.band_width += [bandwidth_1k] * 4
-
-        assert self.enc_dim > np.sum(self.band_width), f"{(self.enc_dim)}, {np.sum(self.band_width)}"
-
-        self.band_width.append(self.enc_dim - np.sum(self.band_width))
-        self.nband = len(self.band_width)
+        self.band_width = get_bandwidths(self.win, self.sample_rate)
 
         print(self.band_width)
 
         self.BN = nn.ModuleList([])
-        for i in range(self.nband):
+        for i in range(len(self.band_width)):
             in_chan = self.band_width[i] * 2
             self.BN.append(
                 nn.Sequential(normalizations.get(self.norm_type)(in_chan), ConvNormAct(in_chan, self.out_chan, 1, xavier_init=True))

@@ -23,8 +23,9 @@ audionet:
     enc_dec_params:
       encoder_type: BSRNNEncoder
       decoder_type: BSRNNDecoder
-      win: 256
-      hop_length: 128
+      win: 1024
+      # hop_length: 256
+      hop_length: 512
       out_chan: 256
       norm_type: gLN
       sample_rate: 16000
