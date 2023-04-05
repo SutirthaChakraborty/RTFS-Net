@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..layers import TAC, ConvNormAct
+from ..layers import ConvNormAct
 
 
 class FRCNNBlock(nn.Module):
@@ -12,11 +12,11 @@ class FRCNNBlock(nn.Module):
         hid_chan: int,
         kernel_size: int = 5,
         stride: int = 2,
-        norm_type: str = "BatchNorm1d",
+        norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
         dropout: int = -1,
-        group_size: int = 1,
+        is2d: bool = False,
     ):
         super(FRCNNBlock, self).__init__()
         self.in_chan = in_chan
@@ -27,27 +27,34 @@ class FRCNNBlock(nn.Module):
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
         self.dropout = dropout
-        self.group_size = group_size
+        self.is2d = is2d
 
         self.projection = ConvNormAct(
-            in_chan=self.in_chan // self.group_size,
-            out_chan=self.hid_chan // self.group_size,
+            in_chan=self.in_chan,
+            out_chan=self.hid_chan,
             kernel_size=1,
             norm_type=self.norm_type,
             act_type=self.act_type,
+            is2d=self.is2d,
         )
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
         self.residual_conv = nn.Sequential(
             ConvNormAct(
-                self.hid_chan * self.upsampling_depth // self.group_size,
-                self.hid_chan // self.group_size,
+                self.hid_chan * self.upsampling_depth,
+                self.hid_chan,
                 1,
                 norm_type=self.norm_type,
                 act_type=self.act_type,
+                is2d=self.is2d,
             ),
-            nn.Conv1d(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1),
+            ConvNormAct(
+                self.hid_chan,
+                self.in_chan,
+                1,
+                is2d=self.is2d,
+            ),
         )
         self.dropout_layer = nn.Dropout(self.dropout) if self.dropout > 0 else nn.Identity()
 
@@ -57,13 +64,14 @@ class FRCNNBlock(nn.Module):
             stride = 1 if i == 0 else self.stride
             out.append(
                 ConvNormAct(
-                    in_chan=self.hid_chan // self.group_size,
-                    out_chan=self.hid_chan // self.group_size,
+                    in_chan=self.hid_chan,
+                    out_chan=self.hid_chan,
                     kernel_size=self.kernel_size,
                     stride=stride,
-                    groups=self.hid_chan // self.group_size,
+                    groups=self.hid_chan,
                     padding=(self.kernel_size - 1) // 2,
                     norm_type=self.norm_type,
+                    is2d=self.is2d,
                 )
             )
 
@@ -79,13 +87,14 @@ class FRCNNBlock(nn.Module):
                 elif i - j == 1:
                     fuse_layer.append(
                         ConvNormAct(
-                            in_chan=self.hid_chan // self.group_size,
-                            out_chan=self.hid_chan // self.group_size,
+                            in_chan=self.hid_chan,
+                            out_chan=self.hid_chan,
                             kernel_size=self.kernel_size,
                             stride=self.stride,
-                            groups=self.hid_chan // self.group_size,
+                            groups=self.hid_chan,
                             padding=(self.kernel_size - 1) // 2,
                             norm_type=self.norm_type,
+                            is2d=self.is2d,
                         )
                     )
             out.append(fuse_layer)
@@ -97,27 +106,29 @@ class FRCNNBlock(nn.Module):
             if i == 0 or i == self.upsampling_depth - 1:
                 out.append(
                     ConvNormAct(
-                        in_chan=self.hid_chan * 2 // self.group_size,
-                        out_chan=self.hid_chan // self.group_size,
+                        in_chan=self.hid_chan * 2,
+                        out_chan=self.hid_chan,
                         kernel_size=1,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
+                        is2d=self.is2d,
                     )
                 )
             else:
                 out.append(
                     ConvNormAct(
-                        in_chan=self.hid_chan * 3 // self.group_size,
-                        out_chan=self.hid_chan // self.group_size,
+                        in_chan=self.hid_chan * 3,
+                        out_chan=self.hid_chan,
                         kernel_size=1,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
+                        is2d=self.is2d,
                     )
                 )
         return out
 
     def forward(self, x):
-        # x: shape (B, C, T)
+        # x: B, C, T, (F)
         residual = x
         x_enc = self.projection(x)
 
@@ -130,12 +141,12 @@ class FRCNNBlock(nn.Module):
         # lateral connection
         x_fuse = []
         for i in range(self.upsampling_depth):
-            shape = downsampled_outputs[i].shape[-1]
+            shape = downsampled_outputs[i].shape
             y = torch.cat(
                 (
                     self.fusion_layers[i][0](downsampled_outputs[i - 1]) if i - 1 >= 0 else torch.Tensor().to(x_enc.device),
                     downsampled_outputs[i],
-                    F.interpolate(downsampled_outputs[i + 1], size=shape, mode="nearest")
+                    F.interpolate(downsampled_outputs[i + 1], size=shape[-(len(shape) // 2) :], mode="nearest")
                     if i + 1 < self.upsampling_depth
                     else torch.Tensor().to(x_enc.device),
                 ),
@@ -144,9 +155,9 @@ class FRCNNBlock(nn.Module):
             x_fuse.append(self.concat_layers[i](y))
 
         # resize to T
-        shape = downsampled_outputs[0].shape[-1]
+        shape = downsampled_outputs[0].shape
         for i in range(1, len(x_fuse)):
-            x_fuse[i] = F.interpolate(x_fuse[i], size=shape, mode="nearest")
+            x_fuse[i] = F.interpolate(x_fuse[i], size=shape[-(len(shape) // 2) :], mode="nearest")
 
         # concat and shortcut
         out = self.residual_conv(torch.cat(x_fuse, dim=1))
@@ -169,8 +180,7 @@ class FRCNN(nn.Module):
         repeats: int = 4,
         shared: bool = False,
         dropout: float = -1,
-        group_size: int = 1,
-        tac_multiplier: int = 2,
+        is2d: bool = False,
         *args,
         **kwargs,
     ):
@@ -185,30 +195,10 @@ class FRCNN(nn.Module):
         self.repeats = repeats
         self.shared = shared
         self.dropout = dropout
-        self.group_size = group_size
-        self.tac_multiplier = tac_multiplier
+        self.is2d = is2d
 
-        self.tac = self.__build_tac()
         self.blocks = self.__build_blocks()
         self.concat_block = self.__build_concat_block()
-
-    def __build_tac(self):
-        if self.shared:
-            out = (
-                TAC(self.in_chan // self.group_size, self.hid_chan * self.tac_multiplier // self.group_size)
-                if self.group_size > 1
-                else nn.Identity()
-            )
-        else:
-            out = nn.ModuleList()
-            for _ in range(self.repeats):
-                out.append(
-                    TAC(self.in_chan // self.group_size, self.hid_chan * self.tac_multiplier // self.group_size)
-                    if self.group_size > 1
-                    else nn.Identity()
-                )
-
-        return out
 
     def __build_blocks(self):
         if self.shared:
@@ -221,7 +211,7 @@ class FRCNN(nn.Module):
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
                 dropout=self.dropout,
-                group_size=self.group_size,
+                is2d=self.is2d,
             )
         else:
             out = nn.ModuleList()
@@ -236,7 +226,7 @@ class FRCNN(nn.Module):
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
                         dropout=self.dropout,
-                        group_size=self.group_size,
+                        is2d=self.is2d,
                     )
                 )
 
@@ -245,32 +235,28 @@ class FRCNN(nn.Module):
     def __build_concat_block(self):
         if self.shared:
             out = ConvNormAct(
-                in_chan=self.in_chan // self.group_size,
-                out_chan=self.in_chan // self.group_size,
+                in_chan=self.in_chan,
+                out_chan=self.in_chan,
                 kernel_size=1,
-                groups=self.in_chan // self.group_size,
+                groups=self.in_chan,
                 act_type=self.act_type,
+                is2d=self.is2d,
             )
         else:
             out = nn.ModuleList([None])
             for _ in range(self.repeats - 1):
                 out.append(
                     ConvNormAct(
-                        in_chan=self.in_chan // self.group_size,
-                        out_chan=self.in_chan // self.group_size,
+                        in_chan=self.in_chan,
+                        out_chan=self.in_chan,
                         kernel_size=1,
-                        groups=self.in_chan // self.group_size,
+                        groups=self.in_chan,
                         act_type=self.act_type,
+                        is2d=self.is2d,
                     )
                 )
 
         return out
-
-    def get_tac(self, i: int):
-        if self.shared:
-            return self.tac
-        else:
-            return self.tac[i]
 
     def get_block(self, i: int):
         if self.shared:
@@ -285,18 +271,8 @@ class FRCNN(nn.Module):
             return self.concat_block[i]
 
     def forward(self, x: torch.Tensor):
-        # x: shape (B, C, T)
-        batch_size, _, T = x.shape
-
-        res = x.view(batch_size * self.group_size, -1, T)
-
+        residual = x
         for i in range(self.repeats):
-            x = self.get_tac(i)(x.view(batch_size, self.group_size, -1, T)).view(batch_size * self.group_size, -1, T)
-            frcnn = self.get_block(i)
-            concat_block = self.get_concat_block(i)
-            if i == 0:
-                x = frcnn(x)
-            else:
-                x = frcnn(concat_block(res + x))
-
-        return x.view(batch_size, -1, T)
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
+            x = self.get_block(i)(x)
+        return x

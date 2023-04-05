@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..layers import TAC, ConvNormAct, GlobalAttention, GlobalAttention2D
+from ..layers import ConvNormAct, GlobalAttention, GlobalAttention2D
 
 
 class InjectionMultiSum(nn.Module):
@@ -86,7 +86,6 @@ class TDANetBlock(nn.Module):
         n_head: int = 8,
         dropout: int = 0.1,
         drop_path: int = 0.1,
-        group_size: int = 1,
         is2d: bool = False,
     ):
         super(TDANetBlock, self).__init__()
@@ -100,15 +99,14 @@ class TDANetBlock(nn.Module):
         self.n_head = n_head
         self.dropout = dropout
         self.drop_path = drop_path
-        self.group_size = group_size
         self.is2d = is2d
 
         self.att = GlobalAttention2D if self.is2d else GlobalAttention
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
         self.projection = ConvNormAct(
-            in_chan=self.in_chan // self.group_size,
-            out_chan=self.hid_chan // self.group_size,
+            in_chan=self.in_chan,
+            out_chan=self.hid_chan,
             kernel_size=1,
             norm_type=self.norm_type,
             act_type=self.act_type,
@@ -117,10 +115,10 @@ class TDANetBlock(nn.Module):
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
-        self.residual_conv = ConvNormAct(self.hid_chan // self.group_size, self.in_chan // self.group_size, 1, is2d=self.is2d)
+        self.residual_conv = ConvNormAct(self.hid_chan, self.in_chan, 1, is2d=self.is2d)
 
         self.globalatt = self.att(
-            in_chan=self.hid_chan // self.group_size,
+            in_chan=self.hid_chan,
             kernel_size=self.kernel_size,
             n_head=self.n_head,
             dropout=self.dropout,
@@ -133,11 +131,11 @@ class TDANetBlock(nn.Module):
             stride = 1 if i == 0 else self.stride
             out.append(
                 ConvNormAct(
-                    in_chan=self.hid_chan // self.group_size,
-                    out_chan=self.hid_chan // self.group_size,
+                    in_chan=self.hid_chan,
+                    out_chan=self.hid_chan,
                     kernel_size=self.kernel_size,
                     stride=stride,
-                    groups=self.hid_chan // self.group_size,
+                    groups=self.hid_chan,
                     padding=(self.kernel_size - 1) // 2,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
@@ -151,8 +149,8 @@ class TDANetBlock(nn.Module):
         for _ in range(self.upsampling_depth):
             out.append(
                 InjectionMultiSum(
-                    in_chan=self.hid_chan // self.group_size,
-                    hid_chan=self.hid_chan // self.group_size,
+                    in_chan=self.hid_chan,
+                    hid_chan=self.hid_chan,
                     kernel_size=1,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
@@ -166,8 +164,8 @@ class TDANetBlock(nn.Module):
         for _ in range(self.upsampling_depth - 1):
             out.append(
                 InjectionMultiSum(
-                    in_chan=self.hid_chan // self.group_size,
-                    hid_chan=self.hid_chan // self.group_size,
+                    in_chan=self.hid_chan,
+                    hid_chan=self.hid_chan,
                     kernel_size=self.kernel_size,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
@@ -224,8 +222,6 @@ class TDANet(nn.Module):
         n_head: int = 8,
         dropout: float = 0.1,
         drop_path: float = 0.1,
-        group_size: int = 1,
-        tac_multiplier: int = 2,
         is2d: bool = False,
         *args,
         **kwargs,
@@ -243,31 +239,10 @@ class TDANet(nn.Module):
         self.n_head = n_head
         self.dropout = dropout
         self.drop_path = drop_path
-        self.group_size = group_size
-        self.tac_multiplier = tac_multiplier
         self.is2d = is2d
 
-        self.tac = self.__build_tac()
         self.blocks = self.__build_blocks()
         self.concat_block = self.__build_concat_block()
-
-    def __build_tac(self):
-        if self.shared:
-            out = (
-                TAC(self.in_chan // self.group_size, self.hid_chan * self.tac_multiplier // self.group_size)
-                if self.group_size > 1
-                else nn.Identity()
-            )
-        else:
-            out = nn.ModuleList()
-            for _ in range(self.repeats):
-                out.append(
-                    TAC(self.in_chan // self.group_size, self.hid_chan * self.tac_multiplier // self.group_size)
-                    if self.group_size > 1
-                    else nn.Identity()
-                )
-
-        return out
 
     def __build_blocks(self):
         if self.shared:
@@ -282,7 +257,6 @@ class TDANet(nn.Module):
                 n_head=self.n_head,
                 dropout=self.dropout,
                 drop_path=self.drop_path,
-                group_size=self.group_size,
                 is2d=self.is2d,
             )
         else:
@@ -300,7 +274,6 @@ class TDANet(nn.Module):
                         n_head=self.n_head,
                         dropout=self.dropout,
                         drop_path=self.drop_path,
-                        group_size=self.group_size,
                         is2d=self.is2d,
                     )
                 )
@@ -310,10 +283,10 @@ class TDANet(nn.Module):
     def __build_concat_block(self):
         if self.shared:
             out = ConvNormAct(
-                in_chan=self.in_chan // self.group_size,
-                out_chan=self.in_chan // self.group_size,
+                in_chan=self.in_chan,
+                out_chan=self.in_chan,
                 kernel_size=1,
-                groups=self.in_chan // self.group_size,
+                groups=self.in_chan,
                 act_type=self.act_type,
                 is2d=self.is2d,
             )
@@ -322,22 +295,16 @@ class TDANet(nn.Module):
             for _ in range(self.repeats - 1):
                 out.append(
                     ConvNormAct(
-                        in_chan=self.in_chan // self.group_size,
-                        out_chan=self.in_chan // self.group_size,
+                        in_chan=self.in_chan,
+                        out_chan=self.in_chan,
                         kernel_size=1,
-                        groups=self.in_chan // self.group_size,
+                        groups=self.in_chan,
                         act_type=self.act_type,
                         is2d=self.is2d,
                     )
                 )
 
         return out
-
-    def get_tac(self, i: int):
-        if self.shared:
-            return self.tac
-        else:
-            return self.tac[i]
 
     def get_block(self, i: int):
         if self.shared:
@@ -352,19 +319,8 @@ class TDANet(nn.Module):
             return self.concat_block[i]
 
     def forward(self, x: torch.Tensor):
-        # x: shape (B, C, T)
-        batch_size = x.shape[0]
-        T = x.shape[-(len(x.shape) // 2) :]
-
-        res = x.view(batch_size * self.group_size, -1, *T)
-
+        residual = x
         for i in range(self.repeats):
-            x = self.get_tac(i)(x.view(batch_size, self.group_size, -1, *T)).view(batch_size * self.group_size, -1, *T)
-            frcnn = self.get_block(i)
-            concat_block = self.get_concat_block(i)
-            if i == 0:
-                x = frcnn(x)
-            else:
-                x = frcnn(concat_block(res + x))
-
-        return x.view(batch_size, -1, *T)
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
+            x = self.get_block(i)(x)
+        return x

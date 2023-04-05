@@ -4,7 +4,9 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
+from . import normalizations
 from .layers import ConvNormAct
+from .utils import get_bandwidths
 
 
 class BaseEncoder(nn.Module):
@@ -53,7 +55,14 @@ class BaseEncoder(nn.Module):
         raise NotImplementedError
 
     def get_config(self):
-        raise NotImplementedError
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
 
 
 class ConvolutionalEncoder(BaseEncoder):
@@ -113,17 +122,7 @@ class ConvolutionalEncoder(BaseEncoder):
 
         feature_map = torch.stack(feature_maps).sum(dim=0)
 
-        return feature_map
-
-    def get_config(self):
-        encoder_args = {}
-
-        for k, v in (self.__dict__).items():
-            if not k.startswith("_") and k != "training":
-                if not inspect.ismethod(v):
-                    encoder_args[k] = v
-
-        return encoder_args
+        return feature_map, False
 
 
 class STFTEncoder(BaseEncoder):
@@ -140,7 +139,7 @@ class STFTEncoder(BaseEncoder):
         *args,
         **kwargs,
     ):
-        super(STFTEncoder, self).__init__(0, 0, 0)
+        super(STFTEncoder, self).__init__(out_chan, 0, 0)
 
         self.win = win
         self.hop_length = hop_length
@@ -152,7 +151,6 @@ class STFTEncoder(BaseEncoder):
         self.act_type = act_type
         self.norm_type = norm_type
 
-        self.register_buffer("window", torch.hann_window(self.win), False)
         self.conv = ConvNormAct(
             in_chan=2,
             out_chan=self.out_chan,
@@ -165,6 +163,8 @@ class STFTEncoder(BaseEncoder):
             bias=self.bias,
             is2d=True,
         )
+
+        self.register_buffer("window", torch.hann_window(self.win), False)
 
     def forward(self, x: torch.Tensor):
         x = self.unsqueeze_to_2D(x)
@@ -180,17 +180,72 @@ class STFTEncoder(BaseEncoder):
         spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
         spec_feature_map = self.conv(spec)  # B, C, T, F
 
-        return spec_feature_map
+        return spec_feature_map, False
 
-    def get_config(self):
-        encoder_args = {}
 
-        for k, v in (self.__dict__).items():
-            if not k.startswith("_") and k != "training":
-                if not inspect.ismethod(v):
-                    encoder_args[k] = v
+class BSRNNEncoder(BaseEncoder):
+    def __init__(
+        self,
+        win: int,
+        hop_length: int,
+        out_chan: int,
+        norm_type: str = "gLN",
+        sample_rate: int = 16000,
+        *args,
+        **kwargs,
+    ):
+        super(BSRNNEncoder, self).__init__(out_chan, 0, 0)
 
-        return encoder_args
+        self.win = win
+        self.hop_length = hop_length
+        self.out_chan = out_chan
+        self.norm_type = norm_type
+        self.sample_rate = sample_rate
+        self.eps = torch.finfo(torch.float32).eps
+
+        self.register_buffer("window", torch.hann_window(self.win), False)
+
+        self.band_width = get_bandwidths(self.win, self.sample_rate)
+
+        print(self.band_width)
+
+        self.BN = nn.ModuleList([])
+        for i in range(len(self.band_width)):
+            in_chan = self.band_width[i] * 2
+            self.BN.append(
+                nn.Sequential(normalizations.get(self.norm_type)(in_chan), ConvNormAct(in_chan, self.out_chan, 1, xavier_init=True))
+            )
+
+    def forward(self, x: torch.Tensor):
+        x = self.unsqueeze_to_2D(x)
+        batch_size = x.shape[0]
+
+        spec = torch.stft(
+            x,
+            n_fft=self.win,
+            hop_length=self.hop_length,
+            window=self.window,
+            return_complex=True,
+        )
+
+        # concat real and imag, split to subbands
+        spec_RI = torch.stack([spec.real, spec.imag], 1)  # B, 2, F, T
+        subband_spec = []
+        spec_by_band_width = []
+        band_idx = 0
+        for i in range(len(self.band_width)):
+            subband_spec.append(spec_RI[:, :, band_idx : band_idx + self.band_width[i]].contiguous())
+            spec_by_band_width.append(spec[:, band_idx : band_idx + self.band_width[i]])  # B, BW, T
+            band_idx += self.band_width[i]
+
+        # normalization and bottleneck
+        spec_feature_map = []
+        for i in range(len(self.band_width)):
+            spec_feature_map.append(self.BN[i](subband_spec[i].view(batch_size, self.band_width[i] * 2, -1)))
+        spec_feature_map = torch.stack(spec_feature_map, 1)  # B, nband, N, T
+        spec_feature_map = spec_feature_map.permute(0, 2, 3, 1).contiguous()
+
+        return spec_feature_map, spec_by_band_width
 
 
 def get(identifier):

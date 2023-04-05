@@ -9,3 +9,4 @@ pytorch-lightning
 torch-optimizer
 tensorboard
 black
+pandas

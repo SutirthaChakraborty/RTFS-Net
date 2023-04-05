@@ -101,9 +101,7 @@ class ALLMetricsTracker:
             "stoi": np.std(self.all_stois),
         }
 
-    def final(
-        self,
-    ):
+    def final(self):
         row = {
             "snt_id": "avg",
             "sdr": np.array(self.all_sdrs).mean(),

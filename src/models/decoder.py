@@ -12,7 +12,14 @@ class BaseDecoder(nn.Module):
         raise NotImplementedError
 
     def get_config(self):
-        raise NotImplementedError
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
 
 
 class ConvolutionalDecoder(BaseDecoder):
@@ -60,16 +67,6 @@ class ConvolutionalDecoder(BaseDecoder):
         separated_audio = separated_audio.view(batch_size, self.n_src, -1)
 
         return separated_audio
-
-    def get_config(self):
-        decoder_args = {}
-
-        for k, v in (self.__dict__).items():
-            if not k.startswith("_") and k != "training":
-                if not inspect.ismethod(v):
-                    decoder_args[k] = v
-
-        return decoder_args
 
 
 class STFTDecoder(BaseDecoder):
@@ -132,15 +129,42 @@ class STFTDecoder(BaseDecoder):
 
         return output
 
-    def get_config(self):
-        encoder_args = {}
 
-        for k, v in (self.__dict__).items():
-            if not k.startswith("_") and k != "training":
-                if not inspect.ismethod(v):
-                    encoder_args[k] = v
+class BSRNNDecoder(BaseDecoder):
+    def __init__(
+        self,
+        win: int,
+        hop_length: int,
+        n_src: int,
+        *args,
+        **kwargs,
+    ):
+        super(BSRNNDecoder, self).__init__()
 
-        return encoder_args
+        self.win = win
+        self.hop_length = hop_length
+        self.n_src = n_src
+
+        self.enc_dim = self.win // 2 + 1
+        self.register_buffer("window", torch.hann_window(self.win), False)
+
+    def forward(self, x: torch.Tensor, input_shape: torch.Size):
+        # B, n_src, F, T
+
+        batch_size, length = input_shape[0], input_shape[-1]
+        x = x.view(batch_size * self.n_src, self.enc_dim, -1)  # B, n_src, F, T -> # B * n_src, F, T
+
+        output = torch.istft(
+            x,
+            n_fft=self.win,
+            hop_length=self.hop_length,
+            window=self.window,
+            length=length,
+        )  # B*n_src, L
+
+        output = output.view(batch_size, self.n_src, length)  # B, n_src, L
+
+        return output
 
 
 def get(identifier):

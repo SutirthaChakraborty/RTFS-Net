@@ -9,9 +9,9 @@ from .. import normalizations, activations
 class ConvNormAct(nn.Module):
     def __init__(
         self,
-        in_chan: int,
-        out_chan: int,
-        kernel_size: int,
+        in_chan: int = 1,
+        out_chan: int = 1,
+        kernel_size: int = -1,
         stride: int = 1,
         groups: int = 1,
         dilation: int = 1,

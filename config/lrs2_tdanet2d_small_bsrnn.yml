@@ -4,35 +4,36 @@ videonet:
     in_channels: 1
     base_channels: 4
     num_layers: 3
+    is2d: True
     pretrain: ../experiments/autoencoder/default/best_model.pth
 audionet:
     n_src: 1
-    pretrained_vout_chan: 1936                  # output from pretrained model
+    pretrained_vout_chan: 121                  # output from pretrained model
 
     video_bn_params:
       out_chan: 64
-      kernel_size: 3
-      padding: 1
+      kernel_size: 1
+      is2d: True
 
     audio_bn_params:
-      out_chan: 512
+      out_chan: 64
       kernel_size: 1
+      is2d: True
 
     enc_dec_params:
-      encoder_type: ConvolutionalEncoder
-      decoder_type: ConvolutionalDecoder
-      out_chan: 512
-      kernel_size: 21
-      stride: 10
-      bias: False
-      act_type: 
+      encoder_type: BSRNNEncoder
+      decoder_type: BSRNNDecoder
+      win: 1024
+      hop_length: 256
+      out_chan: 256
       norm_type: gLN
-      layers: 1
+      sample_rate: 16000
+      context: 0
       
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 512                       # FRCNN hidden channels
+      hid_chan: 128                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
       repeats: 4
@@ -41,6 +42,7 @@ audionet:
       kernel_size: 5
       stride: 2 
       n_head: 8
+      is2d: True
     
     video_params:
       video_net: TDANet
@@ -49,22 +51,26 @@ audionet:
       upsampling_depth: 4
       shared: True
       repeats: 1
-      norm_type: BatchNorm1d
+      norm_type: BatchNorm2d
       act_type: PReLU
       kernel_size: 3
       stride: 2
       n_head: 8
+      is2d: True
 
     fusion_params:
       fusion_type: ConcatFusion
       fusion_shared: True
+      is2d: True
 
     mask_generation_params:
+      mask_generator_type: BSRNNMaskGenerator
       mask_act: ReLU
+      kernel_size: 5
       
 # Training config
 training:
-    gpus: [0,1,2,3,4,5,6]
+    gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
     batch_size: 4
     num_workers: 8
@@ -92,4 +98,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet_08_03_2023
+    exp_name: lrs2_tdanet2d_bsrnn_04_04_23

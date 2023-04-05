@@ -67,9 +67,6 @@ def main(conf, model=CTCNet, epochs=1):
         videomodel = AEVideoModel(**conf["videonet"])
 
     audiomodel = model(**conf["audionet"])
-    if torch.__version__.startswith("2"):
-        torch._dynamo.config.suppress_errors = True
-        audiomodel = torch.compile(audiomodel, mode="reduce-overhead")
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
@@ -157,7 +154,7 @@ def main(conf, model=CTCNet, epochs=1):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_2d.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small_bsrnn.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -176,7 +173,7 @@ if __name__ == "__main__":
 
     t1 = time()
     # parser = argparse.ArgumentParser()
-    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_2d.yml")
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet2d_ae_2d_bigwin.yml")
     # parser.add_argument("-n", "--name", default=None, help="Experiment name")
     # parser.add_argument("--nodes", type=int, default=1, help="#node")
 

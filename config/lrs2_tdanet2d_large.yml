@@ -62,19 +62,19 @@ audionet:
 
     fusion_params:
       fusion_type: ConcatFusion
-      fusion_shared: True
+      fusion_shared: False
       is2d: True
 
     mask_generation_params:
       mask_act: ReLU
       is2d: True
-      output_gate: true
+      output_gate: True
       
 # Training config
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 4
+    batch_size: 2
     num_workers: 8
     half_lr: yes
     early_stop: yes

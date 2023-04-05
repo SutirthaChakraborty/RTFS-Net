@@ -9,6 +9,7 @@ import yaml
 import torch
 import argparse
 import warnings
+import pandas as pd
 
 from tqdm import tqdm
 
@@ -28,7 +29,7 @@ def main(conf):
     conf["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
-    audiomodel: torch.nn.Module = CTCNet.from_pretrain(model_path, **conf["audionet"])
+    audiomodel: CTCNet = CTCNet.from_pretrain(model_path, **conf["audionet"])
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":
         videomodel = FRCNNVideoModel(**conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":
@@ -45,7 +46,6 @@ def main(conf):
         videomodel.cuda(device)
     else:
         print("No free gpus available, using CPU")
-        device = device[0]
         audiomodel.cpu()
         videomodel.cpu()
 
@@ -127,10 +127,28 @@ def main(conf):
         except ValueError:
             return 100
 
+    results_dict = {"Model": [conf["log"]["exp_name"]]}
+    results_dict["CTCNet MACs"] = [audiomodel.macs]
+    results_dict["CTCNet Params"] = [audiomodel.trainable_params]
+    results_dict["Videomodel MACs"] = [videomodel.macs]
+    results_dict["Videomodel Params"] = [videomodel.trainable_params]
+
     keys.sort(key=get_order)
     for k in keys:
         m, s = mean[k], std[k]
+        results_dict[k] = [m]
+        results_dict[k + "_std"] = [s]
         print(f"{k}\tmean: {m:.4f}  std: {s:.4f}")
+
+    for k, v in conf["audionet"].items():
+        if isinstance(v, dict):
+            for kk, vv in v.items():
+                results_dict[k + "_" + kk] = [vv]
+        else:
+            results_dict[k] = [v]
+
+    df = pd.DataFrame.from_dict(results_dict)
+    df.to_csv(os.path.join(ex_save_dir, "results.csv"), encoding="utf-8", index=False)
 
 
 if __name__ == "__main__":
