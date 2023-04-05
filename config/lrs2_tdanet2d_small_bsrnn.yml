@@ -21,14 +21,16 @@ audionet:
       is2d: True
 
     enc_dec_params:
-      encoder_type: BSRNNEncoder
-      decoder_type: BSRNNDecoder
-      win: 1024
-      hop_length: 256
-      out_chan: 256
+      encoder_type: RI_STFTEncoder
+      decoder_type: RI_STFTDecoder
+      win: 128
+      hop_length: 64
+      out_chan: 128
+      kernel_size: 3
+      stride: 1
+      bias: False
+      act_type: 
       norm_type: gLN
-      sample_rate: 16000
-      context: 0
       
     audio_params:
       audio_net: TDANet
@@ -64,9 +66,10 @@ audionet:
       is2d: True
 
     mask_generation_params:
-      mask_generator_type: BSRNNMaskGenerator
+      mask_generator_type: RI_MaskGenerator
       mask_act: ReLU
-      kernel_size: 5
+      is2d: True
+      output_gate: True
       
 # Training config
 training:

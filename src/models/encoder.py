@@ -248,6 +248,64 @@ class BSRNNEncoder(BaseEncoder):
         return spec_feature_map, spec_by_band_width
 
 
+class RI_STFTEncoder(BaseEncoder):
+    def __init__(
+        self,
+        win: int,
+        hop_length: int,
+        out_chan: int,
+        kernel_size: int = 3,
+        stride: int = 1,
+        act_type: str = None,
+        norm_type: str = "gLN",
+        bias: bool = False,
+        *args,
+        **kwargs,
+    ):
+        super(RI_STFTEncoder, self).__init__(out_chan, 0, 0)
+
+        self.win = win
+        self.hop_length = hop_length
+        self.out_chan = out_chan * 2
+        self.kernel_size = kernel_size
+        self.padding = (kernel_size - 1) // 2
+        self.stride = stride
+        self.bias = bias
+        self.act_type = act_type
+        self.norm_type = norm_type
+
+        self.conv = ConvNormAct(
+            in_chan=2,
+            out_chan=self.out_chan,
+            kernel_size=self.kernel_size,
+            stride=self.stride,
+            padding=self.padding,
+            act_type=self.act_type,
+            norm_type=self.norm_type,
+            xavier_init=True,
+            bias=self.bias,
+            is2d=True,
+        )
+
+        self.register_buffer("window", torch.hann_window(self.win), False)
+
+    def forward(self, x: torch.Tensor):
+        x = self.unsqueeze_to_2D(x)
+
+        spec = torch.stft(
+            x,
+            n_fft=self.win,
+            hop_length=self.hop_length,
+            window=self.window,
+            return_complex=True,
+        )
+
+        spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
+        spec_feature_map = self.conv(spec)  # B, C, T, F
+
+        return spec_feature_map, False
+
+
 def get(identifier):
     if identifier is None:
         return nn.Identity
