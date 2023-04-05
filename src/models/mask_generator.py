@@ -85,7 +85,6 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
         win: int,
         n_src: int,
         bottleneck_chan: int,
-        context: int = 0,
         sample_rate: int = 16000,
         kernel_size: int = 1,
         mask_act: str = "ReLU",
@@ -96,12 +95,10 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
         self.win = win
         self.n_src = n_src
         self.bottleneck_chan = bottleneck_chan
-        self.context = context
         self.sample_rate = sample_rate
         self.mask_act = mask_act
         self.kernel_size = kernel_size
 
-        self.ratio = self.context * 2 + 1
         self.enc_dim = self.win // 2 + 1
 
         self.band_width = get_bandwidths(self.win, self.sample_rate)
@@ -111,31 +108,7 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
             self.mask.append(
                 nn.Sequential(
                     gLN(self.bottleneck_chan),
-                    # ConvNormAct(
-                    #     self.bottleneck_chan,
-                    #     self.bottleneck_chan * 2,
-                    #     1,
-                    #     act_type="PReLU",
-                    #     norm_type="gLN",
-                    #     xavier_init=True,
-                    # ),
-                    # ConvNormAct(
-                    #     self.bottleneck_chan * 2,
-                    #     self.bottleneck_chan * 2,
-                    #     self.kernel_size,
-                    #     groups=self.bottleneck_chan * 2,
-                    #     padding=(self.kernel_size - 1) // 2,
-                    #     act_type="PReLU",
-                    #     norm_type="gLN",
-                    #     xavier_init=True,
-                    # ),
-                    ConvNormAct(
-                        self.bottleneck_chan ,
-                        self.band_width[i] * self.ratio * 4 * self.n_src,
-                        1,
-                        act_type=self.mask_act,
-                        xavier_init=True,
-                    ),
+                    ConvNormAct(self.bottleneck_chan, self.band_width[i] * 4 * self.n_src, 1, act_type=self.mask_act),
                 )
             )
 
@@ -147,12 +120,12 @@ class BSRNNMaskGenerator(BaseMaskGenerator):
 
         sep_subband_spec = []
         for i in range(len(self.band_width)):
-            this_output = self.mask[i](sep_output[:, i]).view(batch_size, 2, 2, self.n_src, self.ratio, self.band_width[i], -1)
-            this_mask = this_output[:, 0] * torch.sigmoid(this_output[:, 1])  # B, 2, n_src, K, BW, T
-            mask_real = this_mask[:, 0]  # B, n_src, K, BW, T
-            mask_imag = this_mask[:, 1]  # B, n_src, K, BW, T
-            est_spec_real = (context[i].real.unsqueeze(1) * mask_real).mean(2) - (context[i].imag.unsqueeze(1) * mask_imag).mean(2)
-            est_spec_imag = (context[i].real.unsqueeze(1) * mask_imag).mean(2) + (context[i].imag.unsqueeze(1) * mask_real).mean(2)
+            this_output = self.mask[i](sep_output[:, i]).view(batch_size, 2, 2, self.n_src, self.band_width[i], -1)
+            this_mask = this_output[:, 0] * torch.sigmoid(this_output[:, 1])  # B, 2, n_src, BW, T
+            mask_real = this_mask[:, 0]  # B, n_src, BW, T
+            mask_imag = this_mask[:, 1]  # B, n_src, BW, T
+            est_spec_real = context[i].real.unsqueeze(1) * mask_real - context[i].imag.unsqueeze(1) * mask_imag  # B, n_src, BW, T
+            est_spec_imag = context[i].real.unsqueeze(1) * mask_imag + context[i].imag.unsqueeze(1) * mask_real  # B, n_src, BW, T
             sep_subband_spec.append(torch.complex(est_spec_real, est_spec_imag))
 
         est_spec = torch.cat(sep_subband_spec, 2)  # B, n_src, F, T

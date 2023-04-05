@@ -135,10 +135,7 @@ class BSRNNDecoder(BaseDecoder):
         self,
         win: int,
         hop_length: int,
-        in_chan: int,
         n_src: int,
-        sample_rate: int = 16000,
-        context: int = 0,
         *args,
         **kwargs,
     ):
@@ -146,10 +143,7 @@ class BSRNNDecoder(BaseDecoder):
 
         self.win = win
         self.hop_length = hop_length
-        self.in_chan = in_chan
         self.n_src = n_src
-        self.sample_rate = sample_rate
-        self.context = context
 
         self.enc_dim = self.win // 2 + 1
         self.register_buffer("window", torch.hann_window(self.win), False)

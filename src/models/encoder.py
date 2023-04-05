@@ -191,7 +191,6 @@ class BSRNNEncoder(BaseEncoder):
         out_chan: int,
         norm_type: str = "gLN",
         sample_rate: int = 16000,
-        context: int = 0,
         *args,
         **kwargs,
     ):
@@ -202,7 +201,6 @@ class BSRNNEncoder(BaseEncoder):
         self.out_chan = out_chan
         self.norm_type = norm_type
         self.sample_rate = sample_rate
-        self.context = context
         self.eps = torch.finfo(torch.float32).eps
 
         self.register_buffer("window", torch.hann_window(self.win), False)
@@ -230,35 +228,24 @@ class BSRNNEncoder(BaseEncoder):
             return_complex=True,
         )
 
-        # get a context
-        prev_context = []
-        post_context = []
-        zero_pad = torch.zeros_like(spec)
-        for i in range(self.context):
-            this_prev_context = torch.cat([zero_pad[:, : i + 1], spec[:, : -1 - i]], 1)
-            this_post_context = torch.cat([spec[:, i + 1 :], zero_pad[:, : i + 1]], 1)
-            prev_context.append(this_prev_context)
-            post_context.append(this_post_context)
-        mixture_context = torch.stack(prev_context + [spec] + post_context, 1)  # B, Context, F, T
-
         # concat real and imag, split to subbands
         spec_RI = torch.stack([spec.real, spec.imag], 1)  # B, 2, F, T
         subband_spec = []
-        subband_spec_context = []
+        spec_by_band_width = []
         band_idx = 0
         for i in range(len(self.band_width)):
             subband_spec.append(spec_RI[:, :, band_idx : band_idx + self.band_width[i]].contiguous())
-            subband_spec_context.append(mixture_context[:, :, band_idx : band_idx + self.band_width[i]])  # B, Context, BW, T
+            spec_by_band_width.append(spec[:, band_idx : band_idx + self.band_width[i]])  # B, BW, T
             band_idx += self.band_width[i]
 
         # normalization and bottleneck
-        subband_feature = []
+        spec_feature_map = []
         for i in range(len(self.band_width)):
-            subband_feature.append(self.BN[i](subband_spec[i].view(batch_size, self.band_width[i] * 2, -1)))
-        subband_feature = torch.stack(subband_feature, 1)  # B, nband, N, T
-        subband_feature = subband_feature.permute(0, 2, 3, 1).contiguous()
+            spec_feature_map.append(self.BN[i](subband_spec[i].view(batch_size, self.band_width[i] * 2, -1)))
+        spec_feature_map = torch.stack(spec_feature_map, 1)  # B, nband, N, T
+        spec_feature_map = spec_feature_map.permute(0, 2, 3, 1).contiguous()
 
-        return subband_feature, subband_spec_context
+        return spec_feature_map, spec_by_band_width
 
 
 def get(identifier):
