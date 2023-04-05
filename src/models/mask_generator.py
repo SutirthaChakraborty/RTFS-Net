@@ -150,7 +150,7 @@ class RI_MaskGenerator(BaseMaskGenerator):
     ):
         super(RI_MaskGenerator, self).__init__()
         self.n_src = n_src
-        self.in_chan = audio_emb_dim
+        self.in_chan = int(audio_emb_dim // 2)
         self.bottleneck_chan = bottleneck_chan
         self.kernel_size = kernel_size
         self.mask_act = mask_act
@@ -174,8 +174,8 @@ class RI_MaskGenerator(BaseMaskGenerator):
             self.gate = ConvNormAct(mask_output_chan, mask_output_chan, 1, act_type="Sigmoid", is2d=self.is2d)
 
     def __apply_masks(self, masks: torch.Tensor, audio_mixture_embedding: torch.Tensor):
-        mask_real = masks[:, 0]  # B, n_src, C/2, T, (F)
-        mask_imag = masks[:, 1]  # B, n_src, C/2, T, (F)
+        mask_real = masks[:, :, 0]  # B, n_src, C/2, T, (F)
+        mask_imag = masks[:, :, 1]  # B, n_src, C/2, T, (F)
         emb_real = audio_mixture_embedding[:, 0].unsqueeze(1)  # B, 1, C/2, T, (F)
         emb_imag = audio_mixture_embedding[:, 1].unsqueeze(1)  # B, 1, C/2, T, (F)
 
@@ -189,7 +189,7 @@ class RI_MaskGenerator(BaseMaskGenerator):
     def forward(self, refined_features: torch.Tensor, audio_mixture_embedding: torch.Tensor, context: torch.Tensor):
         shape = refined_features.shape
 
-        masks = self.mask_generator(refined_features).view(shape[0] * self.n_src, self.in_chan, *shape[-(len(shape) // 2) :])
+        masks = self.mask_generator(refined_features).view(shape[0] * self.n_src, self.in_chan * 2, *shape[-(len(shape) // 2) :])
         if self.output_gate:
             masks = self.output(masks) * self.gate(masks)
 

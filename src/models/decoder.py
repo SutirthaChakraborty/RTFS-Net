@@ -94,7 +94,7 @@ class STFTDecoder(BaseDecoder):
         self.bias = bias
 
         self.decoder = nn.ConvTranspose2d(
-            in_channels=in_chan,
+            in_channels=self.in_chan,
             out_channels=2,
             kernel_size=self.kernel_size,
             stride=self.stride,
@@ -156,67 +156,6 @@ class BSRNNDecoder(BaseDecoder):
 
         output = torch.istft(
             x,
-            n_fft=self.win,
-            hop_length=self.hop_length,
-            window=self.window,
-            length=length,
-        )  # B*n_src, L
-
-        output = output.view(batch_size, self.n_src, length)  # B, n_src, L
-
-        return output
-
-
-class RI_STFTDecoder(BaseDecoder):
-    def __init__(
-        self,
-        win: int,
-        hop_length: int,
-        in_chan: int,
-        n_src: int,
-        kernel_size: int,
-        stride: int,
-        bias: bool = False,
-        *args,
-        **kwargs,
-    ):
-        super(RI_STFTDecoder, self).__init__()
-
-        self.win = win
-        self.hop_length = hop_length
-        self.in_chan = in_chan * 2
-        self.n_src = n_src
-        self.kernel_size = kernel_size
-        self.padding = (self.kernel_size - 1) // 2
-        self.stride = stride
-        self.bias = bias
-
-        self.decoder = nn.ConvTranspose2d(
-            in_channels=self.in_chan,
-            out_channels=2,
-            kernel_size=self.kernel_size,
-            stride=self.stride,
-            padding=self.padding,
-            bias=self.bias,
-        )
-        torch.nn.init.xavier_uniform_(self.decoder.weight)
-
-        self.register_buffer("window", torch.hann_window(self.win), False)
-
-    def forward(self, x: torch.Tensor, input_shape: torch.Size):
-        # B, n_src, N, T, F
-
-        batch_size, length = input_shape[0], input_shape[-1]
-
-        x = x.view(batch_size * self.n_src, self.in_chan, *x.shape[-2:])  # B, n_src, N, T, F -> # B * n_src, N, T, F
-        decoded_separated_audio = self.decoder(x)  # B * n_src, N, T, F - > B * n_src, 2, T, F
-
-        spec = torch.complex(decoded_separated_audio[:, 0], decoded_separated_audio[:, 1])  # B*n_src, T, F
-        # spec = torch.stack([spec.real, spec.imag], dim=-1)  # B*n_src, T, F
-        spec = spec.transpose(1, 2).contiguous()  # B*n_src, F, T
-
-        output = torch.istft(
-            spec,
             n_fft=self.win,
             hop_length=self.hop_length,
             window=self.window,

@@ -22,7 +22,7 @@ audionet:
 
     enc_dec_params:
       encoder_type: RI_STFTEncoder
-      decoder_type: RI_STFTDecoder
+      decoder_type: STFTDecoder
       win: 128
       hop_length: 64
       out_chan: 128
