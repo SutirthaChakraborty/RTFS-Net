@@ -127,27 +127,28 @@ def main(conf):
         except ValueError:
             return 100
 
-    results_dict = {"Model": [conf["log"]["exp_name"]]}
-    results_dict["CTCNet MACs"] = [audiomodel.macs]
-    results_dict["CTCNet Params"] = [audiomodel.trainable_params]
-    results_dict["Videomodel MACs"] = [videomodel.macs]
-    results_dict["Videomodel Params"] = [videomodel.trainable_params]
+    results_dict = []
+
+    results_dict.append(("Model", conf["log"]["exp_name"]))
+    results_dict.append(("CTCNet MACs", audiomodel.macs))
+    results_dict.append(("CTCNet Params", audiomodel.trainable_params))
+    results_dict.append(("Videomodel MACs", videomodel.macs))
+    results_dict.append(("Videomodel Params", videomodel.trainable_params))
 
     keys.sort(key=get_order)
     for k in keys:
         m, s = mean[k], std[k]
-        results_dict[k] = [m]
-        results_dict[k + "_std"] = [s]
+        results_dict.append((k, str(m) + " ± " + str(s)))
         print(f"{k}\tmean: {m:.4f}  std: {s:.4f}")
 
     for k, v in conf["audionet"].items():
         if isinstance(v, dict):
             for kk, vv in v.items():
-                results_dict[k + "_" + kk] = [vv]
+                results_dict.append((k + "_" + kk, vv))
         else:
-            results_dict[k] = [v]
+            results_dict.append((k, v))
 
-    df = pd.DataFrame.from_dict(results_dict)
+    df = pd.DataFrame.from_records(results_dict, columns=["Key", "Value"])
     df.to_csv(os.path.join(ex_save_dir, "results.csv"), encoding="utf-8", index=False)
 
 
