@@ -110,13 +110,7 @@ class GlobalAttention(nn.Module):
         if self.n_head > 0:
             self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         elif self.n_head == 0:
-            self.mhsa = ConvNormAct(
-                self.in_chan,
-                self.in_chan,
-                self.kernel_size,
-                groups=self.in_chan,
-                padding=((self.kernel_size - 1) // 2),
-            )
+            self.mhsa = ConvNormAct(self.in_chan, self.in_chan, self.kernel_size, groups=self.in_chan)
         else:
             self.mhsa = nn.Identity()
 
