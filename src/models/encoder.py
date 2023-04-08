@@ -103,7 +103,6 @@ class ConvolutionalEncoder(BaseEncoder):
                     kernel_size=kernel_size,
                     stride=self.stride,
                     dilation=dilation,
-                    padding=dilation * (kernel_size - 1) // 2,
                     norm_type=self.norm_type,
                     act_type=self.act_type,
                     xavier_init=True,
@@ -145,7 +144,6 @@ class STFTEncoder(BaseEncoder):
         self.hop_length = hop_length
         self.out_chan = out_chan
         self.kernel_size = kernel_size
-        self.padding = (kernel_size - 1) // 2
         self.stride = stride
         self.bias = bias
         self.act_type = act_type
@@ -156,7 +154,6 @@ class STFTEncoder(BaseEncoder):
             out_chan=self.out_chan,
             kernel_size=self.kernel_size,
             stride=self.stride,
-            padding=self.padding,
             act_type=self.act_type,
             norm_type=self.norm_type,
             xavier_init=True,

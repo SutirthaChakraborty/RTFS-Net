@@ -15,7 +15,7 @@ class ConvNormAct(nn.Module):
         stride: int = 1,
         groups: int = 1,
         dilation: int = 1,
-        padding: int = 0,
+        padding: int = None,
         norm_type: str = None,
         act_type: str = None,
         xavier_init: bool = False,
@@ -31,7 +31,7 @@ class ConvNormAct(nn.Module):
         self.stride = stride
         self.groups = groups
         self.dilation = dilation
-        self.padding = padding
+        self.padding = dilation * (kernel_size - 1) // 2 if padding is None else padding
         self.norm_type = norm_type
         self.act_type = act_type
         self.xavier_init = xavier_init
@@ -101,7 +101,6 @@ class FeedForwardNetwork(nn.Module):
             self.hid_chan,
             self.kernel_size,
             groups=self.hid_chan,
-            padding=((self.kernel_size - 1) // 2),
             act_type=self.act_type,
             is2d=self.is2d,
         )  # DW seperable conv
@@ -143,7 +142,6 @@ class ConvolutionalRNN(nn.Module):
             self.hid_chan,
             self.kernel_size,
             groups=self.hid_chan,
-            padding=((self.kernel_size - 1) // 2),
             act_type=self.act_type,
         )  # DW seperable conv
         self.backward_pass = ConvNormAct(
@@ -151,7 +149,6 @@ class ConvolutionalRNN(nn.Module):
             self.hid_chan,
             self.kernel_size,
             groups=self.hid_chan,
-            padding=((self.kernel_size - 1) // 2),
             act_type=self.act_type,
         )  # DW seperable conv
         self.decoder = ConvNormAct(self.hid_chan * 2, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
