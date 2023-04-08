@@ -206,8 +206,12 @@ class GlobalAttention2D(nn.Module):
         self.mhsa_height = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         self.mhsa_width = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
 
-        self.ffn_height = RNNProjection(self.in_chan, self.hid_chan, dropout=dropout, bidirectional=True)
-        self.ffn_width = RNNProjection(self.in_chan, self.hid_chan, dropout=dropout, bidirectional=True)
+        if self.kernel_size > 0:
+            self.ffn_height = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+            self.ffn_width = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        else:
+            self.ffn_height = RNNProjection(self.in_chan, self.in_chan, dropout=dropout, bidirectional=True)
+            self.ffn_width = RNNProjection(self.in_chan, self.in_chan, dropout=dropout, bidirectional=True)
 
         self.mhsa_height_params = sum(p.numel() for p in self.mhsa_height.parameters() if p.requires_grad) / 1000
         self.mhsa_width_params = sum(p.numel() for p in self.mhsa_width.parameters() if p.requires_grad) / 1000
@@ -226,14 +230,16 @@ class GlobalAttention2D(nn.Module):
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
 
+        res = x
+
         h_input = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
         h_output = self.mhsa_height.forward(h_input)
         h_ffn = self.ffn_height.forward(h_output)
-        h_output = h_ffn.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
+        h_output = h_ffn.view(B, W, C, H).permute(0, 2, 3, 1).contiguous() + res
 
         w_input = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
         w_output = self.mhsa_width.forward(w_input)
         w_ffn = self.ffn_width.forward(w_output)
-        w_output = w_ffn.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
+        w_output = w_ffn.view(B, H, C, W).permute(0, 2, 1, 3).contiguous() + h_output
 
         return x

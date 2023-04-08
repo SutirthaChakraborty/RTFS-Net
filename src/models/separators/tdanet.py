@@ -76,6 +76,7 @@ class TDANetBlock(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
+        attention_ks: int = None,
         stride: int = 2,
         norm_type: str = "gLN",
         act_type: str = "PReLU",
@@ -89,6 +90,7 @@ class TDANetBlock(nn.Module):
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
+        self.attention_ks = kernel_size if attention_ks is None else attention_ks
         self.stride = stride
         self.norm_type = norm_type
         self.act_type = act_type
@@ -116,7 +118,7 @@ class TDANetBlock(nn.Module):
 
         self.globalatt = self.att(
             in_chan=self.hid_chan,
-            kernel_size=self.kernel_size,
+            kernel_size=self.attention_ks,
             n_head=self.n_head,
             dropout=self.dropout,
             drop_path=self.drop_path,
@@ -209,6 +211,7 @@ class TDANet(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
+        attention_ks: int = None,
         stride: int = 2,
         norm_type: str = "gLN",
         act_type: str = "PReLU",
@@ -226,6 +229,7 @@ class TDANet(nn.Module):
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
+        self.attention_ks = kernel_size if attention_ks is None else attention_ks
         self.stride = stride
         self.norm_type = norm_type
         self.act_type = act_type
@@ -246,6 +250,7 @@ class TDANet(nn.Module):
                 in_chan=self.in_chan,
                 hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
+                attention_ks=self.attention_ks,
                 stride=self.stride,
                 norm_type=self.norm_type,
                 act_type=self.act_type,
@@ -263,6 +268,7 @@ class TDANet(nn.Module):
                         in_chan=self.in_chan,
                         hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
+                        attention_ks=self.attention_ks,
                         stride=self.stride,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
