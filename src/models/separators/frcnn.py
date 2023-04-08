@@ -69,7 +69,6 @@ class FRCNNBlock(nn.Module):
                     kernel_size=self.kernel_size,
                     stride=stride,
                     groups=self.hid_chan,
-                    padding=(self.kernel_size - 1) // 2,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
                 )
@@ -92,7 +91,6 @@ class FRCNNBlock(nn.Module):
                             kernel_size=self.kernel_size,
                             stride=self.stride,
                             groups=self.hid_chan,
-                            padding=(self.kernel_size - 1) // 2,
                             norm_type=self.norm_type,
                             is2d=self.is2d,
                         )
