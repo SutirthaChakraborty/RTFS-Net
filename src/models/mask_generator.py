@@ -43,22 +43,19 @@ class MaskGenerator(BaseMaskGenerator):
 
         mask_output_chan = self.n_src * self.in_chan
 
-        if self.kernel_size > 0:
-            self.mask_generator = nn.Sequential(
-                nn.PReLU(),
-                ConvNormAct(
-                    self.bottleneck_chan,
-                    mask_output_chan,
-                    self.kernel_size,
-                    act_type=self.mask_act,
-                    is2d=self.is2d,
-                ),
-            )
-            if self.output_gate:
-                self.output = ConvNormAct(mask_output_chan, mask_output_chan, 1, act_type="Tanh", is2d=self.is2d)
-                self.gate = ConvNormAct(mask_output_chan, mask_output_chan, 1, act_type="Sigmoid", is2d=self.is2d)
-        else:
-            self.mask_generator = nn.Identity()
+        self.mask_generator = nn.Sequential(
+            nn.PReLU(),
+            ConvNormAct(
+                self.bottleneck_chan,
+                mask_output_chan,
+                self.kernel_size,
+                act_type=self.mask_act,
+                is2d=self.is2d,
+            ),
+        )
+        if self.output_gate:
+            self.output = ConvNormAct(mask_output_chan, mask_output_chan, 1, act_type="Tanh", is2d=self.is2d)
+            self.gate = ConvNormAct(mask_output_chan, mask_output_chan, 1, act_type="Sigmoid", is2d=self.is2d)
 
     def __apply_masks(self, masks: torch.Tensor, audio_mixture_embedding: torch.Tensor):
         separated_audio_embedding = masks * audio_mixture_embedding.unsqueeze(1)
@@ -68,15 +65,12 @@ class MaskGenerator(BaseMaskGenerator):
     def forward(self, refined_features: torch.Tensor, audio_mixture_embedding: torch.Tensor, context: torch.Tensor):
         shape = refined_features.shape
 
-        if self.kernel_size > 0:
-            masks = self.mask_generator(refined_features).view(shape[0] * self.n_src, self.in_chan, *shape[-(len(shape) // 2) :])
-            if self.output_gate:
-                masks = self.output(masks) * self.gate(masks)
+        masks = self.mask_generator(refined_features).view(shape[0] * self.n_src, self.in_chan, *shape[-(len(shape) // 2) :])
+        if self.output_gate:
+            masks = self.output(masks) * self.gate(masks)
 
-            masks = masks.view(shape[0], self.n_src, self.in_chan, *shape[-(len(shape) // 2) :])
-            separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)
-        else:
-            separated_audio_embedding = refined_features.view(shape[0], self.n_src, self.in_chan, *shape[-(len(shape) // 2) :])
+        masks = masks.view(shape[0], self.n_src, self.in_chan, *shape[-(len(shape) // 2) :])
+        separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)
 
         return separated_audio_embedding
 
