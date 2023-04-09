@@ -94,7 +94,7 @@ class STFTDecoder(BaseDecoder):
         self.bias = bias
 
         self.decoder = nn.ConvTranspose2d(
-            in_channels=in_chan,
+            in_channels=self.in_chan,
             out_channels=2,
             kernel_size=self.kernel_size,
             stride=self.stride,
