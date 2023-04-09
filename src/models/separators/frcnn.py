@@ -15,7 +15,7 @@ class FRCNNBlock(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
-        dropout: int = -1,
+        dropout: int = 0,
         is2d: bool = False,
     ):
         super(FRCNNBlock, self).__init__()
@@ -56,7 +56,7 @@ class FRCNNBlock(nn.Module):
                 is2d=self.is2d,
             ),
         )
-        self.dropout_layer = nn.Dropout(self.dropout) if self.dropout > 0 else nn.Identity()
+        self.dropout_layer = nn.Dropout(self.dropout)
 
     def __build_downsample_layers(self):
         out = nn.ModuleList()
@@ -177,7 +177,7 @@ class FRCNN(nn.Module):
         upsampling_depth: int = 4,
         repeats: int = 4,
         shared: bool = False,
-        dropout: float = -1,
+        dropout: float = 0,
         is2d: bool = False,
         *args,
         **kwargs,
