@@ -107,27 +107,13 @@ class GlobalAttention(nn.Module):
         self.dropout = dropout
         self.drop_path = drop_path
 
-        if self.n_head > 0:
-            self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        elif self.n_head == 0:
-            self.mhsa = ConvNormAct(self.in_chan, self.in_chan, self.kernel_size, groups=self.in_chan)
-        else:
-            self.mhsa = nn.Identity()
-
+        self.mhsa = ConvNormAct(self.in_chan, self.in_chan, self.kernel_size, groups=self.in_chan)
         self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 
     def forward(self, x: torch.Tensor):
-        shape = x.shape
-        if len(shape) == 4:
-            x = x.view(shape[0] * shape[1], shape[2], shape[3])
-
         x = x + self.drop_path_layer(self.mhsa(x))
         x = x + self.drop_path_layer(self.ffn(x))
-
-        if len(shape) == 4:
-            x = x.view(*shape)
-
         return x
 
 

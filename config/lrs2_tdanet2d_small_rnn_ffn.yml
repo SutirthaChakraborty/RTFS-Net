@@ -42,6 +42,7 @@ audionet:
       norm_type: gLN
       act_type: PReLU
       kernel_size: 5
+      attention_ks: -1
       stride: 2 
       n_head: 8
       is2d: True
@@ -56,6 +57,7 @@ audionet:
       norm_type: BatchNorm2d
       act_type: PReLU
       kernel_size: 3
+      attention_ks: -1
       stride: 2
       n_head: 8
       is2d: True
@@ -100,4 +102,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_09_04_23_conv_ffn
+    exp_name: ctcnet_small_tdanet2d_09_04_23_rnn_ffn
