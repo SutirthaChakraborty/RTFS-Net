@@ -107,9 +107,16 @@ class GlobalAttention(nn.Module):
         self.dropout = dropout
         self.drop_path = drop_path
 
-        self.mhsa = ConvNormAct(self.in_chan, self.in_chan, self.kernel_size, groups=self.in_chan)
+        self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
         self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
+
+        self.mhsa_params = sum(p.numel() for p in self.mhsa.parameters() if p.requires_grad) / 1000
+        self.ffn_params = sum(p.numel() for p in self.ffn.parameters() if p.requires_grad) / 1000
+
+        s = f"MHSA Params: {self.mhsa_params}\n" f"FFN Params: {self.ffn_params}\n"
+
+        print(s)
 
     def forward(self, x: torch.Tensor):
         x = x + self.drop_path_layer(self.mhsa(x))

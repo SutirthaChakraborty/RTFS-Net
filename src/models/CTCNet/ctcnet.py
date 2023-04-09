@@ -123,16 +123,27 @@ class CTCNet(BaseAVModel):
         MACs = []
 
         MACs.append(profile(self.encoder, inputs=(audio_input,), verbose=False)[0] / 1000000)
+        MACs.append(sum(p.numel() for p in self.encoder.parameters() if p.requires_grad) / 1000)
+
         MACs.append(profile(self.audio_bottleneck, inputs=(encoded_audio,), verbose=False)[0] / 1000000)
+        MACs.append(sum(p.numel() for p in self.audio_bottleneck.parameters() if p.requires_grad) / 1000)
+
         MACs.append(profile(self.video_bottleneck, inputs=(video_input,), verbose=False)[0] / 1000000)
+        MACs.append(sum(p.numel() for p in self.video_bottleneck.parameters() if p.requires_grad) / 1000)
+
         MACs.append(profile(self.refinement_module, inputs=(bn_audio, bn_video), verbose=False)[0] / 1000000)
+        MACs.append(sum(p.numel() for p in self.refinement_module.parameters() if p.requires_grad) / 1000)
+
         MACs.append(profile(self.mask_generator, inputs=(bn_audio, encoded_audio, context), verbose=False)[0] / 1000000)
+        MACs.append(sum(p.numel() for p in self.mask_generator.parameters() if p.requires_grad) / 1000)
+
         MACs.append(profile(self.decoder, inputs=(separated_audio_embedding, encoded_audio.shape), verbose=False)[0] / 1000000)
+        MACs.append(sum(p.numel() for p in self.decoder.parameters() if p.requires_grad) / 1000)
+
         self.macs = profile(self, inputs=(audio_input, video_input), verbose=False)[0] / 1000000
+
         self.trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad) / 1000
         self.non_trainable_params = sum(p.numel() for p in self.parameters() if not p.requires_grad) / 1000
-
-        assert int(self.macs) == int(sum(MACs)), print(self.macs, sum(MACs))
 
         MACs.append(self.macs)
         MACs.append(self.trainable_params)
@@ -140,15 +151,14 @@ class CTCNet(BaseAVModel):
 
         s = (
             "CTCNet\n"
-            "Number of MACs in encoder: {:,.0f}M\n"
-            "Number of MACs in audio BN: {:,.0f}M\n"
-            "Number of MACs in video BN: {:,.0f}M\n"
-            "Number of MACs in RefinementModule: {:,.0f}M\n"
-            "Number of MACs in mask generator: {:,.0f}M\n"
-            "Number of MACs in decoder: {:,.0f}M\n"
-            "Number of MACs in total: {:,.0f}M\n"
-            "Number of trainable parameters: {:,.0f}K\n"
-            "Number of non trainable parameters: {:,.0f}K\n"
+            "Encoder MACs:          {:,.0f}M, Params: {:,.0f}K\n"
+            "Audio BN MACs:         {:,.0f}M, Params: {:,.0f}K\n"
+            "Video BN MACs:         {:,.0f}M, Params: {:,.0f}K\n"
+            "RefinementModule MACs: {:,.0f}M, Params: {:,.0f}K\n"
+            "Mask Generator MACs:   {:,.0f}M, Params: {:,.0f}K\n"
+            "Decoder MACs:          {:,.0f}M, Params: {:,.0f}K\n"
+            "Total MACs:            {:,.0f}M, Params: {:,.0f}K\n"
+            "Non trainable params:  {:,.0f}K\n"
         ).format(*MACs)
 
         print(s)
