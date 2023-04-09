@@ -154,15 +154,15 @@ class ConvolutionalRNN(nn.Module):
             act_type=self.act_type,
         )  # DW seperable conv
         self.decoder = ConvNormAct(self.hid_chan * 2, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
-        self.dropout_layer = nn.Dropout(self.dropout)
+        self.dropout_layer = DropPath(self.dropout)
 
     def forward(self, x: torch.Tensor):
+        res = x
         x = self.encoder(x)
         forward_features = self.forward_pass(x)
         backward_features = self.backward_pass(x).flip(-1)
         x = torch.cat([forward_features, backward_features], dim=1)
         x = self.dropout_layer(x)
         x = self.decoder(x)
-        x = self.dropout_layer(x)
-
+        x = self.dropout_layer(x) + res
         return x

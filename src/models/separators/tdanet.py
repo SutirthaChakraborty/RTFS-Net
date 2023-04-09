@@ -83,7 +83,6 @@ class TDANetBlock(nn.Module):
         upsampling_depth: int = 4,
         n_head: int = 8,
         dropout: int = 0.1,
-        drop_path: int = 0.1,
         is2d: bool = False,
     ):
         super(TDANetBlock, self).__init__()
@@ -97,7 +96,6 @@ class TDANetBlock(nn.Module):
         self.upsampling_depth = upsampling_depth
         self.n_head = n_head
         self.dropout = dropout
-        self.drop_path = drop_path
         self.is2d = is2d
 
         self.att = GlobalAttention2D if self.is2d else GlobalAttention
@@ -121,7 +119,6 @@ class TDANetBlock(nn.Module):
             kernel_size=self.attention_ks,
             n_head=self.n_head,
             dropout=self.dropout,
-            drop_path=self.drop_path,
         )
 
     def __build_downsample_layers(self):
@@ -220,7 +217,6 @@ class TDANet(nn.Module):
         shared: bool = False,
         n_head: int = 8,
         dropout: float = 0.1,
-        drop_path: float = 0.1,
         is2d: bool = False,
         *args,
         **kwargs,
@@ -238,7 +234,6 @@ class TDANet(nn.Module):
         self.shared = shared
         self.n_head = n_head
         self.dropout = dropout
-        self.drop_path = drop_path
         self.is2d = is2d
 
         self.blocks = self.__build_blocks()
@@ -257,7 +252,6 @@ class TDANet(nn.Module):
                 upsampling_depth=self.upsampling_depth,
                 n_head=self.n_head,
                 dropout=self.dropout,
-                drop_path=self.drop_path,
                 is2d=self.is2d,
             )
         else:
@@ -275,7 +269,6 @@ class TDANet(nn.Module):
                         upsampling_depth=self.upsampling_depth,
                         n_head=self.n_head,
                         dropout=self.dropout,
-                        drop_path=self.drop_path,
                         is2d=self.is2d,
                     )
                 )

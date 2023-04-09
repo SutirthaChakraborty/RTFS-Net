@@ -52,8 +52,10 @@ class MultiHeadSelfAttention(nn.Module):
         self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout, batch_first=True)
         self.dropout_layer = nn.Dropout(self.dropout)
         self.norm2 = nn.LayerNorm(self.in_chan)
+        self.drop_path_layer = DropPath(self.dropout)
 
     def forward(self, x: torch.Tensor):
+        res = x
         x = x.transpose(1, 2)  # B, C, T -> B, T, C
 
         x = self.norm1(x)
@@ -64,6 +66,7 @@ class MultiHeadSelfAttention(nn.Module):
         x = self.norm2(x)
 
         x = x.transpose(2, 1)  # B, T, C -> B, C, T
+        x = self.drop_path_layer(x) + res
         return x
 
 
@@ -95,7 +98,6 @@ class GlobalAttention(nn.Module):
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
-        drop_path: float = 0.1,
         *args,
         **kwargs,
     ):
@@ -105,11 +107,9 @@ class GlobalAttention(nn.Module):
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
-        self.drop_path = drop_path
 
         self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
-        self.drop_path_layer = DropPath(self.drop_path) if self.drop_path > 0.0 else nn.Identity()
 
         self.mhsa_params = sum(p.numel() for p in self.mhsa.parameters() if p.requires_grad) / 1000
         self.ffn_params = sum(p.numel() for p in self.ffn.parameters() if p.requires_grad) / 1000
@@ -119,8 +119,8 @@ class GlobalAttention(nn.Module):
         print(s)
 
     def forward(self, x: torch.Tensor):
-        x = x + self.drop_path_layer(self.mhsa(x))
-        x = x + self.drop_path_layer(self.ffn(x))
+        x = self.mhsa(x)
+        x = self.ffn(x)
         return x
 
 
@@ -223,16 +223,14 @@ class GlobalAttention2D(nn.Module):
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
 
-        res = x
-
         h_input = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
         h_output = self.mhsa_height.forward(h_input)
         h_ffn = self.ffn_height.forward(h_output)
-        h_output = h_ffn.view(B, W, C, H).permute(0, 2, 3, 1).contiguous() + res
+        x = h_ffn.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
 
         w_input = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
         w_output = self.mhsa_width.forward(w_input)
         w_ffn = self.ffn_width.forward(w_output)
-        w_output = w_ffn.view(B, H, C, W).permute(0, 2, 1, 3).contiguous() + h_output
+        x = w_ffn.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
 
         return x
