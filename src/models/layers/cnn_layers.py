@@ -3,6 +3,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
+from timm.models.layers import DropPath
 from .. import normalizations, activations
 
 
@@ -105,14 +106,15 @@ class FeedForwardNetwork(nn.Module):
             is2d=self.is2d,
         )  # DW seperable conv
         self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False, is2d=self.is2d)  # FC 2
-        self.dropout_layer = nn.Dropout(self.dropout)
+        self.dropout_layer = DropPath(self.dropout) if self.dropout > 0.0 else nn.Identity()
 
     def forward(self, x: torch.Tensor):
+        res = x
         x = self.encoder(x)
         x = self.refiner(x)
         x = self.dropout_layer(x)
         x = self.decoder(x)
-        x = self.dropout_layer(x)
+        x = self.dropout_layer(x) + res
         return x
 
 
@@ -152,21 +154,15 @@ class ConvolutionalRNN(nn.Module):
             act_type=self.act_type,
         )  # DW seperable conv
         self.decoder = ConvNormAct(self.hid_chan * 2, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
-        self.dropout_layer = nn.Dropout(self.dropout)
+        self.dropout_layer = DropPath(self.dropout)
 
     def forward(self, x: torch.Tensor):
-        shape = x.shape
-        if len(shape) == 4:
-            x = x.view(shape[0] * shape[1], shape[2], shape[3])
-
+        res = x
         x = self.encoder(x)
         forward_features = self.forward_pass(x)
         backward_features = self.backward_pass(x).flip(-1)
         x = torch.cat([forward_features, backward_features], dim=1)
         x = self.dropout_layer(x)
         x = self.decoder(x)
-        x = self.dropout_layer(x)
-
-        if len(shape) == 4:
-            x = x.view(shape[0], shape[1], shape[2], shape[3])
+        x = self.dropout_layer(x) + res
         return x

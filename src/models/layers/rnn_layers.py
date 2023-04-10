@@ -77,20 +77,9 @@ class RNNProjection(nn.Module):
         self.norm = nn.LayerNorm(self.input_size)
 
     def forward(self, x: torch.Tensor):
-        shape = x.shape
-        if len(shape) == 4:
-            batch_size, num_group, _, seq_len = shape  # B, G, N, L
-        else:
-            num_group = 1
-            batch_size, _, seq_len = shape  # B, N, L
-
-        x = x.view(batch_size * num_group, -1, seq_len)  # B*G, N, L
-        x = x.transpose(1, 2).contiguous()  # B*G, L, N
-        rnn_output = self.rnn(x)[0].contiguous()  # B*G, L, num_direction * H
-        x = self.norm(x + self.proj(rnn_output))  # B*G, L, N
-        x = x.transpose(1, 2).contiguous()  # B*G, N, L
-
-        if len(shape) == 4:
-            x = x.view(batch_size, num_group, -1, seq_len)  # B, G, N, L
+        x = x.transpose(1, 2).contiguous()  # B, L, N
+        rnn_output = self.rnn(x)[0].contiguous()  # B, L, num_direction * H
+        x = self.norm(x + self.proj(rnn_output))  # B, L, N
+        x = x.transpose(1, 2).contiguous()  # B, N, L
 
         return x

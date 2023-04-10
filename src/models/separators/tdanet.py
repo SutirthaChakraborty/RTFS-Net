@@ -76,26 +76,26 @@ class TDANetBlock(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
+        attention_ks: int = None,
         stride: int = 2,
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
         n_head: int = 8,
         dropout: int = 0.1,
-        drop_path: int = 0.1,
         is2d: bool = False,
     ):
         super(TDANetBlock, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
+        self.attention_ks = kernel_size if attention_ks is None else attention_ks
         self.stride = stride
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
         self.n_head = n_head
         self.dropout = dropout
-        self.drop_path = drop_path
         self.is2d = is2d
 
         self.att = GlobalAttention2D if self.is2d else GlobalAttention
@@ -116,10 +116,9 @@ class TDANetBlock(nn.Module):
 
         self.globalatt = self.att(
             in_chan=self.hid_chan,
-            kernel_size=self.kernel_size,
+            kernel_size=self.attention_ks,
             n_head=self.n_head,
             dropout=self.dropout,
-            drop_path=self.drop_path,
         )
 
     def __build_downsample_layers(self):
@@ -209,6 +208,7 @@ class TDANet(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
+        attention_ks: int = None,
         stride: int = 2,
         norm_type: str = "gLN",
         act_type: str = "PReLU",
@@ -217,7 +217,6 @@ class TDANet(nn.Module):
         shared: bool = False,
         n_head: int = 8,
         dropout: float = 0.1,
-        drop_path: float = 0.1,
         is2d: bool = False,
         *args,
         **kwargs,
@@ -226,6 +225,7 @@ class TDANet(nn.Module):
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
+        self.attention_ks = kernel_size if attention_ks is None else attention_ks
         self.stride = stride
         self.norm_type = norm_type
         self.act_type = act_type
@@ -234,7 +234,6 @@ class TDANet(nn.Module):
         self.shared = shared
         self.n_head = n_head
         self.dropout = dropout
-        self.drop_path = drop_path
         self.is2d = is2d
 
         self.blocks = self.__build_blocks()
@@ -246,13 +245,13 @@ class TDANet(nn.Module):
                 in_chan=self.in_chan,
                 hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
+                attention_ks=self.attention_ks,
                 stride=self.stride,
                 norm_type=self.norm_type,
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
                 n_head=self.n_head,
                 dropout=self.dropout,
-                drop_path=self.drop_path,
                 is2d=self.is2d,
             )
         else:
@@ -263,13 +262,13 @@ class TDANet(nn.Module):
                         in_chan=self.in_chan,
                         hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
+                        attention_ks=self.attention_ks,
                         stride=self.stride,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
                         n_head=self.n_head,
                         dropout=self.dropout,
-                        drop_path=self.drop_path,
                         is2d=self.is2d,
                     )
                 )

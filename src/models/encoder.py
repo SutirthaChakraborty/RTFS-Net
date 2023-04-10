@@ -51,6 +51,9 @@ class BaseEncoder(nn.Module):
         else:
             return x
 
+    def get_out_chan(self):
+        return self.out_chan
+
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -121,7 +124,7 @@ class ConvolutionalEncoder(BaseEncoder):
 
         feature_map = torch.stack(feature_maps).sum(dim=0)
 
-        return feature_map, False
+        return feature_map
 
 
 class STFTEncoder(BaseEncoder):
@@ -177,72 +180,72 @@ class STFTEncoder(BaseEncoder):
         spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
         spec_feature_map = self.conv(spec)  # B, C, T, F
 
-        return spec_feature_map, False
+        return spec_feature_map
 
 
-class BSRNNEncoder(BaseEncoder):
-    def __init__(
-        self,
-        win: int,
-        hop_length: int,
-        out_chan: int,
-        norm_type: str = "gLN",
-        sample_rate: int = 16000,
-        *args,
-        **kwargs,
-    ):
-        super(BSRNNEncoder, self).__init__(out_chan, 0, 0)
+# class BSRNNEncoder(BaseEncoder):
+#     def __init__(
+#         self,
+#         win: int,
+#         hop_length: int,
+#         out_chan: int,
+#         norm_type: str = "gLN",
+#         sample_rate: int = 16000,
+#         *args,
+#         **kwargs,
+#     ):
+#         super(BSRNNEncoder, self).__init__(out_chan, 0, 0)
 
-        self.win = win
-        self.hop_length = hop_length
-        self.out_chan = out_chan
-        self.norm_type = norm_type
-        self.sample_rate = sample_rate
-        self.eps = torch.finfo(torch.float32).eps
+#         self.win = win
+#         self.hop_length = hop_length
+#         self.out_chan = out_chan
+#         self.norm_type = norm_type
+#         self.sample_rate = sample_rate
+#         self.eps = torch.finfo(torch.float32).eps
 
-        self.register_buffer("window", torch.hann_window(self.win), False)
+#         self.register_buffer("window", torch.hann_window(self.win), False)
 
-        self.band_width = get_bandwidths(self.win, self.sample_rate)
+#         self.band_width = get_bandwidths(self.win, self.sample_rate)
 
-        print(self.band_width)
+#         print(self.band_width)
 
-        self.BN = nn.ModuleList([])
-        for i in range(len(self.band_width)):
-            in_chan = self.band_width[i] * 2
-            self.BN.append(
-                nn.Sequential(normalizations.get(self.norm_type)(in_chan), ConvNormAct(in_chan, self.out_chan, 1, xavier_init=True))
-            )
+#         self.BN = nn.ModuleList([])
+#         for i in range(len(self.band_width)):
+#             in_chan = self.band_width[i] * 2
+#             self.BN.append(
+#                 nn.Sequential(normalizations.get(self.norm_type)(in_chan), ConvNormAct(in_chan, self.out_chan, 1, xavier_init=True))
+#             )
 
-    def forward(self, x: torch.Tensor):
-        x = self.unsqueeze_to_2D(x)
-        batch_size = x.shape[0]
+#     def forward(self, x: torch.Tensor):
+#         x = self.unsqueeze_to_2D(x)
+#         batch_size = x.shape[0]
 
-        spec = torch.stft(
-            x,
-            n_fft=self.win,
-            hop_length=self.hop_length,
-            window=self.window,
-            return_complex=True,
-        )
+#         spec = torch.stft(
+#             x,
+#             n_fft=self.win,
+#             hop_length=self.hop_length,
+#             window=self.window,
+#             return_complex=True,
+#         )
 
-        # concat real and imag, split to subbands
-        spec_RI = torch.stack([spec.real, spec.imag], 1)  # B, 2, F, T
-        subband_spec = []
-        spec_by_band_width = []
-        band_idx = 0
-        for i in range(len(self.band_width)):
-            subband_spec.append(spec_RI[:, :, band_idx : band_idx + self.band_width[i]].contiguous())
-            spec_by_band_width.append(spec[:, band_idx : band_idx + self.band_width[i]])  # B, BW, T
-            band_idx += self.band_width[i]
+#         # concat real and imag, split to subbands
+#         spec_RI = torch.stack([spec.real, spec.imag], 1)  # B, 2, F, T
+#         subband_spec = []
+#         spec_by_band_width = []
+#         band_idx = 0
+#         for i in range(len(self.band_width)):
+#             subband_spec.append(spec_RI[:, :, band_idx : band_idx + self.band_width[i]].contiguous())
+#             spec_by_band_width.append(spec[:, band_idx : band_idx + self.band_width[i]])  # B, BW, T
+#             band_idx += self.band_width[i]
 
-        # normalization and bottleneck
-        spec_feature_map = []
-        for i in range(len(self.band_width)):
-            spec_feature_map.append(self.BN[i](subband_spec[i].view(batch_size, self.band_width[i] * 2, -1)))
-        spec_feature_map = torch.stack(spec_feature_map, 1)  # B, nband, N, T
-        spec_feature_map = spec_feature_map.permute(0, 2, 3, 1).contiguous()
+#         # normalization and bottleneck
+#         spec_feature_map = []
+#         for i in range(len(self.band_width)):
+#             spec_feature_map.append(self.BN[i](subband_spec[i].view(batch_size, self.band_width[i] * 2, -1)))
+#         spec_feature_map = torch.stack(spec_feature_map, 1)  # B, nband, N, T
+#         spec_feature_map = spec_feature_map.permute(0, 2, 3, 1).contiguous()
 
-        return spec_feature_map, spec_by_band_width
+#         return spec_feature_map, spec_by_band_width
 
 
 def get(identifier):
