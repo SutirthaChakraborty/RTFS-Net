@@ -1,29 +1,24 @@
 # Video network config
 videonet:
-    backbone_type: resnet
-    relu_type: prelu
-    width_mult: 1.0
-    pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
+    model_name: EncoderAE
+    in_channels: 1
+    base_channels: 4
+    num_layers: 3
+    is2d: False
+    pretrain: ../experiments/autoencoder/default/best_model.pth
 audionet:
     n_src: 1
-    pretrained_vout_chan: 512                  # output from pretrained model
-
-    gc3_params:
-      audio:
-        group_size: 1                          # 128/8=16, 512/16=32
-        context_size: 1                       # 128/32=4, 512/4=128
-      video:    
-        group_size: 1                          # 128/8=16, 64/16=4
-        context_size: 1                       # 128/32=4, 64/4=16 
+    pretrained_vout_chan: 1936                  # output from pretrained model
 
     video_bn_params:
       out_chan: 64
-      kernel_size: 3
-      padding: 1
+      kernel_size: 1
+      is2d: False
 
     audio_bn_params:
       out_chan: 512
       kernel_size: 1
+      is2d: False
 
     enc_dec_params:
       encoder_type: ConvolutionalEncoder
@@ -47,6 +42,7 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
+      is2d: False
     
     video_params:
       video_net: FRCNN
@@ -59,13 +55,17 @@ audionet:
       act_type: PReLU
       kernel_size: 3
       stride: 2
+      is2d: False
 
     fusion_params:
       fusion_type: ConcatFusion
       fusion_shared: True
+      is2d: False
 
     mask_generation_params:
       mask_act: ReLU
+      is2d: False
+      output_gate: True
       
 # Training config
 training:
@@ -97,4 +97,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_large_frcnn_3_4_23
+    exp_name: ctcnet_large/frcnn1d/11_04_23

@@ -70,4 +70,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small_tdanet2d_09_04_23_conv_ffn
+    exp_name: ctcnet_small/tdanet2d/11_04_23_audio_only

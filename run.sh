@@ -1,6 +1,6 @@
 name=(
-        "lrs2_tdanet2d_small"
-        "lrs2_tdanet2d_small_rnn_ffn"
+        "lrs2_tdanet2d_small_oneshot_gate"
+        "lrs2_tdanet2d_small_audio_only"
 )
 for n in "${name[@]}"
 do
@@ -9,8 +9,8 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        "ctcnet_small_tdanet2d_09_04_23_conv_ffn"
-        "ctcnet_small_tdanet2d_09_04_23_rnn_ffn"
+        "ctcnet_small/tdanet2d/11_04_23_oneshot_gate"
+        "ctcnet_small/tdanet2d/11_04_23_audio_only"
 )
 for e in "${exp[@]}"
 do
