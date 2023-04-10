@@ -14,7 +14,6 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
-from src.datas import AVSpeechDataset
 from src.utils import parse_args_as_dict
 from src.system import System, make_optimizer
 from src.videomodels import AEVideoModel, FRCNNVideoModel
@@ -33,30 +32,20 @@ class AVSpeechDataset(Dataset):
         return (torch.rand(32000), torch.rand(32000), torch.rand((1, 50, 88, 88)), "sample text")
 
 
-def build_dataloaders(conf):
-    train_set = AVSpeechDataset(1000)
-    val_set = AVSpeechDataset(100)
+def build_dataloaders(conf, bs=None):
+    bs = conf["training"]["batch_size"] if bs is None else bs
 
-    train_loader = DataLoader(
-        train_set,
-        shuffle=True,
-        batch_size=conf["training"]["batch_size"],
-        num_workers=conf["training"]["num_workers"],
-        drop_last=True,
-    )
-    val_loader = DataLoader(
-        val_set,
-        shuffle=False,
-        batch_size=conf["training"]["batch_size"],
-        num_workers=conf["training"]["num_workers"],
-        drop_last=True,
-    )
+    train_set = AVSpeechDataset(200 * bs)
+    val_set = AVSpeechDataset(50 * bs)
+
+    train_loader = DataLoader(train_set, shuffle=True, batch_size=bs, num_workers=conf["training"]["num_workers"], drop_last=True)
+    val_loader = DataLoader(val_set, shuffle=False, batch_size=bs, num_workers=conf["training"]["num_workers"], drop_last=True)
 
     return train_loader, val_loader
 
 
-def main(conf, model=CTCNet, epochs=1):
-    train_loader, val_loader = build_dataloaders(conf)
+def main(conf, model=CTCNet, epochs=1, bs=None):
+    train_loader, val_loader = build_dataloaders(conf, bs)
 
     conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
 
@@ -173,7 +162,7 @@ if __name__ == "__main__":
 
     t1 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_frcnn2d_small.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small_oneshot_gate.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -192,11 +181,12 @@ if __name__ == "__main__":
 
     t2 = time()
     # parser = argparse.ArgumentParser()
-    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet_context_com_attention.yml")
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small.yml")
     # parser.add_argument("-n", "--name", default=None, help="Experiment name")
     # parser.add_argument("--nodes", type=int, default=1, help="#node")
 
     # args = parser.parse_args()
+    # cf_dir3 = str(args.conf_dir).split("/")[-1]
 
     # with open(args.conf_dir) as f:
     #     def_conf = yaml.safe_load(f)
@@ -212,4 +202,4 @@ if __name__ == "__main__":
 
     print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0, macs1))
     print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t2 - t1, macs2))
-    # print("TDANet with Attention Context: {:.2f} seconds, {} million MACs".format(t3 - t2, macs3))
+    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir3, t3 - t2, macs3))

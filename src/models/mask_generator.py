@@ -1,10 +1,9 @@
 import torch
 import inspect
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .layers import ConvNormAct
-from .utils import get_bandwidths
-from .normalizations import gLN
 
 
 class BaseMaskGenerator(nn.Module):
@@ -29,6 +28,7 @@ class MaskGenerator(BaseMaskGenerator):
         mask_act: str = "ReLU",
         is2d: bool = False,
         output_gate=False,
+        oneshot_gate=False,
         *args,
         **kwargs,
     ):
@@ -40,8 +40,11 @@ class MaskGenerator(BaseMaskGenerator):
         self.mask_act = mask_act
         self.is2d = is2d
         self.output_gate = output_gate
+        self.oneshot_gate = oneshot_gate
 
-        mask_output_chan = self.n_src * self.in_chan
+        assert not (self.output_gate and self.oneshot_gate)
+
+        mask_output_chan = self.n_src * self.in_chan * 2 if self.oneshot_gate else self.n_src * self.in_chan
 
         self.mask_generator = nn.Sequential(
             nn.PReLU(),
@@ -62,71 +65,22 @@ class MaskGenerator(BaseMaskGenerator):
 
         return separated_audio_embedding
 
-    def forward(self, refined_features: torch.Tensor, audio_mixture_embedding: torch.Tensor, context: torch.Tensor):
-        shape = refined_features.shape
+    def forward(self, refined_features: torch.Tensor, audio_mixture_embedding: torch.Tensor):
+        batch_size = refined_features.size(0)
+        dims = refined_features.shape[-(len(refined_features.shape) // 2) :]
 
-        masks = self.mask_generator(refined_features).view(shape[0] * self.n_src, self.in_chan, *shape[-(len(shape) // 2) :])
-        if self.output_gate:
-            masks = self.output(masks) * self.gate(masks)
+        if not self.oneshot_gate:
+            masks = self.mask_generator(refined_features).view(batch_size * self.n_src, self.in_chan, *dims)
+            if self.output_gate:
+                masks = self.output(masks) * self.gate(masks)
+        else:
+            masks = self.mask_generator(refined_features).view(batch_size * self.n_src, 2, self.in_chan, *dims)
+            masks = F.tanh(masks[:, 0]) * F.sigmoid(masks[:, 1])
 
-        masks = masks.view(shape[0], self.n_src, self.in_chan, *shape[-(len(shape) // 2) :])
+        masks = masks.view(batch_size, self.n_src, self.in_chan, *dims)
         separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)
 
         return separated_audio_embedding
-
-
-class BSRNNMaskGenerator(BaseMaskGenerator):
-    def __init__(
-        self,
-        win: int,
-        n_src: int,
-        bottleneck_chan: int,
-        sample_rate: int = 16000,
-        kernel_size: int = 1,
-        mask_act: str = "ReLU",
-        *args,
-        **kwargs,
-    ):
-        super(BSRNNMaskGenerator, self).__init__()
-        self.win = win
-        self.n_src = n_src
-        self.bottleneck_chan = bottleneck_chan
-        self.sample_rate = sample_rate
-        self.mask_act = mask_act
-        self.kernel_size = kernel_size
-
-        self.enc_dim = self.win // 2 + 1
-
-        self.band_width = get_bandwidths(self.win, self.sample_rate)
-
-        self.mask = nn.ModuleList([])
-        for i in range(len(self.band_width)):
-            self.mask.append(
-                nn.Sequential(
-                    gLN(self.bottleneck_chan),
-                    ConvNormAct(self.bottleneck_chan, self.band_width[i] * 4 * self.n_src, 1, act_type=self.mask_act),
-                )
-            )
-
-    def forward(self, sep_output: torch.Tensor, audio_mixture_embedding: torch.Tensor, context: torch.Tensor):
-        # context: B, Context, BW, T
-        batch_size = sep_output.shape[0]
-
-        sep_output = sep_output.permute(0, 3, 1, 2).contiguous()  # B, nband, N, T
-
-        sep_subband_spec = []
-        for i in range(len(self.band_width)):
-            this_output = self.mask[i](sep_output[:, i]).view(batch_size, 2, 2, self.n_src, self.band_width[i], -1)
-            this_mask = this_output[:, 0] * torch.sigmoid(this_output[:, 1])  # B, 2, n_src, BW, T
-            mask_real = this_mask[:, 0]  # B, n_src, BW, T
-            mask_imag = this_mask[:, 1]  # B, n_src, BW, T
-            est_spec_real = context[i].real.unsqueeze(1) * mask_real - context[i].imag.unsqueeze(1) * mask_imag  # B, n_src, BW, T
-            est_spec_imag = context[i].real.unsqueeze(1) * mask_imag + context[i].imag.unsqueeze(1) * mask_real  # B, n_src, BW, T
-            sep_subband_spec.append(torch.complex(est_spec_real, est_spec_imag))
-
-        est_spec = torch.cat(sep_subband_spec, 2)  # B, n_src, F, T
-
-        return est_spec
 
 
 class RI_MaskGenerator(BaseMaskGenerator):
@@ -139,6 +93,7 @@ class RI_MaskGenerator(BaseMaskGenerator):
         mask_act: str = "ReLU",
         is2d: bool = False,
         output_gate=False,
+        oneshot_gate=False,
         *args,
         **kwargs,
     ):
@@ -150,8 +105,11 @@ class RI_MaskGenerator(BaseMaskGenerator):
         self.mask_act = mask_act
         self.is2d = is2d
         self.output_gate = output_gate
+        self.oneshot_gate = oneshot_gate
 
-        mask_output_chan = self.n_src * self.in_chan * 2
+        assert not (self.output_gate and self.oneshot_gate)
+
+        mask_output_chan = self.n_src * self.in_chan * 4 if self.oneshot_gate else self.n_src * self.in_chan * 2
 
         self.mask_generator = nn.Sequential(
             nn.PReLU(),
@@ -180,18 +138,77 @@ class RI_MaskGenerator(BaseMaskGenerator):
 
         return separated_audio_embedding
 
-    def forward(self, refined_features: torch.Tensor, audio_mixture_embedding: torch.Tensor, context: torch.Tensor):
-        shape = refined_features.shape
+    def forward(self, refined_features: torch.Tensor, audio_mixture_embedding: torch.Tensor):
+        batch_size = refined_features.size(0)
+        dims = refined_features.shape[-(len(refined_features.shape) // 2) :]
 
-        masks = self.mask_generator(refined_features).view(shape[0] * self.n_src, self.in_chan * 2, *shape[-(len(shape) // 2) :])
-        if self.output_gate:
-            masks = self.output(masks) * self.gate(masks)
+        if not self.oneshot_gate:
+            masks = self.mask_generator(refined_features).view(batch_size * self.n_src, self.in_chan * 2, *dims)
+            if self.output_gate:
+                masks = self.output(masks) * self.gate(masks)
+        else:
+            masks = self.mask_generator(refined_features).view(batch_size * self.n_src, 2, self.in_chan * 2, *dims)
+            masks = F.tanh(masks[:, 0]) * F.sigmoid(masks[:, 1])
 
-        masks = masks.view(shape[0], self.n_src, 2, self.in_chan, *shape[-(len(shape) // 2) :])
-        audio_mixture_embedding = audio_mixture_embedding.view(shape[0], 2, self.in_chan, *shape[-(len(shape) // 2) :])
+        masks = masks.view(batch_size, self.n_src, 2, self.in_chan, *dims)
+        audio_mixture_embedding = audio_mixture_embedding.view(batch_size, 2, self.in_chan, *dims)
         separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)
 
         return separated_audio_embedding
+
+
+# class BSRNNMaskGenerator(BaseMaskGenerator):
+#     def __init__(
+#         self,
+#         win: int,
+#         n_src: int,
+#         bottleneck_chan: int,
+#         sample_rate: int = 16000,
+#         kernel_size: int = 1,
+#         mask_act: str = "ReLU",
+#         *args,
+#         **kwargs,
+#     ):
+#         super(BSRNNMaskGenerator, self).__init__()
+#         self.win = win
+#         self.n_src = n_src
+#         self.bottleneck_chan = bottleneck_chan
+#         self.sample_rate = sample_rate
+#         self.mask_act = mask_act
+#         self.kernel_size = kernel_size
+
+#         self.enc_dim = self.win // 2 + 1
+
+#         self.band_width = get_bandwidths(self.win, self.sample_rate)
+
+#         self.mask = nn.ModuleList([])
+#         for i in range(len(self.band_width)):
+#             self.mask.append(
+#                 nn.Sequential(
+#                     gLN(self.bottleneck_chan),
+#                     ConvNormAct(self.bottleneck_chan, self.band_width[i] * 4 * self.n_src, 1, act_type=self.mask_act),
+#                 )
+#             )
+
+#     def forward(self, sep_output: torch.Tensor, audio_mixture_embedding: torch.Tensor, context: torch.Tensor):
+#         # context: B, Context, BW, T
+#         batch_size = sep_output.batch_size
+
+#         sep_output = sep_output.permute(0, 3, 1, 2).contiguous()  # B, nband, N, T
+
+#         sep_subband_spec = []
+#         for i in range(len(self.band_width)):
+#             this_output = self.mask[i](sep_output[:, i]).view(batch_size, 2, 2, self.n_src, self.band_width[i], -1)
+#             this_mask = this_output[:, 0] * torch.sigmoid(this_output[:, 1])  # B, 2, n_src, BW, T
+#             mask_real = this_mask[:, 0]  # B, n_src, BW, T
+#             mask_imag = this_mask[:, 1]  # B, n_src, BW, T
+#             est_spec_real = context[i].real.unsqueeze(1) * mask_real - context[i].imag.unsqueeze(1) * mask_imag  # B, n_src, BW, T
+#             est_spec_imag = context[i].real.unsqueeze(1) * mask_imag + context[i].imag.unsqueeze(1) * mask_real  # B, n_src, BW, T
+#             sep_subband_spec.append(torch.complex(est_spec_real, est_spec_imag))
+
+#         est_spec = torch.cat(sep_subband_spec, 2)  # B, n_src, F, T
+
+#         return est_spec
 
 
 def get(identifier):

@@ -130,41 +130,41 @@ class STFTDecoder(BaseDecoder):
         return output
 
 
-class BSRNNDecoder(BaseDecoder):
-    def __init__(
-        self,
-        win: int,
-        hop_length: int,
-        n_src: int,
-        *args,
-        **kwargs,
-    ):
-        super(BSRNNDecoder, self).__init__()
+# class BSRNNDecoder(BaseDecoder):
+#     def __init__(
+#         self,
+#         win: int,
+#         hop_length: int,
+#         n_src: int,
+#         *args,
+#         **kwargs,
+#     ):
+#         super(BSRNNDecoder, self).__init__()
 
-        self.win = win
-        self.hop_length = hop_length
-        self.n_src = n_src
+#         self.win = win
+#         self.hop_length = hop_length
+#         self.n_src = n_src
 
-        self.enc_dim = self.win // 2 + 1
-        self.register_buffer("window", torch.hann_window(self.win), False)
+#         self.enc_dim = self.win // 2 + 1
+#         self.register_buffer("window", torch.hann_window(self.win), False)
 
-    def forward(self, x: torch.Tensor, input_shape: torch.Size):
-        # B, n_src, F, T
+#     def forward(self, x: torch.Tensor, input_shape: torch.Size):
+#         # B, n_src, F, T
 
-        batch_size, length = input_shape[0], input_shape[-1]
-        x = x.view(batch_size * self.n_src, self.enc_dim, -1)  # B, n_src, F, T -> # B * n_src, F, T
+#         batch_size, length = input_shape[0], input_shape[-1]
+#         x = x.view(batch_size * self.n_src, self.enc_dim, -1)  # B, n_src, F, T -> # B * n_src, F, T
 
-        output = torch.istft(
-            x,
-            n_fft=self.win,
-            hop_length=self.hop_length,
-            window=self.window,
-            length=length,
-        )  # B*n_src, L
+#         output = torch.istft(
+#             x,
+#             n_fft=self.win,
+#             hop_length=self.hop_length,
+#             window=self.window,
+#             length=length,
+#         )  # B*n_src, L
 
-        output = output.view(batch_size, self.n_src, length)  # B, n_src, L
+#         output = output.view(batch_size, self.n_src, length)  # B, n_src, L
 
-        return output
+#         return output
 
 
 def get(identifier):
