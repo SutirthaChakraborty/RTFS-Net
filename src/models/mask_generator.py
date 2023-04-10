@@ -75,7 +75,7 @@ class MaskGenerator(BaseMaskGenerator):
                 masks = self.output(masks) * self.gate(masks)
         else:
             masks = self.mask_generator(refined_features).view(batch_size * self.n_src, 2, self.in_chan, *dims)
-            masks = F.tanh(masks[:, 0]) * F.sigmoid(masks[:, 1])
+            masks = masks[:, 0] * F.sigmoid(masks[:, 1])
 
         masks = masks.view(batch_size, self.n_src, self.in_chan, *dims)
         separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)
