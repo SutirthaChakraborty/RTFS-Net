@@ -22,18 +22,17 @@ class RefinementModule(nn.Module):
         self.video_bn_chan = video_bn_chan
         self.fusion_params = fusion_params
 
-        self.fusion_repeats = self.video_params["repeats"]
+        self.fusion_repeats = self.video_params.get("repeats", 0)
         self.audio_repeats = self.audio_params["repeats"] - self.fusion_repeats
 
-        self.video_net = separators.get(self.video_params["video_net"])(**self.video_params, in_chan=self.video_bn_chan)
-        self.audio_net = separators.get(self.audio_params["audio_net"])(**self.audio_params, in_chan=self.audio_bn_chan)
+        self.video_net = separators.get(self.video_params.get("video_net", None))(**self.video_params, in_chan=self.video_bn_chan)
+        self.audio_net = separators.get(self.audio_params.get("audio_net", None))(**self.audio_params, in_chan=self.audio_bn_chan)
 
         self.crossmodal_fusion = MultiModalFusion(
             **self.fusion_params,
             audio_bn_chan=self.audio_bn_chan,
             video_bn_chan=self.video_bn_chan,
             fusion_repeats=self.fusion_repeats,
-            audio_repeats=self.audio_repeats,
         )
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):

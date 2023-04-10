@@ -21,22 +21,27 @@ from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
 
 class AVSpeechDataset(Dataset):
-    def __init__(self, epochs=5):
+    def __init__(self, epochs=5, audio_only=False):
         super().__init__()
         self.length = epochs
+        self.audio_only = audio_only
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, idx: int):
-        return (torch.rand(32000), torch.rand(32000), torch.rand((1, 50, 88, 88)), "sample text")
+        if not self.audio_only:
+            return (torch.rand(32000), torch.rand(32000), torch.rand((1, 50, 88, 88)), "sample text")
+        else:
+            return (torch.rand(32000), torch.rand(32000), "sample text")
 
 
 def build_dataloaders(conf, bs=None):
     bs = conf["training"]["batch_size"] if bs is None else bs
+    audio_only = conf["data"].get("audio_only", False)
 
-    train_set = AVSpeechDataset(200 * bs)
-    val_set = AVSpeechDataset(50 * bs)
+    train_set = AVSpeechDataset(200 * bs, audio_only)
+    val_set = AVSpeechDataset(50 * bs, audio_only)
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=bs, num_workers=conf["training"]["num_workers"], drop_last=True)
     val_loader = DataLoader(val_set, shuffle=False, batch_size=bs, num_workers=conf["training"]["num_workers"], drop_last=True)
@@ -47,9 +52,11 @@ def build_dataloaders(conf, bs=None):
 def main(conf, model=CTCNet, epochs=1, bs=None):
     train_loader, val_loader = build_dataloaders(conf, bs)
 
-    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
+    conf["videonet"] = conf.get("videonet", {})
+    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", None)
 
     # Define model and optimizer
+    videomodel = None
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":
         videomodel = FRCNNVideoModel(**conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":
@@ -143,7 +150,7 @@ def main(conf, model=CTCNet, epochs=1, bs=None):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small_audio_only.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -162,7 +169,7 @@ if __name__ == "__main__":
 
     t1 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small_oneshot_gate.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 

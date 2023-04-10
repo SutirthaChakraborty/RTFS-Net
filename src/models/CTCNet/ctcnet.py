@@ -12,14 +12,14 @@ class CTCNet(BaseAVModel):
     def __init__(
         self,
         n_src: int,
-        pretrained_vout_chan: int,
-        audio_bn_params: dict,
-        video_bn_params: dict,
         enc_dec_params: dict,
+        audio_bn_params: dict,
         audio_params: dict,
-        video_params: dict,
-        fusion_params: dict,
         mask_generation_params: dict,
+        pretrained_vout_chan: int = -1,
+        video_bn_params: dict = dict(),
+        video_params: dict = dict(),
+        fusion_params: dict = dict(),
         *args,
         **kwargs,
     ):
@@ -49,7 +49,7 @@ class CTCNet(BaseAVModel):
         self.mask_generation_params["mask_generator_type"] = self.mask_generation_params.get("mask_generator_type", "MaskGenerator")
         self.audio_bn_chan = self.audio_bn_params.get("out_chan", self.enc_out_chan)
         self.audio_bn_params["out_chan"] = self.audio_bn_chan
-        self.video_bn_chan = self.video_bn_params["out_chan"]
+        self.video_bn_chan = self.video_bn_params.get("out_chan", -1)
 
         self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan)
         self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
@@ -78,7 +78,7 @@ class CTCNet(BaseAVModel):
 
         self.get_MACs()
 
-    def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor):
+    def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor = None):
         audio_mixture_embedding = self.encoder(audio_mixture)  # B, 1, L -> B, N, T, (F)
 
         audio = self.audio_bottleneck(audio_mixture_embedding)  # B, N, T, (F) -> B, C, T, (F)
