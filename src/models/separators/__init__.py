@@ -1,10 +1,12 @@
+import torch.nn as nn
+
 from .frcnn import FRCNN
 from .tdanet import TDANet
 
 
 def get(identifier):
     if identifier is None:
-        return None
+        return nn.Identity
     elif callable(identifier):
         return identifier
     elif isinstance(identifier, str):

@@ -28,6 +28,7 @@ def build_dataloaders(conf):
         sample_rate=conf["data"]["sample_rate"],
         segment=conf["data"]["segment"],
         normalize_audio=conf["data"]["normalize_audio"],
+        audio_only=conf["data"].get("audio_only", False),
     )
     val_set = AVSpeechDataset(
         conf["data"]["valid_dir"],
@@ -35,6 +36,7 @@ def build_dataloaders(conf):
         sample_rate=conf["data"]["sample_rate"],
         segment=None,
         normalize_audio=conf["data"]["normalize_audio"],
+        audio_only=conf["data"].get("audio_only", False),
     )
 
     train_loader = DataLoader(
@@ -58,9 +60,11 @@ def build_dataloaders(conf):
 def main(conf):
     train_loader, val_loader = build_dataloaders(conf)
 
-    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", "FRCNNVideoModel")
+    conf["videonet"] = conf.get("videonet", {})
+    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", None)
 
     # Define model and optimizer
+    videomodel = None
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":
         videomodel = FRCNNVideoModel(**conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":

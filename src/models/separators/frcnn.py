@@ -168,8 +168,8 @@ class FRCNNBlock(nn.Module):
 class FRCNN(nn.Module):
     def __init__(
         self,
-        in_chan: int,
-        hid_chan: int,
+        in_chan: int = -1,
+        hid_chan: int = -1,
         kernel_size: int = 5,
         stride: int = 2,
         norm_type: str = "gLN",
@@ -199,8 +199,9 @@ class FRCNN(nn.Module):
         self.concat_block = self.__build_concat_block()
 
     def __build_blocks(self):
+        clss = FRCNNBlock if self.in_chan > 0 else nn.Identity
         if self.shared:
-            out = FRCNNBlock(
+            out = clss(
                 in_chan=self.in_chan,
                 hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
@@ -215,7 +216,7 @@ class FRCNN(nn.Module):
             out = nn.ModuleList()
             for _ in range(self.repeats):
                 out.append(
-                    FRCNNBlock(
+                    clss(
                         in_chan=self.in_chan,
                         hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
@@ -231,8 +232,9 @@ class FRCNN(nn.Module):
         return out
 
     def __build_concat_block(self):
+        clss = ConvNormAct if self.in_chan > 0 else nn.Identity
         if self.shared:
-            out = ConvNormAct(
+            out = clss(
                 in_chan=self.in_chan,
                 out_chan=self.in_chan,
                 kernel_size=1,
@@ -244,7 +246,7 @@ class FRCNN(nn.Module):
             out = nn.ModuleList([None])
             for _ in range(self.repeats - 1):
                 out.append(
-                    ConvNormAct(
+                    clss(
                         in_chan=self.in_chan,
                         out_chan=self.in_chan,
                         kernel_size=1,

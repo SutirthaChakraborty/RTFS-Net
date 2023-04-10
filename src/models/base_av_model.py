@@ -63,10 +63,13 @@ class BaseAVModel(nn.Module):
         seconds = 2
 
         audio_input = torch.rand(batch_size, seconds * 16000)
+
+        v_chan = self.pretrained_vout_chan if self.pretrained_vout_chan > 0 else 1
+
         if self.video_bn_params.get("is2d", False):
-            video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25, 16)
+            video_input = torch.rand(batch_size, v_chan, seconds * 25, 16)
         else:
-            video_input = torch.rand(batch_size, self.pretrained_vout_chan, seconds * 25)
+            video_input = torch.rand(batch_size, v_chan, seconds * 25)
 
         encoded_audio = self.encoder(audio_input)
 

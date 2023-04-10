@@ -89,6 +89,8 @@ class System(pl.LightningModule):
             else:
                 inputs, targets, _ = batch
             est_targets = self(inputs)
+            if targets.ndim == 2:
+                targets = targets.unsqueeze(1)
             if is_train:
                 loss = self.loss_func["train"](est_targets, targets)
             else:

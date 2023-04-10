@@ -31,6 +31,7 @@ class AVSpeechDataset(Dataset):
         segment: float = 4.0,
         normalize_audio: bool = False,
         return_src_path: bool = False,
+        audio_only: bool = False,
     ):
         super().__init__()
         if json_dir == None:
@@ -41,6 +42,7 @@ class AVSpeechDataset(Dataset):
         self.sample_rate = sample_rate
         self.normalize_audio = normalize_audio
         self.return_src_path = return_src_path
+        self.audio_only = audio_only
         self.lipreading_preprocessing_func = get_preprocessing_pipelines()["train" if segment != None else "val"]
         if segment is None:
             self.seg_len = None
@@ -133,7 +135,8 @@ class AVSpeechDataset(Dataset):
 
             mix_source, _ = sf.read(self.mix[idx][0], start=rand_start, stop=stop, dtype="float32")
             source = sf.read(self.sources[idx][0], start=rand_start, stop=stop, dtype="float32")[0]
-            source_mouth = self.lipreading_preprocessing_func(np.load(self.sources[idx][1])["data"])
+            if not self.audio_only:
+                source_mouth = self.lipreading_preprocessing_func(np.load(self.sources[idx][1])["data"])
 
             source = torch.from_numpy(source)
             mixture = torch.from_numpy(mix_source)
@@ -142,23 +145,36 @@ class AVSpeechDataset(Dataset):
                 m_std = mixture.std(-1, keepdim=True)
                 mixture = normalize_tensor_wav(mixture, eps=self.EPS, std=m_std)
                 source = normalize_tensor_wav(source, eps=self.EPS, std=m_std)
-            #             return mixture, source, torch.stack([torch.from_numpy(source_mouth)]), self.mix[idx][0].split("/")[-1]
-            #             print(self.sample_rate*2, mixture.shape, source.shape)"
             if self.return_src_path:
-                return (
-                    mixture[: self.sample_rate * 2],
-                    source[: self.sample_rate * 2],
-                    torch.stack([torch.from_numpy(source_mouth)]),
-                    self.mix[idx][0].split("/")[-1],
-                    self.sources[idx][0],
-                )
+                if not self.audio_only:
+                    return (
+                        mixture[: self.sample_rate * 2],
+                        source[: self.sample_rate * 2],
+                        torch.stack([torch.from_numpy(source_mouth)]),
+                        self.mix[idx][0].split("/")[-1],
+                        self.sources[idx][0],
+                    )
+                else:
+                    return (
+                        mixture[: self.sample_rate * 2],
+                        source[: self.sample_rate * 2],
+                        self.mix[idx][0].split("/")[-1],
+                        self.sources[idx][0],
+                    )
             else:
-                return (
-                    mixture[: self.sample_rate * 2],
-                    source[: self.sample_rate * 2],
-                    torch.stack([torch.from_numpy(source_mouth)]),
-                    self.mix[idx][0].split("/")[-1],
-                )
+                if not self.audio_only:
+                    return (
+                        mixture[: self.sample_rate * 2],
+                        source[: self.sample_rate * 2],
+                        torch.stack([torch.from_numpy(source_mouth)]),
+                        self.mix[idx][0].split("/")[-1],
+                    )
+                else:
+                    return (
+                        mixture[: self.sample_rate * 2],
+                        source[: self.sample_rate * 2],
+                        self.mix[idx][0].split("/")[-1],
+                    )
 
         if self.n_src == 2:
             if self.mix[idx][1] == self.seg_len or self.test:
@@ -178,7 +194,10 @@ class AVSpeechDataset(Dataset):
                 # import pdb; pdb.set_trace()
                 sources.append(sf.read(src[0], start=rand_start, stop=stop, dtype="float32")[0])
 
-            sources_mouths = [torch.from_numpy(self.lipreading_preprocessing_func(np.load(src[1])["data"])) for src in self.sources[idx]]
+            if not self.audio_only:
+                sources_mouths = [
+                    torch.from_numpy(self.lipreading_preprocessing_func(np.load(src[1])["data"])) for src in self.sources[idx]
+                ]
             # import pdb; pdb.set_trace()
             sources = torch.stack([torch.from_numpy(source) for source in sources])
             mixture = torch.from_numpy(mix_source)
@@ -190,9 +209,16 @@ class AVSpeechDataset(Dataset):
 
             #             return mixture, sources, torch.stack(sources_mouths), self.mix[idx][0].split("/")[-1]
             print(self.sample_rate * 2, mixture.shape)
-            return (
-                mixture[: self.sample_rate * 2],
-                sources[: self.sample_rate * 2],
-                torch.stack(sources_mouths),
-                self.mix[idx][0].split("/")[-1],
-            )
+            if not self.audio_only:
+                return (
+                    mixture[: self.sample_rate * 2],
+                    sources[: self.sample_rate * 2],
+                    torch.stack(sources_mouths),
+                    self.mix[idx][0].split("/")[-1],
+                )
+            else:
+                return (
+                    mixture[: self.sample_rate * 2],
+                    sources[: self.sample_rate * 2],
+                    self.mix[idx][0].split("/")[-1],
+                )

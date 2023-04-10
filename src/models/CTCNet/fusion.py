@@ -85,7 +85,6 @@ class MultiModalFusion(nn.Module):
         audio_bn_chan: int,
         video_bn_chan: int,
         fusion_repeats: int = 3,
-        audio_repeats: int = 3,
         fusion_type: str = "ConcatFusion",
         fusion_shared: bool = False,
         is2d: bool = False,
@@ -94,7 +93,6 @@ class MultiModalFusion(nn.Module):
         self.audio_bn_chan = audio_bn_chan
         self.video_bn_chan = video_bn_chan
         self.fusion_repeats = fusion_repeats
-        self.audio_repeats = audio_repeats
         self.fusion_type = fusion_type
         self.fusion_shared = fusion_shared
         self.is2d = is2d
@@ -102,7 +100,7 @@ class MultiModalFusion(nn.Module):
         self.fusion_module = self.__build_fusion_module()
 
     def __build_fusion_module(self):
-        fusion_class = globals().get(self.fusion_type)
+        fusion_class = globals().get(self.fusion_type) if self.fusion_repeats > 0 else nn.Identity
         if self.fusion_shared:
             out = fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d)
         else:
