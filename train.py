@@ -61,7 +61,7 @@ def build_dataloaders(conf):
 def main(conf):
     i = 0
     devices = get_free_gpu_indices()
-    while not len(devices):
+    while len(devices) != conf["training"]["gpus"]:
         time.sleep(1)
         devices = get_free_gpu_indices()
         if (i % 100) == 0:
