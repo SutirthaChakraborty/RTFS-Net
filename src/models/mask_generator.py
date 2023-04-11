@@ -99,7 +99,7 @@ class RI_MaskGenerator(BaseMaskGenerator):
     ):
         super(RI_MaskGenerator, self).__init__()
         self.n_src = n_src
-        self.in_chan = int(audio_emb_dim // 2)
+        self.in_chan = audio_emb_dim
         self.bottleneck_chan = bottleneck_chan
         self.kernel_size = kernel_size
         self.mask_act = mask_act
@@ -109,7 +109,7 @@ class RI_MaskGenerator(BaseMaskGenerator):
 
         assert not (self.output_gate and self.oneshot_gate)
 
-        mask_output_chan = self.n_src * self.in_chan * 4 if self.oneshot_gate else self.n_src * self.in_chan * 2
+        mask_output_chan = self.n_src * self.in_chan * 2 if self.oneshot_gate else self.n_src * self.in_chan
 
         self.mask_generator = nn.Sequential(
             nn.PReLU(),
@@ -143,15 +143,15 @@ class RI_MaskGenerator(BaseMaskGenerator):
         dims = refined_features.shape[-(len(refined_features.shape) // 2) :]
 
         if not self.oneshot_gate:
-            masks = self.mask_generator(refined_features).view(batch_size * self.n_src, self.in_chan * 2, *dims)
+            masks = self.mask_generator(refined_features).view(batch_size * self.n_src, self.in_chan, *dims)
             if self.output_gate:
                 masks = self.output(masks) * self.gate(masks)
         else:
-            masks = self.mask_generator(refined_features).view(batch_size * self.n_src, 2, self.in_chan * 2, *dims)
-            masks = F.tanh(masks[:, 0]) * F.sigmoid(masks[:, 1])
+            masks = self.mask_generator(refined_features).view(batch_size * self.n_src, 2, self.in_chan, *dims)
+            masks = masks[:, 0] * F.sigmoid(masks[:, 1])
 
-        masks = masks.view(batch_size, self.n_src, 2, self.in_chan, *dims)
-        audio_mixture_embedding = audio_mixture_embedding.view(batch_size, 2, self.in_chan, *dims)
+        masks = masks.view(batch_size, self.n_src, 2, self.in_chan // 2, *dims)
+        audio_mixture_embedding = audio_mixture_embedding.view(batch_size, 2, self.in_chan // 2, *dims)
         separated_audio_embedding = self.__apply_masks(masks, audio_mixture_embedding)
 
         return separated_audio_embedding
