@@ -1,6 +1,7 @@
 import os
 import yaml
 import json
+import time
 import torch
 import argparse
 import pytorch_lightning as pl
@@ -15,7 +16,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
 from src.datas import AVSpeechDataset
-from src.utils import parse_args_as_dict
+from src.utils import parse_args_as_dict, get_free_gpu_indices
 from src.system import System, make_optimizer
 from src.videomodels import AEVideoModel, FRCNNVideoModel
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
@@ -58,6 +59,15 @@ def build_dataloaders(conf):
 
 
 def main(conf):
+    i = 0
+    devices = get_free_gpu_indices()
+    while not len(devices):
+        time.sleep(1)
+        devices = get_free_gpu_indices()
+        if (i % 100) == 0:
+            print(f"Waited {i}s")
+        i += 1
+
     train_loader, val_loader = build_dataloaders(conf)
 
     conf["videonet"] = conf.get("videonet", {})
