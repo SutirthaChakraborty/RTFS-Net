@@ -89,7 +89,6 @@ class TDANetBlock(nn.Module):
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
-        self.attention_ks = kernel_size if attention_ks is None else attention_ks
         self.stride = stride
         self.norm_type = norm_type
         self.act_type = act_type
@@ -100,6 +99,7 @@ class TDANetBlock(nn.Module):
 
         self.att = GlobalAttention2D if self.is2d else GlobalAttention
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
+        self.attention_ks = kernel_size if attention_ks is None else attention_ks
 
         self.projection = ConvNormAct(
             in_chan=self.in_chan,
@@ -109,17 +109,22 @@ class TDANetBlock(nn.Module):
             act_type=self.act_type,
             is2d=self.is2d,
         )
-        self.downsample_layers = self.__build_downsample_layers()
-        self.fusion_layers = self.__build_fusion_layers()
-        self.concat_layers = self.__build_concat_layers()
-        self.residual_conv = ConvNormAct(self.hid_chan, self.in_chan, 1, is2d=self.is2d)
-
         self.globalatt = self.att(
             in_chan=self.hid_chan,
             kernel_size=self.attention_ks,
             n_head=self.n_head,
             dropout=self.dropout,
         )
+        self.residual_conv = ConvNormAct(
+            in_chan=self.hid_chan,
+            out_chan=self.in_chan,
+            kernel_size=1,
+            is2d=self.is2d,
+        )
+
+        self.downsample_layers = self.__build_downsample_layers()
+        self.fusion_layers = self.__build_fusion_layers()
+        self.concat_layers = self.__build_concat_layers()
 
     def __build_downsample_layers(self):
         out = nn.ModuleList()
@@ -277,7 +282,7 @@ class TDANet(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if self.in_chan > 0 else nn.Identity
+        clss = ConvNormAct if (self.in_chan > 0) and (self.repeats > 1) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
