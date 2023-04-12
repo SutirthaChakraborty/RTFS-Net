@@ -52,9 +52,10 @@ class RefinementModule(nn.Module):
         # further refinement
         for j in range(self.audio_repeats):
             i = j + self.fusion_repeats
+            if i > 0:
+                audio = audio + audio_residual
 
-            audio = self.audio_net.get_concat_block(i)(audio + audio_residual)
-            audio = self.audio_net.get_block(i)(audio)
+            audio = self.audio_net.get_block(i)(self.audio_net.get_concat_block(i)(audio))
 
         return audio
 
