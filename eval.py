@@ -27,9 +27,12 @@ warnings.filterwarnings("ignore")
 
 def main(conf):
     conf["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
+    conf["videonet"] = conf.get("videonet", {})
+    conf["videonet"]["model_name"] = conf["videonet"].get("model_name", None)
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
     audiomodel: CTCNet = CTCNet.from_pretrain(model_path, **conf["audionet"])
+    videomodel = None
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":
         videomodel = FRCNNVideoModel(**conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":
@@ -37,17 +40,20 @@ def main(conf):
 
     # Handle device placement
     audiomodel.eval()
-    videomodel.eval()
+    if videomodel is not None:
+        videomodel.eval()
 
     device = get_free_gpu_indices()
     if len(device):
         device = device[0]
         audiomodel.cuda(device)
-        videomodel.cuda(device)
+        if videomodel is not None:
+            videomodel.cuda(device)
     else:
         print("No free gpus available, using CPU")
         audiomodel.cpu()
-        videomodel.cpu()
+        if videomodel is not None:
+            videomodel.cpu()
 
     model_device = next(audiomodel.parameters()).device
 
@@ -74,7 +80,7 @@ def main(conf):
     for idx in pbar:
         # Forward the network on the mixture.
         mix, sources, target_mouths, key, src_path = tensors_to_device(test_set[idx], device=model_device)
-        mouth_emb = videomodel(target_mouths.unsqueeze(0).float())
+        mouth_emb = videomodel(target_mouths.unsqueeze(0).float()) if videomodel is not None else None
         est_sources = audiomodel(mix[None, None], mouth_emb)
         loss, reordered_sources = loss_func(est_sources, sources[None, None], return_ests=True)
         mix_np = mix

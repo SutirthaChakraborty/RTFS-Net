@@ -29,7 +29,7 @@ audionet:
       kernel_size: 3
       stride: 1
       bias: False
-      act_type: 
+      act_type: ReLU
       norm_type: gLN
       
     audio_params:
