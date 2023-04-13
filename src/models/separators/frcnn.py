@@ -223,7 +223,7 @@ class FRCNN(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if (self.in_chan > 0) and (self.repeats > 1) else nn.Identity
+        clss = ConvNormAct if self.in_chan > 0 else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
@@ -234,8 +234,8 @@ class FRCNN(nn.Module):
                 is2d=self.is2d,
             )
         else:
-            out = nn.ModuleList([None])
-            for _ in range(self.repeats - 1):
+            out = nn.ModuleList()
+            for _ in range(self.repeats):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
@@ -264,6 +264,6 @@ class FRCNN(nn.Module):
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = self.get_concat_block(i)(x + residual) if i > 0 else x
-            x = self.get_block(i)(x)
+            x = x + residual if i > 0 else x
+            x = self.get_block(i)(self.get_concat_block(i)(x))
         return x

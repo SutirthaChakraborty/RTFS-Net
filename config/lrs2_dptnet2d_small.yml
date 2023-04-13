@@ -29,7 +29,7 @@ audionet:
       kernel_size: 3
       stride: 1
       bias: False
-      act_type: 
+      act_type: ReLU
       norm_type: gLN
       
     audio_params:
@@ -96,4 +96,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small/dptnet2d/11_04_23
+    exp_name: ctcnet_small/dptnet2d/13_04_23
