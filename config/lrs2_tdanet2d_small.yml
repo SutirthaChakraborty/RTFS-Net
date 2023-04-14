@@ -100,4 +100,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small/tdanet2d/13_04_23_first_iteration_fix
+    exp_name: ctcnet_small/tdanet2d/11_04_23
