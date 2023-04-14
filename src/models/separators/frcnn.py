@@ -15,7 +15,6 @@ class FRCNNBlock(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
-        dropout: int = 0,
         is2d: bool = False,
     ):
         super(FRCNNBlock, self).__init__()
@@ -26,7 +25,6 @@ class FRCNNBlock(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
-        self.dropout = dropout
         self.is2d = is2d
 
         self.projection = ConvNormAct(
@@ -37,9 +35,6 @@ class FRCNNBlock(nn.Module):
             act_type=self.act_type,
             is2d=self.is2d,
         )
-        self.downsample_layers = self.__build_downsample_layers()
-        self.fusion_layers = self.__build_fusion_layers()
-        self.concat_layers = self.__build_concat_layers()
         self.residual_conv = nn.Sequential(
             ConvNormAct(
                 self.hid_chan * self.upsampling_depth,
@@ -56,7 +51,10 @@ class FRCNNBlock(nn.Module):
                 is2d=self.is2d,
             ),
         )
-        self.dropout_layer = nn.Dropout(self.dropout)
+
+        self.downsample_layers = self.__build_downsample_layers()
+        self.fusion_layers = self.__build_fusion_layers()
+        self.concat_layers = self.__build_concat_layers()
 
     def __build_downsample_layers(self):
         out = nn.ModuleList()
@@ -136,8 +134,8 @@ class FRCNNBlock(nn.Module):
             out_i = self.downsample_layers[i](downsampled_outputs[-1])
             downsampled_outputs.append(out_i)
 
+        x_fused = []
         # lateral connection
-        x_fuse = []
         for i in range(self.upsampling_depth):
             shape = downsampled_outputs[i].shape
             y = torch.cat(
@@ -150,17 +148,14 @@ class FRCNNBlock(nn.Module):
                 ),
                 dim=1,
             )
-            x_fuse.append(self.concat_layers[i](y))
+            x_fused.append(self.concat_layers[i](y))
 
         # resize to T
         shape = downsampled_outputs[0].shape
-        for i in range(1, len(x_fuse)):
-            x_fuse[i] = F.interpolate(x_fuse[i], size=shape[-(len(shape) // 2) :], mode="nearest")
+        for i in range(1, len(x_fused)):
+            x_fused[i] = F.interpolate(x_fused[i], size=shape[-(len(shape) // 2) :], mode="nearest")
 
-        # concat and shortcut
-        out = self.residual_conv(torch.cat(x_fuse, dim=1))
-        # dropout
-        out = self.dropout_layer(out) + residual
+        out = self.residual_conv(torch.cat(x_fused, dim=1)) + residual
 
         return out
 
@@ -177,7 +172,6 @@ class FRCNN(nn.Module):
         upsampling_depth: int = 4,
         repeats: int = 4,
         shared: bool = False,
-        dropout: float = 0,
         is2d: bool = False,
         *args,
         **kwargs,
@@ -192,7 +186,6 @@ class FRCNN(nn.Module):
         self.upsampling_depth = upsampling_depth
         self.repeats = repeats
         self.shared = shared
-        self.dropout = dropout
         self.is2d = is2d
 
         self.blocks = self.__build_blocks()
@@ -209,7 +202,6 @@ class FRCNN(nn.Module):
                 norm_type=self.norm_type,
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
-                dropout=self.dropout,
                 is2d=self.is2d,
             )
         else:
@@ -224,7 +216,6 @@ class FRCNN(nn.Module):
                         norm_type=self.norm_type,
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
-                        dropout=self.dropout,
                         is2d=self.is2d,
                     )
                 )
@@ -243,8 +234,8 @@ class FRCNN(nn.Module):
                 is2d=self.is2d,
             )
         else:
-            out = nn.ModuleList([None])
-            for _ in range(self.repeats - 1):
+            out = nn.ModuleList()
+            for _ in range(self.repeats):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
@@ -273,6 +264,6 @@ class FRCNN(nn.Module):
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = self.get_concat_block(i)(x + residual) if i > 0 else x
-            x = self.get_block(i)(x)
+            x = x + residual if i > 0 else x
+            x = self.get_block(i)(self.get_concat_block(i)(x))
         return x

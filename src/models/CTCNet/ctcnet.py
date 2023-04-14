@@ -38,7 +38,7 @@ class CTCNet(BaseAVModel):
         self.encoder: encoder.BaseEncoder = encoder.get(self.enc_dec_params["encoder_type"])(
             **self.enc_dec_params,
             in_chan=1,
-            upsampling_depth=self.audio_params["upsampling_depth"],
+            upsampling_depth=self.audio_params.get("upsampling_depth", 1),
         )
 
         self.init_modules()
@@ -67,12 +67,11 @@ class CTCNet(BaseAVModel):
             n_src=self.n_src,
             audio_emb_dim=self.enc_out_chan,
             bottleneck_chan=self.audio_bn_chan,
-            win=self.enc_dec_params.get("win", 0),
         )
 
         self.decoder: decoder.BaseDecoder = decoder.get(self.enc_dec_params["decoder_type"])(
             **self.enc_dec_params,
-            in_chan=self.enc_out_chan * self.n_src if self.mask_generation_params.get("kernel_size", 1) > 0 else self.audio_bn_chan,
+            in_chan=self.enc_out_chan * self.n_src,
             n_src=self.n_src,
         )
 
