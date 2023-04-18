@@ -106,7 +106,8 @@ class FeedForwardNetwork(nn.Module):
             is2d=self.is2d,
         )  # DW seperable conv
         self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False, is2d=self.is2d)  # FC 2
-        self.dropout_layer = DropPath(self.dropout) if self.dropout > 0.0 else nn.Identity()
+        self.dropout_layer = DropPath(self.dropout)
+        self.norm = nn.GroupNorm(1, self.in_chan)
 
     def forward(self, x: torch.Tensor):
         res = x
@@ -114,7 +115,7 @@ class FeedForwardNetwork(nn.Module):
         x = self.refiner(x)
         x = self.dropout_layer(x)
         x = self.decoder(x)
-        x = self.dropout_layer(x) + res
+        x = self.norm(self.dropout_layer(x) + res)
         return x
 
 
