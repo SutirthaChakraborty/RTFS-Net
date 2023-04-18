@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .. import normalizations
 from ..layers import ConvNormAct
 
 
@@ -51,6 +52,8 @@ class FRCNNBlock(nn.Module):
                 is2d=self.is2d,
             ),
         )
+
+        self.norm = normalizations.get(self.norm_type)(self.in_chan)
 
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
@@ -131,8 +134,7 @@ class FRCNNBlock(nn.Module):
         # bottom-up
         downsampled_outputs = [self.downsample_layers[0](x_enc)]
         for i in range(1, self.upsampling_depth):
-            out_i = self.downsample_layers[i](downsampled_outputs[-1])
-            downsampled_outputs.append(out_i)
+            downsampled_outputs.append(self.downsample_layers[i](downsampled_outputs[-1]))
 
         x_fused = []
         # lateral connection
@@ -155,7 +157,7 @@ class FRCNNBlock(nn.Module):
         for i in range(1, len(x_fused)):
             x_fused[i] = F.interpolate(x_fused[i], size=shape[-(len(shape) // 2) :], mode="nearest")
 
-        out = self.residual_conv(torch.cat(x_fused, dim=1)) + residual
+        out = self.norm(self.residual_conv(torch.cat(x_fused, dim=1)) + residual)
 
         return out
 
@@ -231,6 +233,7 @@ class FRCNN(nn.Module):
                 kernel_size=1,
                 groups=self.in_chan,
                 act_type=self.act_type,
+                norm_type=self.norm_type,
                 is2d=self.is2d,
             )
         else:
@@ -243,6 +246,7 @@ class FRCNN(nn.Module):
                         kernel_size=1,
                         groups=self.in_chan,
                         act_type=self.act_type,
+                        norm_type=self.norm_type,
                         is2d=self.is2d,
                     )
                 )
@@ -264,6 +268,6 @@ class FRCNN(nn.Module):
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = x + residual if i > 0 else x
-            x = self.get_block(i)(self.get_concat_block(i)(x))
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
+            x = self.get_block(i)(x)
         return x

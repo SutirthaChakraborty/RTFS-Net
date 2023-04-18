@@ -2,75 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..layers import ConvNormAct, GlobalAttention, GlobalAttention2D
-
-
-class InjectionMultiSum(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        hid_chan: int,
-        kernel_size: int,
-        norm_type: str = "gLN",
-        is2d: bool = False,
-    ):
-        super(InjectionMultiSum, self).__init__()
-        self.in_chan = in_chan
-        self.hid_chan = hid_chan
-        self.kernel_size = kernel_size
-        self.norm_type = norm_type
-        self.is2d = is2d
-
-        self.groups = in_chan if in_chan == hid_chan else 1
-
-        self.local_embedding = ConvNormAct(
-            in_chan=self.in_chan,
-            out_chan=self.hid_chan,
-            kernel_size=self.kernel_size,
-            groups=self.groups,
-            norm_type=self.norm_type,
-            bias=False,
-            is2d=self.is2d,
-        )
-        self.global_embedding = ConvNormAct(
-            in_chan=self.in_chan,
-            out_chan=self.hid_chan,
-            kernel_size=self.kernel_size,
-            groups=self.groups,
-            norm_type=self.norm_type,
-            bias=False,
-            is2d=self.is2d,
-        )
-        self.global_gate = ConvNormAct(
-            in_chan=self.in_chan,
-            out_chan=self.hid_chan,
-            kernel_size=self.kernel_size,
-            groups=self.groups,
-            norm_type=self.norm_type,
-            act_type="Sigmoid",
-            bias=False,
-            is2d=self.is2d,
-        )
-
-    def forward(self, local_features: torch.Tensor, global_features: torch.Tensor):
-        length = local_features.shape[-(len(local_features.shape) // 2) :]
-
-        local_emb = self.local_embedding(local_features)
-        global_emb = F.interpolate(self.global_embedding(global_features), size=length, mode="nearest")
-        gate = F.interpolate(self.global_gate(global_features), size=length, mode="nearest")
-
-        injection_sum = local_emb * gate + global_emb
-
-        return injection_sum
+from .. import normalizations
+from ..layers import ConvNormAct, InjectionMultiSum, GlobalAttention, GlobalAttention2D
 
 
 class TDANetBlock(nn.Module):
-    """
-    This class defines the block which performs successive downsampling and
-    upsampling in order to be able to analyze the input features in multiple
-    resolutions.
-    """
-
     def __init__(
         self,
         in_chan: int,
@@ -121,6 +57,8 @@ class TDANetBlock(nn.Module):
             kernel_size=1,
             is2d=self.is2d,
         )
+
+        self.norm = normalizations.get(self.norm_type)(self.in_chan)
 
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
@@ -182,8 +120,7 @@ class TDANetBlock(nn.Module):
         # bottom-up
         downsampled_outputs = [self.downsample_layers[0](x_enc)]
         for i in range(1, self.upsampling_depth):
-            out_i = self.downsample_layers[i](downsampled_outputs[-1])
-            downsampled_outputs.append(out_i)
+            downsampled_outputs.append(self.downsample_layers[i](downsampled_outputs[-1]))
 
         # global features
         shape = downsampled_outputs[-1].shape
@@ -202,7 +139,7 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth - 3, -1, -1):
             expanded = self.concat_layers[i](x_fused[i], expanded)
 
-        out = self.residual_conv(expanded) + residual
+        out = self.norm(self.residual_conv(expanded) + residual)
 
         return out
 
@@ -290,6 +227,7 @@ class TDANet(nn.Module):
                 kernel_size=1,
                 groups=self.in_chan,
                 act_type=self.act_type,
+                norm_type=self.norm_type,
                 is2d=self.is2d,
             )
         else:
@@ -302,6 +240,7 @@ class TDANet(nn.Module):
                         kernel_size=1,
                         groups=self.in_chan,
                         act_type=self.act_type,
+                        norm_type=self.norm_type,
                         is2d=self.is2d,
                     )
                 )
@@ -323,6 +262,6 @@ class TDANet(nn.Module):
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = x + residual if i > 0 else x
-            x = self.get_block(i)(self.get_concat_block(i)(x))
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
+            x = self.get_block(i)(x)
         return x

@@ -49,7 +49,7 @@ class CTCNet(BaseAVModel):
         self.mask_generation_params["mask_generator_type"] = self.mask_generation_params.get("mask_generator_type", "MaskGenerator")
         self.audio_bn_chan = self.audio_bn_params.get("out_chan", self.enc_out_chan)
         self.audio_bn_params["out_chan"] = self.audio_bn_chan
-        self.video_bn_chan = self.video_bn_params.get("out_chan", -1)
+        self.video_bn_chan = self.video_bn_params.get("out_chan", self.pretrained_vout_chan)
 
         self.audio_bottleneck = ConvNormAct(**self.audio_bn_params, in_chan=self.enc_out_chan)
         self.video_bottleneck = ConvNormAct(**self.video_bn_params, in_chan=self.pretrained_vout_chan)
