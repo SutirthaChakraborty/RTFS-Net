@@ -225,7 +225,7 @@ class FRCNN(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if self.in_chan > 0 else nn.Identity
+        clss = ConvNormAct if (self.in_chan > 0) and (self.repeats > 1) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,

@@ -69,7 +69,7 @@ class RNNProjection(nn.Module):
             bidirectional=bidirectional,
         )
         self.proj = nn.Sequential(
-            nn.ReLU(),
+            nn.PReLU(),
             nn.Dropout(self.dropout),
             nn.Linear(self.hidden_size * self.num_direction, self.input_size),
             nn.Dropout(self.dropout),
@@ -78,8 +78,11 @@ class RNNProjection(nn.Module):
 
     def forward(self, x: torch.Tensor):
         x = x.transpose(1, 2).contiguous()  # B, L, N
-        rnn_output = self.rnn(x)[0].contiguous()  # B, L, num_direction * H
-        x = self.norm(x + self.proj(rnn_output))  # B, L, N
-        x = x.transpose(1, 2).contiguous()  # B, N, L
+        res = x
 
+        x = self.rnn(x)[0].contiguous()  # B, L, num_direction * H
+        x = self.proj(x)
+        x = self.norm(x + res)  # B, L, N
+
+        x = x.transpose(1, 2).contiguous()  # B, N, L
         return x

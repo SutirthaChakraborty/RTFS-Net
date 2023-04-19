@@ -150,7 +150,7 @@ def main(conf, model=CTCNet, epochs=1, bs=None):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_mini_galr.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)
 
-    macs1 = main(def_conf)
+    macs1 = main(def_conf, bs=1)
 
     t1 = time()
     # parser = argparse.ArgumentParser()
@@ -208,5 +208,5 @@ if __name__ == "__main__":
     t3 = time()
 
     print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0, macs1))
-    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t2 - t1, macs2))
+    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t2 - t1, macs2))
     # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir3, t3 - t2, macs3))
