@@ -150,7 +150,7 @@ def main(conf, model=CTCNet, epochs=1, bs=None):
 if __name__ == "__main__":
     t0 = time()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_mini_galr.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_mini.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 

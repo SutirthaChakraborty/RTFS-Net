@@ -36,23 +36,26 @@ class RefinementModule(nn.Module):
         )
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
-        audio_residual = audio
-        video_residual = video
+        audio_residual = [audio]
+        video_residual = [video]
 
         # cross modal fusion
         for i in range(self.fusion_repeats):
-            audio = self.audio_net.get_concat_block(i)(audio + audio_residual) if i > 0 else audio
-            video = self.video_net.get_concat_block(i)(video + video_residual) if i > 0 else video
+            audio = self.audio_net.get_concat_block(i)(sum(audio_residual)) if i > 0 else audio
+            video = self.video_net.get_concat_block(i)(sum(video_residual)) if i > 0 else video
             audio = self.audio_net.get_block(i)(audio)
             video = self.video_net.get_block(i)(video)
             audio, video = self.crossmodal_fusion.get_fusion_block(i)(audio, video)
+            audio_residual.append(audio)
+            video_residual.append(video)
 
         # further refinement
         for j in range(self.audio_repeats):
             i = j + self.fusion_repeats
 
-            audio = self.audio_net.get_concat_block(i)(audio + audio_residual) if i > 0 else audio
+            audio = self.audio_net.get_concat_block(i)(sum(audio_residual)) if i > 0 else audio
             audio = self.audio_net.get_block(i)(audio)
+            audio_residual.append(audio)
 
         return audio
 
