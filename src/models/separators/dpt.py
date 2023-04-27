@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..layers import ConvNormAct, GlobalAttention, GlobalAttention2D
+from .. import layers
+from ..layers import ConvNormAct
 
 
 class DPTNetBlock(nn.Module):
@@ -11,10 +12,11 @@ class DPTNetBlock(nn.Module):
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
-        attention_ks: int = None,
         norm_type: str = "gLN",
         act_type: str = "PReLU",
+        attention_type: str = None,
         n_head: int = 8,
+        attention_ks: int = None,
         dropout: int = 0.1,
         is2d: bool = False,
     ):
@@ -24,12 +26,16 @@ class DPTNetBlock(nn.Module):
         self.kernel_size = kernel_size
         self.norm_type = norm_type
         self.act_type = act_type
+        self.attention_type = attention_type
         self.n_head = n_head
         self.dropout = dropout
         self.is2d = is2d
 
-        self.att = GlobalAttention2D if self.is2d else GlobalAttention
         self.attention_ks = kernel_size if attention_ks is None else attention_ks
+        if attention_type is None:
+            self.attention_type = "GlobalAttention2D" if self.is2d else "GlobalAttention"
+
+        self.att = layers.get(self.attention_type)
 
         self.projection = ConvNormAct(
             in_chan=self.in_chan,
@@ -70,12 +76,13 @@ class DPTNet(nn.Module):
         in_chan: int = -1,
         hid_chan: int = -1,
         kernel_size: int = 5,
-        attention_ks: int = None,
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         repeats: int = 4,
         shared: bool = False,
+        attention_type: str = None,
         n_head: int = 8,
+        attention_ks: int = None,
         dropout: float = 0.1,
         is2d: bool = False,
         *args,
@@ -85,12 +92,13 @@ class DPTNet(nn.Module):
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
-        self.attention_ks = kernel_size if attention_ks is None else attention_ks
         self.norm_type = norm_type
         self.act_type = act_type
         self.repeats = repeats
         self.shared = shared
+        self.attention_type = attention_type
         self.n_head = n_head
+        self.attention_ks = attention_ks
         self.dropout = dropout
         self.is2d = is2d
 
@@ -104,10 +112,11 @@ class DPTNet(nn.Module):
                 in_chan=self.in_chan,
                 hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
-                attention_ks=self.attention_ks,
                 norm_type=self.norm_type,
                 act_type=self.act_type,
+                attention_type=self.attention_type,
                 n_head=self.n_head,
+                attention_ks=self.attention_ks,
                 dropout=self.dropout,
                 is2d=self.is2d,
             )
@@ -119,10 +128,11 @@ class DPTNet(nn.Module):
                         in_chan=self.in_chan,
                         hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
-                        attention_ks=self.attention_ks,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
+                        attention_type=self.attention_type,
                         n_head=self.n_head,
+                        attention_ks=self.attention_ks,
                         dropout=self.dropout,
                         is2d=self.is2d,
                     )
@@ -131,7 +141,7 @@ class DPTNet(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if self.in_chan > 0 else nn.Identity
+        clss = ConvNormAct if (self.in_chan > 0) and (self.repeats > 1 or self.is2d) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
@@ -139,11 +149,12 @@ class DPTNet(nn.Module):
                 kernel_size=1,
                 groups=self.in_chan,
                 act_type=self.act_type,
+                norm_type=self.norm_type,
                 is2d=self.is2d,
             )
         else:
-            out = nn.ModuleList()
-            for _ in range(self.repeats):
+            out = nn.ModuleList([None])
+            for _ in range(self.repeats - 1):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
@@ -151,6 +162,7 @@ class DPTNet(nn.Module):
                         kernel_size=1,
                         groups=self.in_chan,
                         act_type=self.act_type,
+                        norm_type=self.norm_type,
                         is2d=self.is2d,
                     )
                 )
@@ -172,6 +184,6 @@ class DPTNet(nn.Module):
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = x + residual if i > 0 else x
-            x = self.get_block(i)(self.get_concat_block(i)(x))
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
+            x = self.get_block(i)(x)
         return x

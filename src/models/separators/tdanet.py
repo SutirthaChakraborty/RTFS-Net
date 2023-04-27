@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .. import normalizations, layers
+from .. import layers
 from ..layers import ConvNormAct, InjectionMultiSum
 
 
@@ -62,8 +62,6 @@ class TDANetBlock(nn.Module):
             kernel_size=1,
             is2d=self.is2d,
         )
-
-        self.norm = normalizations.get(self.norm_type)(self.in_chan)
 
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
@@ -144,7 +142,7 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth - 3, -1, -1):
             expanded = self.concat_layers[i](x_fused[i], expanded)
 
-        out = self.norm(self.residual_conv(expanded) + residual)
+        out = self.residual_conv(expanded) + residual
 
         return out
 
@@ -234,18 +232,20 @@ class TDANet(nn.Module):
                 in_chan=self.in_chan,
                 out_chan=self.in_chan,
                 kernel_size=1,
+                groups=self.in_chan,
                 act_type=self.act_type,
                 norm_type=self.norm_type,
                 is2d=self.is2d,
             )
         else:
-            out = nn.ModuleList()
-            for _ in range(self.repeats):
+            out = nn.ModuleList([None])
+            for _ in range(self.repeats - 1):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
                         out_chan=self.in_chan,
                         kernel_size=1,
+                        groups=self.in_chan,
                         act_type=self.act_type,
                         norm_type=self.norm_type,
                         is2d=self.is2d,

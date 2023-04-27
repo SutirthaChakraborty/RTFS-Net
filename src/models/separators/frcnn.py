@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .. import normalizations
 from ..layers import ConvNormAct
 
 
@@ -52,8 +51,6 @@ class FRCNNBlock(nn.Module):
                 is2d=self.is2d,
             ),
         )
-
-        self.norm = normalizations.get(self.norm_type)(self.in_chan)
 
         self.downsample_layers = self.__build_downsample_layers()
         self.fusion_layers = self.__build_fusion_layers()
@@ -157,7 +154,7 @@ class FRCNNBlock(nn.Module):
         for i in range(1, len(x_fused)):
             x_fused[i] = F.interpolate(x_fused[i], size=shape[-(len(shape) // 2) :], mode="nearest")
 
-        out = self.norm(self.residual_conv(torch.cat(x_fused, dim=1)) + residual)
+        out = self.residual_conv(torch.cat(x_fused, dim=1)) + residual
 
         return out
 
@@ -237,8 +234,8 @@ class FRCNN(nn.Module):
                 is2d=self.is2d,
             )
         else:
-            out = nn.ModuleList()
-            for _ in range(self.repeats):
+            out = nn.ModuleList([None])
+            for _ in range(self.repeats - 1):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
