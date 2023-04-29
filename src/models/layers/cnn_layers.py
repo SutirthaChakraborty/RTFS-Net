@@ -166,7 +166,10 @@ class ConvolutionalRNN(nn.Module):
         res = x
         x = self.encoder(x)
         forward_features = self.forward_pass(x)
-        backward_features = self.backward_pass(x.flip(-1))
+        if self.is2d:
+            backward_features = self.backward_pass(x.flip([2, 3]))
+        else:
+            backward_features = self.backward_pass(x.flip(2))
         x = torch.cat([forward_features, backward_features], dim=1)
         x = self.dropout_layer(x)
         x = self.decoder(x)
