@@ -230,7 +230,6 @@ class FRCNN(nn.Module):
                 kernel_size=1,
                 groups=self.in_chan,
                 act_type=self.act_type,
-                norm_type=self.norm_type,
                 is2d=self.is2d,
             )
         else:
@@ -243,7 +242,6 @@ class FRCNN(nn.Module):
                         kernel_size=1,
                         groups=self.in_chan,
                         act_type=self.act_type,
-                        norm_type=self.norm_type,
                         is2d=self.is2d,
                     )
                 )

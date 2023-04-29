@@ -141,7 +141,7 @@ class DPTNet(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if (self.in_chan > 0) and (self.repeats > 1 or self.is2d) else nn.Identity
+        clss = ConvNormAct if (self.in_chan > 0) and self.repeats > 1 else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
@@ -149,7 +149,6 @@ class DPTNet(nn.Module):
                 kernel_size=1,
                 groups=self.in_chan,
                 act_type=self.act_type,
-                norm_type=self.norm_type,
                 is2d=self.is2d,
             )
         else:
@@ -162,7 +161,6 @@ class DPTNet(nn.Module):
                         kernel_size=1,
                         groups=self.in_chan,
                         act_type=self.act_type,
-                        norm_type=self.norm_type,
                         is2d=self.is2d,
                     )
                 )

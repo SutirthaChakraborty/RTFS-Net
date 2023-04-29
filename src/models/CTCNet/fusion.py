@@ -55,7 +55,7 @@ class ConcatFusion(FusionBasemodule):
 
         audio_fused, video_fused = self.unwrangle_dims(audio_fused, video_fused)
 
-        return audio_fused, video_fused
+        return audio + audio_fused, video + video_fused
 
 
 class SumFusion(FusionBasemodule):
@@ -76,7 +76,7 @@ class SumFusion(FusionBasemodule):
 
         audio_fused, video_fused = self.unwrangle_dims(audio_fused, video_fused)
 
-        return audio_fused, video_fused
+        return audio + audio_fused, video + video_fused
 
 
 class MultiModalFusion(nn.Module):
