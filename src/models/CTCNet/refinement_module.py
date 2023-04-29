@@ -53,7 +53,6 @@ class RefinementModule(nn.Module):
 
             audio = self.audio_net.get_concat_block(i)(audio + audio_residual) if i > 0 else audio
             audio = self.audio_net.get_block(i)(audio)
-            audio_residual.append(audio)
 
         return audio
 
