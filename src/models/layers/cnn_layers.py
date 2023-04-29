@@ -109,7 +109,6 @@ class FeedForwardNetwork(nn.Module):
         )  # DW seperable conv
         self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False, is2d=self.is2d)  # FC 2
         self.dropout_layer = DropPath(self.dropout)
-        self.norm = nn.GroupNorm(1, self.in_chan)
 
     def forward(self, x: torch.Tensor):
         res = x
@@ -117,7 +116,7 @@ class FeedForwardNetwork(nn.Module):
         x = self.refiner(x)
         x = self.dropout_layer(x)
         x = self.decoder(x)
-        x = self.norm(self.dropout_layer(x) + res)
+        x = self.dropout_layer(x) + res
         return x
 
 
@@ -172,7 +171,7 @@ class ConvolutionalRNN(nn.Module):
         x = torch.cat([forward_features, backward_features], dim=1)
         x = self.dropout_layer(x)
         x = self.decoder(x)
-        x = self.norm(self.dropout_layer(x) + res)
+        x = self.dropout_layer(x) + res
         return x
 
 
