@@ -47,20 +47,26 @@ class MultiHeadSelfAttention(nn.Module):
             self.in_chan, self.n_head
         )
 
+        self.norm1 = nn.LayerNorm(self.in_chan)
         self.pos_enc = PositionalEncoding(self.in_chan)
         self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout, batch_first=True)
-        self.norm = nn.LayerNorm(self.in_chan)
+        self.dropout_layer = nn.Dropout(self.dropout)
+        self.norm2 = nn.LayerNorm(self.in_chan)
         self.drop_path_layer = DropPath(self.dropout)
 
     def forward(self, x: torch.Tensor):
-        x = x.transpose(1, 2).contiguous()  # B, C, T -> B, T, C
         res = x
+        x = x.transpose(1, 2)  # B, C, T -> B, T, C
 
+        x = self.norm1(x)
         x = self.pos_enc(x)
+        residual = x
         x = self.attention(x, x, x)[0]
-        x = self.norm(self.drop_path_layer(x) + res)
+        x = self.dropout_layer(x) + residual
+        x = self.norm2(x)
 
-        x = x.transpose(2, 1).contiguous()  # B, T, C -> B, C, T
+        x = x.transpose(2, 1)  # B, T, C -> B, C, T
+        x = self.drop_path_layer(x) + res
         return x
 
 
