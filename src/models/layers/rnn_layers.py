@@ -61,6 +61,7 @@ class RNNProjection(nn.Module):
         self.dropout = dropout
         self.num_direction = int(bidirectional) + 1
 
+        self.norm1 = nn.LayerNorm(self.input_size)
         self.rnn = getattr(nn, rnn_type)(
             input_size=self.input_size,
             hidden_size=self.hidden_size,
@@ -74,15 +75,18 @@ class RNNProjection(nn.Module):
             nn.Linear(self.hidden_size * self.num_direction, self.input_size),
             nn.Dropout(self.dropout),
         )
-        self.norm = nn.LayerNorm(self.input_size)
+        self.norm2 = nn.LayerNorm(self.input_size)
 
     def forward(self, x: torch.Tensor):
-        x = x.transpose(1, 2).contiguous()  # B, L, N
         res = x
+        x = x.transpose(1, 2).contiguous()
 
+        x = self.norm1(x)
+        residual = x
         x = self.rnn(x)[0].contiguous()  # B, L, num_direction * H
         x = self.proj(x)
-        x = self.norm(x + res)  # B, L, N
+        x = self.norm2(x + residual)  # B, L, N
 
-        x = x.transpose(1, 2).contiguous()  # B, N, L
+        x = x.transpose(1, 2).contiguous()
+        x = x + res
         return x
