@@ -43,10 +43,14 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
-      n_head: 8
-      attention_type: GlobalGALR
       is2d: True
-    
+      attention_params:
+        attention_type: GlobalGALR
+        ffn_name: FeedForwardNetwork
+        kernel_size: 5
+        n_head: 8
+        dropout: 0.1
+
     video_params:
       video_net: TDANet
       # in_chan same as video_bn_chan
@@ -58,9 +62,13 @@ audionet:
       act_type: PReLU
       kernel_size: 3
       stride: 2
-      n_head: 8
-      attention_type: GlobalGALR
       is2d: True
+      attention_params:
+        attention_type: GlobalGALR
+        ffn_name: FeedForwardNetwork
+        kernel_size: 5
+        n_head: 8
+        dropout: 0.1
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -102,4 +110,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/tdanet2d/19_04_23_GALR
+    exp_name: ctcnet_mini/tdanet2d/04_05_23_GALR

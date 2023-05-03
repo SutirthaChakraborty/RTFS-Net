@@ -16,10 +16,7 @@ class TDANetBlock(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
-        attention_type: str = None,
-        n_head: int = 8,
-        attention_ks: int = None,
-        dropout: int = 0.1,
+        attention_params: dict = dict(),
         is2d: bool = False,
     ):
         super(TDANetBlock, self).__init__()
@@ -30,16 +27,10 @@ class TDANetBlock(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
-        self.attention_type = attention_type
-        self.n_head = n_head
-        self.dropout = dropout
+        self.attention_params = attention_params
         self.is2d = is2d
 
-        self.attention_ks = kernel_size if attention_ks is None else attention_ks
-        if attention_type is None:
-            self.attention_type = "GlobalAttention2D" if self.is2d else "GlobalAttention"
-
-        self.att = layers.get(self.attention_type)
+        self.att = layers.get(self.attention_params.get("attention_type", "GlobalAttention2D" if self.is2d else "GlobalAttention"))
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
         self.projection = ConvNormAct(
@@ -51,10 +42,8 @@ class TDANetBlock(nn.Module):
             is2d=self.is2d,
         )
         self.globalatt = self.att(
+            **self.attention_params,
             in_chan=self.hid_chan,
-            kernel_size=self.attention_ks,
-            n_head=self.n_head,
-            dropout=self.dropout,
         )
         self.residual_conv = ConvNormAct(
             in_chan=self.hid_chan,
@@ -159,10 +148,7 @@ class TDANet(nn.Module):
         upsampling_depth: int = 4,
         repeats: int = 4,
         shared: bool = False,
-        attention_type: str = None,
-        n_head: int = 8,
-        attention_ks: int = None,
-        dropout: float = 0.1,
+        attention_params: dict = dict(),
         is2d: bool = False,
         *args,
         **kwargs,
@@ -177,10 +163,7 @@ class TDANet(nn.Module):
         self.upsampling_depth = upsampling_depth
         self.repeats = repeats
         self.shared = shared
-        self.attention_type = attention_type
-        self.n_head = n_head
-        self.attention_ks = attention_ks
-        self.dropout = dropout
+        self.attention_params = attention_params
         self.is2d = is2d
 
         self.blocks = self.__build_blocks()
@@ -197,10 +180,7 @@ class TDANet(nn.Module):
                 norm_type=self.norm_type,
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
-                attention_type=self.attention_type,
-                n_head=self.n_head,
-                attention_ks=self.attention_ks,
-                dropout=self.dropout,
+                attention_params=self.attention_params,
                 is2d=self.is2d,
             )
         else:
@@ -215,10 +195,7 @@ class TDANet(nn.Module):
                         norm_type=self.norm_type,
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
-                        attention_type=self.attention_type,
-                        n_head=self.n_head,
-                        attention_ks=self.attention_ks,
-                        dropout=self.dropout,
+                        attention_params=self.attention_params,
                         is2d=self.is2d,
                     )
                 )

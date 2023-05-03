@@ -78,7 +78,6 @@ class GlobalAttention(nn.Module):
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
-        verbose: bool = False,
         *args,
         **kwargs,
     ):
@@ -89,18 +88,9 @@ class GlobalAttention(nn.Module):
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
-        self.verbose = verbose
 
         self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         self.ffn = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
-
-        if self.verbose:
-            self.mhsa_params = sum(p.numel() for p in self.mhsa.parameters() if p.requires_grad) / 1000
-            self.ffn_params = sum(p.numel() for p in self.ffn.parameters() if p.requires_grad) / 1000
-
-            s = f"MHSA Params: {self.mhsa_params}\n" f"FFN Params: {self.ffn_params}\n"
-
-            print(s)
 
     def forward(self, x: torch.Tensor):
         x = self.mhsa(x)
@@ -117,7 +107,7 @@ class GlobalAttention2D(nn.Module):
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
-        verbose: bool = False,
+        group_ffn: bool = False,
         *args,
         **kwargs,
     ):
@@ -128,7 +118,7 @@ class GlobalAttention2D(nn.Module):
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
-        self.verbose = verbose
+        self.group_ffn = group_ffn
 
         self.mhsa_height = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         self.mhsa_width = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
@@ -136,20 +126,9 @@ class GlobalAttention2D(nn.Module):
         self.ffn_height = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
         self.ffn_width = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
-        if self.verbose:
-            self.mhsa_height_params = sum(p.numel() for p in self.mhsa_height.parameters() if p.requires_grad) / 1000
-            self.mhsa_width_params = sum(p.numel() for p in self.mhsa_width.parameters() if p.requires_grad) / 1000
-            self.ffn_height_params = sum(p.numel() for p in self.ffn_height.parameters() if p.requires_grad) / 1000
-            self.ffn_width_params = sum(p.numel() for p in self.ffn_width.parameters() if p.requires_grad) / 1000
-
-            s = (
-                f"MHSA Height: {self.mhsa_height_params}\n"
-                f"MHSA Width: {self.mhsa_width_params}\n"
-                f"FFN Height: {self.ffn_height_params}\n"
-                f"FFN Width: {self.ffn_width_params}\n"
-            )
-
-            print(s)
+        self.ffn = nn.Identity()
+        if self.group_ffn:
+            self.ffn = cnn_layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
@@ -159,10 +138,14 @@ class GlobalAttention2D(nn.Module):
         h_ffn = self.ffn_height.forward(h_output)
         x = h_ffn.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
 
+        x = self.ffn(x)
+
         w_input = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
         w_output = self.mhsa_width.forward(w_input)
         w_ffn = self.ffn_width.forward(w_output)
         x = w_ffn.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
+
+        x = self.ffn(x)
 
         return x
 
@@ -176,7 +159,7 @@ class GlobalGALR(nn.Module):
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
-        verbose: bool = False,
+        group_ffn: bool = False,
         *args,
         **kwargs,
     ):
@@ -187,20 +170,15 @@ class GlobalGALR(nn.Module):
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
-        self.verbose = verbose
+        self.group_ffn = group_ffn
 
         self.time_rnn = cnn_layers.RNNProjection(self.in_chan, self.in_chan, dropout=self.dropout)
         self.freq_mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         self.freq_ffn = cnn_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
-        if self.verbose:
-            self.mhsa_height_params = sum(p.numel() for p in self.time_rnn.parameters() if p.requires_grad) / 1000
-            self.mhsa_width_params = sum(p.numel() for p in self.freq_mhsa.parameters() if p.requires_grad) / 1000
-            self.ffn_width_params = sum(p.numel() for p in self.freq_ffn.parameters() if p.requires_grad) / 1000
-
-            s = f"RNN Height: {self.mhsa_height_params}\n" f"MHSA Width: {self.mhsa_width_params}\n" f"FFN Width: {self.ffn_width_params}\n"
-
-            print(s)
+        self.ffn = nn.Identity()
+        if self.group_ffn:
+            self.ffn = cnn_layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
@@ -209,9 +187,13 @@ class GlobalGALR(nn.Module):
         x = self.time_rnn.forward(x)
         x = x.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
 
+        x = self.ffn(x)
+
         x = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
         x = self.freq_mhsa.forward(x)
         x = self.freq_ffn.forward(x)
         x = x.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
+
+        x = self.ffn(x)
 
         return x
