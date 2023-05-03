@@ -7,11 +7,12 @@ from ..layers import ConvNormAct
 
 
 class FusionBasemodule(nn.Module):
-    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool):
+    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool, video_fusion: bool):
         super(FusionBasemodule, self).__init__()
         self.ain_chan = ain_chan
         self.vin_chan = vin_chan
         self.is2d = is2d
+        self.video_fusion = video_fusion
 
     def forward(self, audio, video):
         raise NotImplementedError
@@ -36,11 +37,12 @@ class FusionBasemodule(nn.Module):
 
 
 class ConcatFusion(FusionBasemodule):
-    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False):
-        super(ConcatFusion, self).__init__(ain_chan, vin_chan, is2d)
+    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False, video_fusion: bool = True):
+        super(ConcatFusion, self).__init__(ain_chan, vin_chan, is2d, video_fusion)
 
         self.audio_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.ain_chan, 1, norm_type="gLN", is2d=self.is2d)
-        self.video_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
+        if video_fusion:
+            self.video_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
         audio, video = self.wrangle_dims(audio, video)
@@ -49,9 +51,12 @@ class ConcatFusion(FusionBasemodule):
         audio_video_concat = torch.cat([audio, video_interp], dim=1)
         audio_fused = self.audio_conv(audio_video_concat)
 
-        audio_interp = F.interpolate(audio, size=video.shape[-(len(video.shape) // 2) :], mode="nearest")
-        video_audio_concat = torch.cat([audio_interp, video], dim=1)
-        video_fused = self.video_conv(video_audio_concat)
+        if self.video_fusion:
+            audio_interp = F.interpolate(audio, size=video.shape[-(len(video.shape) // 2) :], mode="nearest")
+            video_audio_concat = torch.cat([audio_interp, video], dim=1)
+            video_fused = self.video_conv(video_audio_concat)
+        else:
+            video_fused = video
 
         audio_fused, video_fused = self.unwrangle_dims(audio_fused, video_fused)
 
@@ -59,17 +64,21 @@ class ConcatFusion(FusionBasemodule):
 
 
 class SumFusion(FusionBasemodule):
-    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False):
-        super(SumFusion, self).__init__(ain_chan, vin_chan, is2d)
+    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False, video_fusion: bool = True):
+        super(SumFusion, self).__init__(ain_chan, vin_chan, is2d, video_fusion)
 
+        if video_fusion:
+            self.audio_conv = ConvNormAct(self.ain_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
         self.video_conv = ConvNormAct(self.vin_chan, self.ain_chan, 1, norm_type="gLN", is2d=self.is2d)
-        self.audio_conv = ConvNormAct(self.ain_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
         audio, video = self.wrangle_dims(audio, video)
 
-        audio_interp = F.interpolate(audio, size=video.shape[-(len(video.shape) // 2) :], mode="nearest")
-        video_fused = self.audio_conv(audio_interp) + video
+        if self.video_fusion:
+            audio_interp = F.interpolate(audio, size=video.shape[-(len(video.shape) // 2) :], mode="nearest")
+            video_fused = self.audio_conv(audio_interp) + video
+        else:
+            video_fused = video
 
         video_interp = F.interpolate(video, size=audio.shape[-(len(audio.shape) // 2) :], mode="nearest")
         audio_fused = self.video_conv(video_interp) + audio
@@ -105,8 +114,8 @@ class MultiModalFusion(nn.Module):
             out = fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d)
         else:
             out = nn.ModuleList()
-            for _ in range(self.fusion_repeats):
-                out.append(fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d))
+            for i in range(self.fusion_repeats):
+                out.append(fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d, i != self.fusion_repeats - 1))
 
         return out
 
