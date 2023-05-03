@@ -40,7 +40,6 @@ class RefinementModule(nn.Module):
         return self.forward2d(audio, video) if self.is2d else self.forward1d(audio, video)
 
     def forward1d(self, audio: torch.Tensor, video: torch.Tensor):
-        print('1d')
         audio_residual = audio
         video_residual = video
 
@@ -65,7 +64,6 @@ class RefinementModule(nn.Module):
         return audio
 
     def forward2d(self, audio: torch.Tensor, video: torch.Tensor):
-        print('2d')
         audio_residual = audio
         video_residual = video
 
