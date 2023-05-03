@@ -4,8 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from timm.models.layers import DropPath
-from .cnn_layers import ConvNormAct, FeedForwardNetwork
-from .rnn_layers import RNNProjection
+from . import cnn_layers
 
 
 class PositionalEncoding(nn.Module):
@@ -75,6 +74,7 @@ class GlobalAttention(nn.Module):
         self,
         in_chan: int,
         hid_chan: int = None,
+        ffn_name: str = "FeedForwardNetwork",
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
@@ -85,13 +85,14 @@ class GlobalAttention(nn.Module):
         super(GlobalAttention, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan if hid_chan is not None else 2 * self.in_chan
+        self.ffn_name = ffn_name
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
         self.verbose = verbose
 
         self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        self.ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
+        self.ffn = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
 
         if self.verbose:
             self.mhsa_params = sum(p.numel() for p in self.mhsa.parameters() if p.requires_grad) / 1000
@@ -112,6 +113,7 @@ class GlobalAttention2D(nn.Module):
         self,
         in_chan: int,
         hid_chan: int = None,
+        ffn_name: str = "FeedForwardNetwork",
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
@@ -122,6 +124,7 @@ class GlobalAttention2D(nn.Module):
         super(GlobalAttention2D, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan if hid_chan is not None else 2 * self.in_chan
+        self.ffn_name = ffn_name
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
@@ -130,8 +133,8 @@ class GlobalAttention2D(nn.Module):
         self.mhsa_height = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         self.mhsa_width = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
 
-        self.ffn_height = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
-        self.ffn_width = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        self.ffn_height = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        self.ffn_width = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
         if self.verbose:
             self.mhsa_height_params = sum(p.numel() for p in self.mhsa_height.parameters() if p.requires_grad) / 1000
@@ -169,6 +172,7 @@ class GlobalGALR(nn.Module):
         self,
         in_chan: int,
         hid_chan: int = None,
+        ffn_name: str = "FeedForwardNetwork",
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
@@ -179,27 +183,22 @@ class GlobalGALR(nn.Module):
         super(GlobalGALR, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan if hid_chan is not None else 2 * self.in_chan
+        self.ffn_name = ffn_name
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
         self.verbose = verbose
 
-        self.time_rnn = RNNProjection(self.in_chan, self.in_chan, dropout=self.dropout)
+        self.time_rnn = cnn_layers.RNNProjection(self.in_chan, self.in_chan, dropout=self.dropout)
         self.freq_mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        self.freq_ffn = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        self.freq_ffn = cnn_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
         if self.verbose:
             self.mhsa_height_params = sum(p.numel() for p in self.time_rnn.parameters() if p.requires_grad) / 1000
             self.mhsa_width_params = sum(p.numel() for p in self.freq_mhsa.parameters() if p.requires_grad) / 1000
-            self.ffn_height_params = sum(p.numel() for p in self.ffn_height.parameters() if p.requires_grad) / 1000
             self.ffn_width_params = sum(p.numel() for p in self.freq_ffn.parameters() if p.requires_grad) / 1000
 
-            s = (
-                f"MHSA Height: {self.mhsa_height_params}\n"
-                f"MHSA Width: {self.mhsa_width_params}\n"
-                f"FFN Height: {self.ffn_height_params}\n"
-                f"FFN Width: {self.ffn_width_params}\n"
-            )
+            s = f"RNN Height: {self.mhsa_height_params}\n" f"MHSA Width: {self.mhsa_width_params}\n" f"FFN Width: {self.ffn_width_params}\n"
 
             print(s)
 

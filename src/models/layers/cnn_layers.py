@@ -234,3 +234,68 @@ class InjectionMultiSum(nn.Module):
         injection_sum = local_emb * gate + global_emb
 
         return injection_sum
+
+
+class RNNProjection(nn.Module):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        rnn_type: str = "LSTM",
+        dropout: float = 0,
+        bidirectional: bool = True,
+        *args,
+        **kwargs,
+    ):
+        super(RNNProjection, self).__init__()
+
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.rnn_type = rnn_type
+        self.dropout = dropout
+        self.num_direction = int(bidirectional) + 1
+
+        self.norm1 = nn.LayerNorm(self.input_size)
+        self.rnn = getattr(nn, rnn_type)(
+            input_size=self.input_size,
+            hidden_size=self.hidden_size,
+            num_layers=1,
+            batch_first=True,
+            bidirectional=bidirectional,
+        )
+        self.proj = nn.Sequential(
+            nn.PReLU(),
+            nn.Dropout(self.dropout),
+            nn.Linear(self.hidden_size * self.num_direction, self.input_size),
+            nn.Dropout(self.dropout),
+        )
+        self.norm2 = nn.LayerNorm(self.input_size)
+
+    def forward(self, x: torch.Tensor):
+        res = x
+        x = x.transpose(1, 2).contiguous()
+
+        x = self.norm1(x)
+        residual = x
+        x = self.rnn(x)[0].contiguous()  # B, L, num_direction * H
+        x = self.proj(x)
+        x = self.norm2(x + residual)  # B, L, N
+
+        x = x.transpose(1, 2).contiguous()
+        x = x + res
+        return x
+
+
+def get(identifier):
+    if identifier is None:
+        return nn.Identity
+    elif callable(identifier):
+        return identifier
+    elif isinstance(identifier, str):
+        cls = globals().get(identifier)
+
+        if cls is None:
+            raise ValueError("Could not interpret normalization identifier: " + str(identifier))
+        return cls
+    else:
+        raise ValueError("Could not interpret normalization identifier: " + str(identifier))
