@@ -9,9 +9,9 @@ import pytorch_lightning as pl
 torch.set_float32_matmul_precision("high")
 
 from torch.utils.data import DataLoader
+from distutils.dir_util import copy_tree
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from src.models import CTCNet
@@ -97,6 +97,8 @@ def main(conf):
     with open(conf_path, "w") as outfile:
         yaml.safe_dump(conf, outfile)
 
+    copy_tree("src/models", os.path.join(exp_dir, "models"))
+
     # Define Loss function.
     loss_func = {
         "train": PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx"),
@@ -142,7 +144,7 @@ def main(conf):
         devices=conf["training"]["gpus"],
         num_nodes=conf["main_args"]["nodes"],
         accelerator="gpu",
-        strategy=DDPStrategy(find_unused_parameters=True),
+        strategy="ddp",
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,

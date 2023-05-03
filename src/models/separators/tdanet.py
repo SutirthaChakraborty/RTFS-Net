@@ -2,86 +2,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..layers import ConvNormAct, GlobalAttention, GlobalAttention2D
-
-
-class InjectionMultiSum(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        hid_chan: int,
-        kernel_size: int,
-        norm_type: str = "gLN",
-        is2d: bool = False,
-    ):
-        super(InjectionMultiSum, self).__init__()
-        self.in_chan = in_chan
-        self.hid_chan = hid_chan
-        self.kernel_size = kernel_size
-        self.norm_type = norm_type
-        self.is2d = is2d
-
-        self.groups = in_chan if in_chan == hid_chan else 1
-
-        self.local_embedding = ConvNormAct(
-            in_chan=self.in_chan,
-            out_chan=self.hid_chan,
-            kernel_size=self.kernel_size,
-            groups=self.groups,
-            norm_type=self.norm_type,
-            bias=False,
-            is2d=self.is2d,
-        )
-        self.global_embedding = ConvNormAct(
-            in_chan=self.in_chan,
-            out_chan=self.hid_chan,
-            kernel_size=self.kernel_size,
-            groups=self.groups,
-            norm_type=self.norm_type,
-            bias=False,
-            is2d=self.is2d,
-        )
-        self.global_gate = ConvNormAct(
-            in_chan=self.in_chan,
-            out_chan=self.hid_chan,
-            kernel_size=self.kernel_size,
-            groups=self.groups,
-            norm_type=self.norm_type,
-            act_type="Sigmoid",
-            bias=False,
-            is2d=self.is2d,
-        )
-
-    def forward(self, local_features: torch.Tensor, global_features: torch.Tensor):
-        length = local_features.shape[-(len(local_features.shape) // 2) :]
-
-        local_emb = self.local_embedding(local_features)
-        global_emb = F.interpolate(self.global_embedding(global_features), size=length, mode="nearest")
-        gate = F.interpolate(self.global_gate(global_features), size=length, mode="nearest")
-
-        injection_sum = local_emb * gate + global_emb
-
-        return injection_sum
+from .. import layers
+from ..layers import ConvNormAct, InjectionMultiSum
 
 
 class TDANetBlock(nn.Module):
-    """
-    This class defines the block which performs successive downsampling and
-    upsampling in order to be able to analyze the input features in multiple
-    resolutions.
-    """
-
     def __init__(
         self,
         in_chan: int,
         hid_chan: int,
         kernel_size: int = 5,
-        attention_ks: int = None,
         stride: int = 2,
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
+        attention_type: str = None,
         n_head: int = 8,
+        attention_ks: int = None,
         dropout: int = 0.1,
         is2d: bool = False,
     ):
@@ -93,13 +30,17 @@ class TDANetBlock(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
+        self.attention_type = attention_type
         self.n_head = n_head
         self.dropout = dropout
         self.is2d = is2d
 
-        self.att = GlobalAttention2D if self.is2d else GlobalAttention
-        self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
         self.attention_ks = kernel_size if attention_ks is None else attention_ks
+        if attention_type is None:
+            self.attention_type = "GlobalAttention2D" if self.is2d else "GlobalAttention"
+
+        self.att = layers.get(self.attention_type)
+        self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
         self.projection = ConvNormAct(
             in_chan=self.in_chan,
@@ -182,8 +123,7 @@ class TDANetBlock(nn.Module):
         # bottom-up
         downsampled_outputs = [self.downsample_layers[0](x_enc)]
         for i in range(1, self.upsampling_depth):
-            out_i = self.downsample_layers[i](downsampled_outputs[-1])
-            downsampled_outputs.append(out_i)
+            downsampled_outputs.append(self.downsample_layers[i](downsampled_outputs[-1]))
 
         # global features
         shape = downsampled_outputs[-1].shape
@@ -213,14 +153,15 @@ class TDANet(nn.Module):
         in_chan: int = -1,
         hid_chan: int = -1,
         kernel_size: int = 5,
-        attention_ks: int = None,
         stride: int = 2,
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
         repeats: int = 4,
         shared: bool = False,
+        attention_type: str = None,
         n_head: int = 8,
+        attention_ks: int = None,
         dropout: float = 0.1,
         is2d: bool = False,
         *args,
@@ -230,14 +171,15 @@ class TDANet(nn.Module):
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
-        self.attention_ks = kernel_size if attention_ks is None else attention_ks
         self.stride = stride
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
         self.repeats = repeats
         self.shared = shared
+        self.attention_type = attention_type
         self.n_head = n_head
+        self.attention_ks = attention_ks
         self.dropout = dropout
         self.is2d = is2d
 
@@ -251,12 +193,13 @@ class TDANet(nn.Module):
                 in_chan=self.in_chan,
                 hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
-                attention_ks=self.attention_ks,
                 stride=self.stride,
                 norm_type=self.norm_type,
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
+                attention_type=self.attention_type,
                 n_head=self.n_head,
+                attention_ks=self.attention_ks,
                 dropout=self.dropout,
                 is2d=self.is2d,
             )
@@ -268,12 +211,13 @@ class TDANet(nn.Module):
                         in_chan=self.in_chan,
                         hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
-                        attention_ks=self.attention_ks,
                         stride=self.stride,
                         norm_type=self.norm_type,
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
+                        attention_type=self.attention_type,
                         n_head=self.n_head,
+                        attention_ks=self.attention_ks,
                         dropout=self.dropout,
                         is2d=self.is2d,
                     )
@@ -282,7 +226,7 @@ class TDANet(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if self.in_chan > 0 else nn.Identity
+        clss = ConvNormAct if (self.in_chan > 0) and ((self.repeats > 1) or self.is2d) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
@@ -293,8 +237,8 @@ class TDANet(nn.Module):
                 is2d=self.is2d,
             )
         else:
-            out = nn.ModuleList()
-            for _ in range(self.repeats):
+            out = nn.ModuleList() if self.is2d else nn.ModuleList([None])
+            for _ in range(self.repeats) if self.is2d else range(self.repeats - 1):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
@@ -323,6 +267,6 @@ class TDANet(nn.Module):
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = x + residual if i > 0 else x
-            x = self.get_block(i)(self.get_concat_block(i)(x))
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
+            x = self.get_block(i)(x)
         return x

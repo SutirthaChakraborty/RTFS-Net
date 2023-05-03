@@ -86,6 +86,8 @@ class FeedForwardNetwork(nn.Module):
         act_type: str = "ReLU",
         dropout: float = 0,
         is2d: bool = False,
+        *args,
+        **kwargs,
     ):
         super(FeedForwardNetwork, self).__init__()
         self.in_chan = in_chan
@@ -106,7 +108,7 @@ class FeedForwardNetwork(nn.Module):
             is2d=self.is2d,
         )  # DW seperable conv
         self.decoder = ConvNormAct(self.hid_chan, self.in_chan, 1, norm_type=self.norm_type, bias=False, is2d=self.is2d)  # FC 2
-        self.dropout_layer = DropPath(self.dropout) if self.dropout > 0.0 else nn.Identity()
+        self.dropout_layer = DropPath(self.dropout)
 
     def forward(self, x: torch.Tensor):
         res = x
@@ -127,6 +129,7 @@ class ConvolutionalRNN(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "ReLU",
         dropout: float = 0,
+        is2d: bool = False,
         *args,
         **kwargs,
     ):
@@ -137,14 +140,16 @@ class ConvolutionalRNN(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.dropout = dropout
+        self.is2d = is2d
 
-        self.encoder = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False)  # FC 1
+        self.encoder = ConvNormAct(self.in_chan, self.hid_chan, 1, norm_type=self.norm_type, bias=False, is2d=self.is2d)  # FC 1
         self.forward_pass = ConvNormAct(
             self.hid_chan,
             self.hid_chan,
             self.kernel_size,
             groups=self.hid_chan,
             act_type=self.act_type,
+            is2d=self.is2d,
         )  # DW seperable conv
         self.backward_pass = ConvNormAct(
             self.hid_chan,
@@ -152,17 +157,80 @@ class ConvolutionalRNN(nn.Module):
             self.kernel_size,
             groups=self.hid_chan,
             act_type=self.act_type,
+            is2d=self.is2d,
         )  # DW seperable conv
-        self.decoder = ConvNormAct(self.hid_chan * 2, self.in_chan, 1, norm_type=self.norm_type, bias=False)  # FC 2
+        self.decoder = ConvNormAct(self.hid_chan * 2, self.in_chan, 1, norm_type=self.norm_type, bias=False, is2d=self.is2d)  # FC 2
         self.dropout_layer = DropPath(self.dropout)
 
     def forward(self, x: torch.Tensor):
         res = x
         x = self.encoder(x)
         forward_features = self.forward_pass(x)
-        backward_features = self.backward_pass(x).flip(-1)
+        if self.is2d:
+            backward_features = self.backward_pass(x.flip([2, 3]))
+        else:
+            backward_features = self.backward_pass(x.flip(2))
         x = torch.cat([forward_features, backward_features], dim=1)
         x = self.dropout_layer(x)
         x = self.decoder(x)
         x = self.dropout_layer(x) + res
         return x
+
+
+class InjectionMultiSum(nn.Module):
+    def __init__(
+        self,
+        in_chan: int,
+        hid_chan: int,
+        kernel_size: int,
+        norm_type: str = "gLN",
+        is2d: bool = False,
+    ):
+        super(InjectionMultiSum, self).__init__()
+        self.in_chan = in_chan
+        self.hid_chan = hid_chan
+        self.kernel_size = kernel_size
+        self.norm_type = norm_type
+        self.is2d = is2d
+
+        self.groups = in_chan if in_chan == hid_chan else 1
+
+        self.local_embedding = ConvNormAct(
+            in_chan=self.in_chan,
+            out_chan=self.hid_chan,
+            kernel_size=self.kernel_size,
+            groups=self.groups,
+            norm_type=self.norm_type,
+            bias=False,
+            is2d=self.is2d,
+        )
+        self.global_embedding = ConvNormAct(
+            in_chan=self.in_chan,
+            out_chan=self.hid_chan,
+            kernel_size=self.kernel_size,
+            groups=self.groups,
+            norm_type=self.norm_type,
+            bias=False,
+            is2d=self.is2d,
+        )
+        self.global_gate = ConvNormAct(
+            in_chan=self.in_chan,
+            out_chan=self.hid_chan,
+            kernel_size=self.kernel_size,
+            groups=self.groups,
+            norm_type=self.norm_type,
+            act_type="Sigmoid",
+            bias=False,
+            is2d=self.is2d,
+        )
+
+    def forward(self, local_features: torch.Tensor, global_features: torch.Tensor):
+        length = local_features.shape[-(len(local_features.shape) // 2) :]
+
+        local_emb = self.local_embedding(local_features)
+        global_emb = F.interpolate(self.global_embedding(global_features), size=length, mode="nearest")
+        gate = F.interpolate(self.global_gate(global_features), size=length, mode="nearest")
+
+        injection_sum = local_emb * gate + global_emb
+
+        return injection_sum

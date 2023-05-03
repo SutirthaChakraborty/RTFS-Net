@@ -1,39 +1,39 @@
 # Video network config
 videonet:
-    model_name: FRCNNVideoModel
-    backbone_type: resnet
-    relu_type: prelu
-    width_mult: 1.0
-    pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
+    model_name: EncoderAE
+    in_channels: 1
+    base_channels: 4
+    num_layers: 3
+    is2d: True
+    pretrain: ../experiments/autoencoder/default/best_model.pth
 audionet:
     n_src: 1
-    pretrained_vout_chan: 512                  # output from pretrained model
+    pretrained_vout_chan: 121                  # output from pretrained model
 
     video_bn_params:
-      out_chan: 64
-      kernel_size: 1
-      is2d: False
+      kernel_size: -1
+      is2d: True
 
     audio_bn_params:
-      out_chan: 512
-      kernel_size: 1
-      is2d: False
+      kernel_size: -1
+      is2d: True
 
     enc_dec_params:
-      encoder_type: ConvolutionalEncoder
-      decoder_type: ConvolutionalDecoder
-      out_chan: 512
-      kernel_size: 21
-      stride: 10
+      encoder_type: STFTEncoder
+      decoder_type: STFTDecoder
+      win: 128
+      hop_length: 64
+      out_chan: 128
+      kernel_size: 9
+      stride: 1
       bias: False
       act_type: ReLU
       norm_type: gLN
-      layers: 1
       
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 512                       # FRCNN hidden channels
+      hid_chan: 64                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
       repeats: 4
@@ -42,7 +42,8 @@ audionet:
       kernel_size: 5
       stride: 2 
       n_head: 8
-      is2d: False
+      attention_type: GlobalGALR
+      is2d: True
     
     video_params:
       video_net: TDANet
@@ -51,21 +52,22 @@ audionet:
       upsampling_depth: 4
       shared: True
       repeats: 1
-      norm_type: BatchNorm1d
+      norm_type: BatchNorm2d
       act_type: PReLU
       kernel_size: 3
       stride: 2
       n_head: 8
-      is2d: False
+      attention_type: GlobalGALR
+      is2d: True
 
     fusion_params:
       fusion_type: ConcatFusion
       fusion_shared: True
-      is2d: False
+      is2d: True
 
     mask_generation_params:
       mask_act: ReLU
-      is2d: False
+      is2d: True
       output_gate: True
       
 # Training config
@@ -98,4 +100,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small/tdanet1d/11_04_23
+    exp_name: ctcnet_mini/tdanet2d/19_04_23_GALR

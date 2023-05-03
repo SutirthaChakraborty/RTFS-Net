@@ -131,8 +131,7 @@ class FRCNNBlock(nn.Module):
         # bottom-up
         downsampled_outputs = [self.downsample_layers[0](x_enc)]
         for i in range(1, self.upsampling_depth):
-            out_i = self.downsample_layers[i](downsampled_outputs[-1])
-            downsampled_outputs.append(out_i)
+            downsampled_outputs.append(self.downsample_layers[i](downsampled_outputs[-1]))
 
         x_fused = []
         # lateral connection
@@ -223,7 +222,7 @@ class FRCNN(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if self.in_chan > 0 else nn.Identity
+        clss = ConvNormAct if (self.in_chan > 0) and ((self.repeats > 1) or self.is2d) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
@@ -234,8 +233,8 @@ class FRCNN(nn.Module):
                 is2d=self.is2d,
             )
         else:
-            out = nn.ModuleList()
-            for _ in range(self.repeats):
+            out = nn.ModuleList() if self.is2d else nn.ModuleList([None])
+            for _ in range(self.repeats) if self.is2d else range(self.repeats - 1):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
@@ -264,6 +263,6 @@ class FRCNN(nn.Module):
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = x + residual if i > 0 else x
-            x = self.get_block(i)(self.get_concat_block(i)(x))
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
+            x = self.get_block(i)(x)
         return x
