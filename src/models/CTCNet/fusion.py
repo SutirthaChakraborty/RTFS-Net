@@ -111,7 +111,7 @@ class MultiModalFusion(nn.Module):
     def __build_fusion_module(self):
         fusion_class = globals().get(self.fusion_type) if self.fusion_repeats > 0 else nn.Identity
         if self.fusion_shared:
-            out = fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d)
+            out = fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d, self.fusion_repeats > 1)
         else:
             out = nn.ModuleList()
             for i in range(self.fusion_repeats):

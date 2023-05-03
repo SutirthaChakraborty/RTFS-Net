@@ -13,7 +13,7 @@ from src.losses import PITLossWrapper, pairwise_neg_snr
 
 x = torch.rand(2, 32000)
 z = torch.rand(2, 1, 32000)
-y = torch.rand(2, 512, 50)
+y = torch.rand(2, 121, 50, 16)
 
 
 def main(conf):
@@ -37,7 +37,7 @@ def main(conf):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_large.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
     parser.add_argument("--checkpoint", type=str, default=None, help="path to checkpoint if training crashes")
