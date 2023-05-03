@@ -11,11 +11,13 @@ audionet:
     pretrained_vout_chan: 121                  # output from pretrained model
 
     video_bn_params:
-      kernel_size: -1
+      out_chan: 64
+      kernel_size: 1
       is2d: True
 
     audio_bn_params:
-      kernel_size: -1
+      out_chan: 64
+      kernel_size: 1
       is2d: True
 
     enc_dec_params:
@@ -24,7 +26,7 @@ audionet:
       win: 128
       hop_length: 64
       out_chan: 128
-      kernel_size: 9
+      kernel_size: 6
       stride: 1
       bias: False
       act_type: ReLU

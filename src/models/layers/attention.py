@@ -130,12 +130,8 @@ class GlobalAttention2D(nn.Module):
         self.mhsa_height = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
         self.mhsa_width = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
 
-        if self.kernel_size > 0:
-            self.ffn_height = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
-            self.ffn_width = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
-        else:
-            self.ffn_height = RNNProjection(self.in_chan, self.hid_chan, dropout=dropout, bidirectional=True)
-            self.ffn_width = RNNProjection(self.in_chan, self.hid_chan, dropout=dropout, bidirectional=True)
+        self.ffn_height = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        self.ffn_width = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
         if self.verbose:
             self.mhsa_height_params = sum(p.numel() for p in self.mhsa_height.parameters() if p.requires_grad) / 1000
