@@ -25,8 +25,8 @@ audionet:
       decoder_type: STFTDecoder
       win: 128
       hop_length: 64
-      out_chan: 256
-      kernel_size: 3
+      out_chan: 128
+      kernel_size: 6
       stride: 1
       bias: False
       act_type: ReLU
@@ -35,7 +35,7 @@ audionet:
     audio_params:
       audio_net: DPTNet
       # in_chan same as audio_bn_chan
-      hid_chan: 128                       # TDANet hidden channels
+      hid_chan: 64                       # TDANet hidden channels
       shared: True
       repeats: 4
       norm_type: gLN
@@ -48,7 +48,7 @@ audionet:
         kernel_size: 5
         n_head: 8
         dropout: 0.1
-    
+
     video_params:
       video_net: DPTNet
       # in_chan same as video_bn_chan
@@ -106,4 +106,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small/dptnet2d/13_04_23
+    exp_name: ctcnet_mini/dptnet2d/04_05_23
