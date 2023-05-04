@@ -41,8 +41,13 @@ audionet:
       norm_type: gLN
       act_type: PReLU
       kernel_size: 5
-      n_head: 8
-      is2d: True
+      is2d: True      
+      attention_params:
+        attention_type: GlobalAttention2D
+        ffn_name: FeedForwardNetwork
+        kernel_size: 5
+        n_head: 8
+        dropout: 0.1
     
     video_params:
       video_net: DPTNet
@@ -53,8 +58,13 @@ audionet:
       norm_type: BatchNorm2d
       act_type: PReLU
       kernel_size: 3
-      n_head: 8
-      is2d: True
+      is2d: True      
+      attention_params:
+        attention_type: GlobalAttention2D
+        ffn_name: FeedForwardNetwork
+        kernel_size: 5
+        n_head: 8
+        dropout: 0.1
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -70,7 +80,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 1
+    batch_size: 4
     num_workers: 8
     half_lr: yes
     early_stop: yes
