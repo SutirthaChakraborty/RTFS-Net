@@ -62,7 +62,7 @@ audionet:
       attention_params:
         attention_type: GlobalAttention2D
         ffn_name: FeedForwardNetwork
-        kernel_size: 5
+        kernel_size: 3
         n_head: 8
         dropout: 0.1
 
@@ -80,7 +80,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 2
+    batch_size: 1
     num_workers: 8
     half_lr: yes
     early_stop: yes
