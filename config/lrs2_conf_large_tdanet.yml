@@ -43,7 +43,7 @@ audionet:
       stride: 2 
       is2d: False
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalAttention
         ffn_name: ConvolutionalRNN
         kernel_size: 5
         n_head: 8
@@ -62,7 +62,7 @@ audionet:
       stride: 2
       is2d: False
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalAttention
         ffn_name: ConvolutionalRNN
         kernel_size: 3
         n_head: 8
