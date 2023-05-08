@@ -71,6 +71,7 @@ class DPTNet(nn.Module):
         shared: bool = False,
         attention_params: dict = dict(),
         is2d: bool = False,
+        concat_first: bool = False,
         *args,
         **kwargs,
     ):
@@ -84,6 +85,7 @@ class DPTNet(nn.Module):
         self.shared = shared
         self.attention_params = attention_params
         self.is2d = is2d
+        self.concat_first = concat_first
 
         self.blocks = self.__build_blocks()
         self.concat_block = self.__build_concat_block()
@@ -118,7 +120,7 @@ class DPTNet(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if (self.in_chan > 0) and ((self.repeats > 1) or self.is2d) else nn.Identity
+        clss = ConvNormAct if (self.in_chan > 0) and ((self.repeats > 1) or self.concat_first) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
@@ -129,8 +131,8 @@ class DPTNet(nn.Module):
                 is2d=self.is2d,
             )
         else:
-            out = nn.ModuleList() if self.is2d else nn.ModuleList([None])
-            for _ in range(self.repeats) if self.is2d else range(self.repeats - 1):
+            out = nn.ModuleList() if self.concat_first else nn.ModuleList([None])
+            for _ in range(self.repeats) if self.concat_first else range(self.repeats - 1):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
