@@ -9,14 +9,15 @@ videonet:
 audionet:
     n_src: 1
     pretrained_vout_chan: 121                  # output from pretrained model
-
+    concat_first: True    
+    
     video_bn_params:
       out_chan: 64
       kernel_size: 1
       is2d: True
 
     audio_bn_params:
-      out_chan: 64
+      out_chan: 128
       kernel_size: 1
       is2d: True
 
@@ -25,7 +26,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 128
       hop_length: 64
-      out_chan: 256
+      out_chan: 128
       kernel_size: 3
       stride: 1
       bias: False
@@ -45,7 +46,7 @@ audionet:
       stride: 2 
       is2d: True
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalGALR
         ffn_name: FeedForwardNetwork
         kernel_size: 5
         n_head: 8
@@ -64,7 +65,7 @@ audionet:
       stride: 2
       is2d: True
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalGALR
         ffn_name: FeedForwardNetwork
         kernel_size: 3
         n_head: 8
