@@ -9,6 +9,7 @@ videonet:
 audionet:
     n_src: 1
     pretrained_vout_chan: 121                  # output from pretrained model
+    concat_first: True
 
     video_bn_params:
       out_chan: 64

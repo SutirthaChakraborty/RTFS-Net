@@ -133,17 +133,17 @@ class GlobalAttention2D(nn.Module):
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
 
-        h_input = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
-        h_output = self.mhsa_height.forward(h_input)
-        h_ffn = self.ffn_height.forward(h_output)
-        x = h_ffn.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
+        x = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
+        x = self.mhsa_height.forward(x)
+        x = self.ffn_height.forward(x)
+        x = x.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
 
         x = self.ffn(x)
 
-        w_input = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
-        w_output = self.mhsa_width.forward(w_input)
-        w_ffn = self.ffn_width.forward(w_output)
-        x = w_ffn.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
+        x = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
+        x = self.mhsa_width.forward(x)
+        x = self.ffn_width.forward(x)
+        x = x.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
 
         x = self.ffn(x)
 
