@@ -9,6 +9,7 @@ videonet:
 audionet:
     n_src: 1
     pretrained_vout_chan: 121                  # output from pretrained model
+    concat_first: True
 
     video_bn_params:
       out_chan: 64
@@ -84,7 +85,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 4
+    batch_size: 8
     num_workers: 8
     half_lr: yes
     early_stop: yes
