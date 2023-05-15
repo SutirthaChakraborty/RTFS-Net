@@ -74,18 +74,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_audio_dir",
         type=str,
-        default=None,
+        default="/home/likai/ssd/lrs3_rebuild/audio/wav16k/min",
         help="Directory path of audio including tr, cv and tt",
     )
     parser.add_argument(
         "--in_mouth_dir",
         type=str,
-        default=None,
+        default="/home/likai/ssd/lrs3_rebuild/mouths",
         help="Directory path of video including tr, cv and tt",
     )
-    parser.add_argument(
-        "--out_dir", type=str, default=None, help="Directory path to put output files"
-    )
+    parser.add_argument("--out_dir", type=str, default="LRS3", help="Directory path to put output files")
     args = parser.parse_args()
     print(args)
     preprocess(args)
