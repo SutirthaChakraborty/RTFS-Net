@@ -1,7 +1,7 @@
 name=(
-        "lrs2_tdanet2d_mini_galr12_1"
-        "lrs2_tdanet2d_mini_galr12_2"
-        "lrs2_tdanet2d_mini_galr12_3"
+        "lrs2_tdanet2d_mini"
+        "lrs2_tdanet2d_mini_galr"
+        "lrs2_tdanet2d_mini_group_only"
 )
 for n in "${name[@]}"
 do
@@ -10,9 +10,9 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        "ctcnet_mini/tdanet2d/04_05_23_GALR_12_1_layers"
-        "ctcnet_mini/tdanet2d/04_05_23_GALR_12_2_layers"
-        "ctcnet_mini/tdanet2d/04_05_23_GALR_12_3_layers"
+        "ctcnet_mini/tdanet2d/16_05_23"
+        "ctcnet_mini/tdanet2d/16_05_23_GALR"
+        "ctcnet_mini/tdanet2d/16_05_23_group_only"
 )
 for e in "${exp[@]}"
 do

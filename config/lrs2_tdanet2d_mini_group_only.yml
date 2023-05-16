@@ -39,18 +39,20 @@ audionet:
       hid_chan: 64                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
-      repeats: 12
+      repeats: 4
       norm_type: gLN
       act_type: PReLU
       kernel_size: 5
       stride: 2 
       is2d: True
       attention_params:
-        attention_type: GlobalGALR
+        attention_type: GlobalAttention2D
         ffn_name: FeedForwardNetwork
         kernel_size: 5
         n_head: 8
         dropout: 0.1
+        group_ffn: True
+        single_ffn: False
 
     video_params:
       video_net: TDANet
@@ -58,18 +60,20 @@ audionet:
       hid_chan: 64
       upsampling_depth: 4
       shared: True
-      repeats: 2
+      repeats: 1
       norm_type: BatchNorm2d
       act_type: PReLU
       kernel_size: 3
       stride: 2
       is2d: True
       attention_params:
-        attention_type: GlobalGALR
+        attention_type: GlobalAttention2D
         ffn_name: FeedForwardNetwork
         kernel_size: 3
         n_head: 8
         dropout: 0.1
+        group_ffn: True
+        single_ffn: False
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -85,7 +89,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 3
+    batch_size: 8
     num_workers: 8
     half_lr: yes
     early_stop: yes
@@ -111,4 +115,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/tdanet2d/04_05_23_GALR_12_2_layers
+    exp_name: ctcnet_mini/tdanet2d/16_05_23_group_only
