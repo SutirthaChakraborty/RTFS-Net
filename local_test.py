@@ -168,24 +168,24 @@ if __name__ == "__main__":
     macs1 = main(def_conf)
     t1 = time()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_mini_group_only.yml")
-    parser.add_argument("-n", "--name", default=None, help="Experiment name")
-    parser.add_argument("--nodes", type=int, default=1, help="#node")
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_mini_group_only.yml")
+    # parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    # parser.add_argument("--nodes", type=int, default=1, help="#node")
 
-    args = parser.parse_args()
-    cf_dir2 = str(args.conf_dir).split("/")[-1]
+    # args = parser.parse_args()
+    # cf_dir2 = str(args.conf_dir).split("/")[-1]
 
-    with open(args.conf_dir) as f:
-        def_conf = yaml.safe_load(f)
-    if args.name is not None:
-        def_conf["log"]["exp_name"] = args.name
+    # with open(args.conf_dir) as f:
+    #     def_conf = yaml.safe_load(f)
+    # if args.name is not None:
+    #     def_conf["log"]["exp_name"] = args.name
 
-    arg_dic = parse_args_as_dict(parser)
-    def_conf.update(arg_dic)
+    # arg_dic = parse_args_as_dict(parser)
+    # def_conf.update(arg_dic)
 
     t2 = time()
-    macs2 = main(def_conf)
+    # macs2 = main(def_conf)
     t3 = time()
 
     # parser = argparse.ArgumentParser()
@@ -209,5 +209,5 @@ if __name__ == "__main__":
     t5 = time()
 
     print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0, macs1))
-    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t3 - t2, macs2))
+    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t3 - t2, macs2))
     # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir3, t5 - t4, macs3))

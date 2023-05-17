@@ -51,8 +51,8 @@ audionet:
         kernel_size: 5
         n_head: 8
         dropout: 0.1
-        group_ffn: False
-        single_ffn: True
+        group_ffn: True
+        single_ffn: False
 
     video_params:
       video_net: TDANet
@@ -72,8 +72,8 @@ audionet:
         kernel_size: 3
         n_head: 8
         dropout: 0.1
-        group_ffn: False
-        single_ffn: True
+        group_ffn: True
+        single_ffn: False
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -115,4 +115,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/tdanet2d/16_05_23
+    exp_name: ctcnet_mini/tdanet2d/18_05_23

@@ -9,6 +9,7 @@ videonet:
 audionet:
     n_src: 1
     pretrained_vout_chan: 121                  # output from pretrained model
+    concat_first: True
 
     video_bn_params:
       out_chan: 64
@@ -23,10 +24,10 @@ audionet:
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
-      win: 128
-      hop_length: 64
+      win: 256
+      hop_length: 128
       out_chan: 128
-      kernel_size: 6
+      kernel_size: 3
       stride: 1
       bias: False
       act_type: ReLU
@@ -48,6 +49,8 @@ audionet:
         kernel_size: 5
         n_head: 8
         dropout: 0.1
+        group_ffn: True
+        single_ffn: False
 
     video_params:
       video_net: DPTNet
@@ -65,6 +68,8 @@ audionet:
         kernel_size: 3
         n_head: 8
         dropout: 0.1
+        group_ffn: True
+        single_ffn: False
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -106,4 +111,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/dptnet2d/04_05_23
+    exp_name: ctcnet_mini/dptnet2d/18_05_23
