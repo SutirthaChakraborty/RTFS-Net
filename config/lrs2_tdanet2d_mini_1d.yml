@@ -1,20 +1,19 @@
 # Video network config
 videonet:
-    model_name: EncoderAE
-    in_channels: 1
-    base_channels: 4
-    num_layers: 3
-    is2d: True
-    pretrain: ../experiments/autoencoder/default/best_model.pth
+    model_name: FRCNNVideoModel
+    backbone_type: resnet
+    relu_type: prelu
+    width_mult: 1.0
+    pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
     n_src: 1
-    pretrained_vout_chan: 121                  # output from pretrained model
+    pretrained_vout_chan: 512                  # output from pretrained model
     concat_first: True
 
     video_bn_params:
       out_chan: 64
       kernel_size: 1
-      is2d: True
+      is2d: False
 
     audio_bn_params:
       out_chan: 64
@@ -65,20 +64,19 @@ audionet:
       act_type: PReLU
       kernel_size: 3
       stride: 2
-      is2d: True
+      is2d: False
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalAttention
         ffn_name: FeedForwardNetwork
         kernel_size: 3
         n_head: 8
         dropout: 0.1
-        group_ffn: True
-        single_ffn: False
 
     fusion_params:
       fusion_type: ConcatFusion
       fusion_shared: True
       is2d: True
+      nstack: False
 
     mask_generation_params:
       mask_act: ReLU
@@ -115,4 +113,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/tdanet2d/29_05_23
+    exp_name: ctcnet_mini/tdanet2d/29_05_23_1d
