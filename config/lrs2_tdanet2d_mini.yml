@@ -81,6 +81,7 @@ audionet:
       is2d: True
 
     mask_generation_params:
+      mask_generator_type: RI_MaskGenerator
       mask_act: ReLU
       is2d: True
       output_gate: True
@@ -115,4 +116,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/tdanet2d/29_05_23
+    exp_name: ctcnet_mini/tdanet2d/29_05_23_RI

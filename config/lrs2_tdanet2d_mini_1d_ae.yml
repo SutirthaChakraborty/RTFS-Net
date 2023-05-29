@@ -61,7 +61,7 @@ audionet:
       upsampling_depth: 4
       shared: True
       repeats: 1
-      norm_type: BatchNorm2d
+      norm_type: BatchNorm1d
       act_type: PReLU
       kernel_size: 3
       stride: 2
