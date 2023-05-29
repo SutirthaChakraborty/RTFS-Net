@@ -102,6 +102,29 @@ class GlobalAttention(nn.Module):
         return x
 
 
+class GlobalAttentionRNN(nn.Module):
+    def __init__(
+        self,
+        in_chan: int,
+        hid_chan: int = None,
+        dropout: float = 0.1,
+        rnn_type: str = "LSTM",
+        *args,
+        **kwargs,
+    ):
+        super(GlobalAttentionRNN, self).__init__()
+        self.in_chan = in_chan
+        self.hid_chan = hid_chan if hid_chan is not None else self.in_chan
+        self.dropout = dropout
+        self.rnn_type = rnn_type
+
+        self.RNN = cnn_layers.RNNProjection(self.in_chan, self.hid_chan, dropout=self.dropout, rnn_type=self.rnn_type)
+
+    def forward(self, x: torch.Tensor):
+        x = self.RNN(x)
+        return x
+
+
 class GlobalAttention2D(nn.Module):
     def __init__(
         self,
