@@ -45,13 +45,13 @@ audionet:
       stride: 2 
       is2d: True
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalGALR
         ffn_name: FeedForwardNetwork
         kernel_size: 5
         n_head: 8
         dropout: 0.1
-        group_ffn: True
-        single_ffn: False
+        group_ffn: False
+        rnn_type: GRU
 
     video_params:
       video_net: TDANet
@@ -66,11 +66,9 @@ audionet:
       stride: 2
       is2d: False
       attention_params:
-        attention_type: GlobalAttention
-        ffn_name: FeedForwardNetwork
-        kernel_size: 3
-        n_head: 8
+        attention_type: GlobalAttentionRNN
         dropout: 0.1
+        rnn_type: GRU
 
     fusion_params:
       fusion_type: ConcatFusion
@@ -113,4 +111,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/tdanet2d/30_05_23_1d
+    exp_name: ctcnet_mini/tdanet2d/30_05_23_1d_av_galr_GRU

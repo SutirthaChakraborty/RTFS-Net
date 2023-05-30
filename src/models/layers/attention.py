@@ -196,6 +196,7 @@ class GlobalGALR(nn.Module):
         dropout: float = 0.1,
         group_ffn: bool = False,
         pos_enc: bool = True,
+        rnn_type: str = "LSTM",
         *args,
         **kwargs,
     ):
@@ -208,8 +209,9 @@ class GlobalGALR(nn.Module):
         self.dropout = dropout
         self.group_ffn = group_ffn
         self.pos_enc = pos_enc
+        self.rnn_type = rnn_type
 
-        self.time_RNN = cnn_layers.RNNProjection(self.in_chan, self.in_chan, dropout=self.dropout)
+        self.time_RNN = cnn_layers.RNNProjection(self.in_chan, self.in_chan, dropout=self.dropout, rnn_type=self.rnn_type)
         self.freq_MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
         self.freq_FFN = cnn_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
