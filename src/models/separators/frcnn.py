@@ -59,13 +59,12 @@ class FRCNNBlock(nn.Module):
     def __build_downsample_layers(self):
         out = nn.ModuleList()
         for i in range(self.upsampling_depth):
-            stride = 1 if i == 0 else self.stride
             out.append(
                 ConvNormAct(
                     in_chan=self.hid_chan,
                     out_chan=self.hid_chan,
                     kernel_size=self.kernel_size,
-                    stride=stride,
+                    stride=1 if i == 0 else self.stride,
                     groups=self.hid_chan,
                     norm_type=self.norm_type,
                     is2d=self.is2d,

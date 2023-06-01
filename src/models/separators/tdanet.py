@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .. import layers
-from ..layers import ConvNormAct, InjectionMultiSum
+from ..layers import ConvNormAct, InjectionMultiSum, get
 
 
 class TDANetBlock(nn.Module):
@@ -30,7 +29,7 @@ class TDANetBlock(nn.Module):
         self.attention_params = attention_params
         self.is2d = is2d
 
-        self.att = layers.get(self.attention_params.get("attention_type", "GlobalAttention2D" if self.is2d else "GlobalAttention"))
+        self.att = get(self.attention_params.get("attention_type", "GlobalAttention2D" if self.is2d else "GlobalAttention"))
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
         self.projection = ConvNormAct(
@@ -59,13 +58,12 @@ class TDANetBlock(nn.Module):
     def __build_downsample_layers(self):
         out = nn.ModuleList()
         for i in range(self.upsampling_depth):
-            stride = 1 if i == 0 else self.stride
             out.append(
                 ConvNormAct(
                     in_chan=self.hid_chan,
                     out_chan=self.hid_chan,
                     kernel_size=self.kernel_size,
-                    stride=stride,
+                    stride=1 if i == 0 else self.stride,
                     groups=self.hid_chan,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
@@ -116,9 +114,7 @@ class TDANetBlock(nn.Module):
 
         # global pooling
         shape = downsampled_outputs[-1].shape
-        global_features = torch.zeros(shape, requires_grad=True, device=x_enc.device)
-        for features in downsampled_outputs:
-            global_features = global_features + self.pool(features, output_size=shape[-(len(shape) // 2) :])
+        global_features = sum(self.pool(features, output_size=shape[-(len(shape) // 2) :]) for features in downsampled_outputs)
 
         # global attention module
         global_features = self.globalatt(global_features)  # B, N, T, (F)
