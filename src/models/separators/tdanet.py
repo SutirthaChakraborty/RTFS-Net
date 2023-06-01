@@ -114,22 +114,22 @@ class TDANetBlock(nn.Module):
         for i in range(1, self.upsampling_depth):
             downsampled_outputs.append(self.downsample_layers[i](downsampled_outputs[-1]))
 
-        # global features
+        # global pooling
         shape = downsampled_outputs[-1].shape
         global_features = torch.zeros(shape, requires_grad=True, device=x_enc.device)
         for features in downsampled_outputs:
             global_features = global_features + self.pool(features, output_size=shape[-(len(shape) // 2) :])
+
+        # global attention module
         global_features = self.globalatt(global_features)  # B, N, T, (F)
 
-        x_fused = []
         # Gather them now in reverse order
-        for i in range(self.upsampling_depth):
-            local_features = downsampled_outputs[i]
-            x_fused.append(self.fusion_layers[i](local_features, global_features))
+        x_fused = [self.fusion_layers[i](downsampled_outputs[i], global_features) for i in range(self.upsampling_depth)]
 
-        expanded = self.concat_layers[-1](x_fused[-2], x_fused[-1])
+        # fuse them into a single vector
+        expanded = self.concat_layers[-1](x_fused[-2], x_fused[-1]) + downsampled_outputs[-2]
         for i in range(self.upsampling_depth - 3, -1, -1):
-            expanded = self.concat_layers[i](x_fused[i], expanded)
+            expanded = self.concat_layers[i](x_fused[i], expanded) + downsampled_outputs[i]
 
         out = self.residual_conv(expanded) + residual
 

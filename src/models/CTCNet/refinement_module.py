@@ -22,10 +22,10 @@ class RefinementModule(nn.Module):
         self.audio_bn_chan = audio_bn_chan
         self.video_bn_chan = video_bn_chan
         self.fusion_params = fusion_params
+        self.concat_first = concat_first
 
         self.fusion_repeats = self.video_params.get("repeats", 0)
         self.audio_repeats = self.audio_params["repeats"] - self.fusion_repeats
-        self.concat_first = concat_first
 
         self.audio_net = separators.get(self.audio_params.get("audio_net", None))(
             **self.audio_params,
