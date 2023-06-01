@@ -41,26 +41,36 @@ audionet:
       act_type: PReLU
       kernel_size: 5
       stride: 2 
-      n_head: 8
       is2d: False
+      attention_params:
+        attention_type: GlobalAttention
+        ffn_name: FeedForwardNetwork
+        kernel_size: 5
+        n_head: 8
+        dropout: 0.1
     
     video_params:
       video_net: TDANet
       # in_chan same as video_bn_chan
       hid_chan: 64
       upsampling_depth: 4
-      shared: True
+      shared: False
       repeats: 3
       norm_type: BatchNorm1d
       act_type: PReLU
       kernel_size: 3
       stride: 2
-      n_head: 8
       is2d: False
+      attention_params:
+        attention_type: GlobalAttention
+        ffn_name: FeedForwardNetwork
+        kernel_size: 3
+        n_head: 8
+        dropout: 0.1
 
     fusion_params:
       fusion_type: ConcatFusion
-      fusion_shared: True
+      fusion_shared: False
       is2d: False
 
     mask_generation_params:
@@ -98,4 +108,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_large/tdanet1d/20_04_23
+    exp_name: ctcnet_large/tdanet1d/04_05_23

@@ -1,32 +1,31 @@
 # Video network config
 videonet:
-    model_name: EncoderAE
-    in_channels: 1
-    base_channels: 4
-    num_layers: 3
-    is2d: True
-    pretrain: ../experiments/autoencoder/default/best_model.pth
+    model_name: FRCNNVideoModel
+    backbone_type: resnet
+    relu_type: prelu
+    width_mult: 1.0
+    pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
     n_src: 1
-    pretrained_vout_chan: 121                  # output from pretrained model
+    pretrained_vout_chan: 512                  # output from pretrained model
     concat_first: True
 
     video_bn_params:
       out_chan: 64
       kernel_size: 1
-      is2d: True
+      is2d: False
 
     audio_bn_params:
-      out_chan: 64
+      out_chan: 128
       kernel_size: 1
       is2d: True
 
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
-      win: 128
-      hop_length: 64
-      out_chan: 256
+      win: 256
+      hop_length: 128
+      out_chan: 128
       kernel_size: 3
       stride: 1
       bias: False
@@ -39,18 +38,20 @@ audionet:
       hid_chan: 128                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
-      repeats: 4
+      repeats: 16
       norm_type: gLN
       act_type: PReLU
       kernel_size: 5
       stride: 2 
       is2d: True
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalGALR
         ffn_name: FeedForwardNetwork
         kernel_size: 5
         n_head: 8
         dropout: 0.1
+        group_ffn: False
+        rnn_type: GRU
 
     video_params:
       video_net: TDANet
@@ -58,14 +59,14 @@ audionet:
       hid_chan: 64
       upsampling_depth: 4
       shared: True
-      repeats: 1
-      norm_type: BatchNorm2d
+      repeats: 3
+      norm_type: BatchNorm1d
       act_type: PReLU
       kernel_size: 3
       stride: 2
-      is2d: True
+      is2d: False
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalAttention
         ffn_name: FeedForwardNetwork
         kernel_size: 3
         n_head: 8
@@ -85,7 +86,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 4
+    batch_size: 1
     num_workers: 8
     half_lr: yes
     early_stop: yes
@@ -111,4 +112,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small/tdanet2d/04_05_23
+    exp_name: ctcnet_large/tdanet2d/01_06_23_1d_galr

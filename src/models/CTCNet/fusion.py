@@ -7,12 +7,13 @@ from ..layers import ConvNormAct
 
 
 class FusionBasemodule(nn.Module):
-    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool, video_fusion: bool):
+    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool, video_fusion: bool, nstack: bool):
         super(FusionBasemodule, self).__init__()
         self.ain_chan = ain_chan
         self.vin_chan = vin_chan
         self.is2d = is2d
         self.video_fusion = video_fusion
+        self.nstack = nstack
 
     def forward(self, audio, video):
         raise NotImplementedError
@@ -24,8 +25,10 @@ class FusionBasemodule(nn.Module):
         self.x = len(T1) > len(T2)
         self.y = len(T2) > len(T1)
 
-        video = video.unsqueeze(-1) if self.x else video
-        audio = audio.unsqueeze(-1) if self.y else audio
+        if self.x:
+            video = torch.stack([video] * T1[-1], -1) if self.nstack else video.unsqueeze(-1)
+        if self.y:
+            audio = torch.stack([audio] * T2[-1], -1) if self.nstack else audio.unsqueeze(-1)
 
         return audio, video
 
@@ -37,8 +40,8 @@ class FusionBasemodule(nn.Module):
 
 
 class ConcatFusion(FusionBasemodule):
-    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False, video_fusion: bool = True):
-        super(ConcatFusion, self).__init__(ain_chan, vin_chan, is2d, video_fusion)
+    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False, video_fusion: bool = True, nstack: bool = False):
+        super(ConcatFusion, self).__init__(ain_chan, vin_chan, is2d, video_fusion, nstack)
 
         self.audio_conv = ConvNormAct(self.ain_chan + self.vin_chan, self.ain_chan, 1, norm_type="gLN", is2d=self.is2d)
         if video_fusion:
@@ -64,8 +67,8 @@ class ConcatFusion(FusionBasemodule):
 
 
 class SumFusion(FusionBasemodule):
-    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False, video_fusion: bool = True):
-        super(SumFusion, self).__init__(ain_chan, vin_chan, is2d, video_fusion)
+    def __init__(self, ain_chan: int, vin_chan: int, is2d: bool = False, video_fusion: bool = True, nstack: bool = False):
+        super(SumFusion, self).__init__(ain_chan, vin_chan, is2d, video_fusion, nstack)
 
         if video_fusion:
             self.audio_conv = ConvNormAct(self.ain_chan, self.vin_chan, 1, norm_type="gLN", is2d=self.is2d)
@@ -97,6 +100,7 @@ class MultiModalFusion(nn.Module):
         fusion_type: str = "ConcatFusion",
         fusion_shared: bool = False,
         is2d: bool = False,
+        nstack: bool = False,
     ):
         super(MultiModalFusion, self).__init__()
         self.audio_bn_chan = audio_bn_chan
@@ -105,17 +109,18 @@ class MultiModalFusion(nn.Module):
         self.fusion_type = fusion_type
         self.fusion_shared = fusion_shared
         self.is2d = is2d
+        self.nstack = nstack
 
         self.fusion_module = self.__build_fusion_module()
 
     def __build_fusion_module(self):
         fusion_class = globals().get(self.fusion_type) if self.fusion_repeats > 0 else nn.Identity
         if self.fusion_shared:
-            out = fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d)
+            out = fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d, self.fusion_repeats > 1, self.nstack)
         else:
             out = nn.ModuleList()
             for i in range(self.fusion_repeats):
-                out.append(fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d, i != self.fusion_repeats - 1))
+                out.append(fusion_class(self.audio_bn_chan, self.video_bn_chan, self.is2d, i != self.fusion_repeats - 1, self.nstack))
 
         return out
 

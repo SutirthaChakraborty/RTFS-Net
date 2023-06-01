@@ -131,4 +131,6 @@ dmypy.json
 # My Ignores
 /experiments/
 /data-preprocess/LRS2/
+/data-preprocess/LRS3/
 /logs/
+.vscode

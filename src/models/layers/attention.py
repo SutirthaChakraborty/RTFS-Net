@@ -36,18 +36,20 @@ class MultiHeadSelfAttention(nn.Module):
         in_chan: int,
         n_head: int = 8,
         dropout: int = 0.1,
+        positional_encoding: bool = True,
     ):
         super(MultiHeadSelfAttention, self).__init__()
         self.in_chan = in_chan
         self.n_head = n_head
         self.dropout = dropout
+        self.positional_encoding = positional_encoding
 
         assert self.in_chan % self.n_head == 0, "In channels: {} must be divisible by the number of heads: {}".format(
             self.in_chan, self.n_head
         )
 
         self.norm1 = nn.LayerNorm(self.in_chan)
-        self.pos_enc = PositionalEncoding(self.in_chan)
+        self.pos_enc = PositionalEncoding(self.in_chan) if self.positional_encoding else nn.Identity()
         self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout, batch_first=True)
         self.dropout_layer = nn.Dropout(self.dropout)
         self.norm2 = nn.LayerNorm(self.in_chan)
@@ -78,7 +80,7 @@ class GlobalAttention(nn.Module):
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
-        verbose: bool = False,
+        pos_enc: bool = True,
         *args,
         **kwargs,
     ):
@@ -89,22 +91,37 @@ class GlobalAttention(nn.Module):
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
-        self.verbose = verbose
+        self.pos_enc = pos_enc
 
-        self.mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        self.ffn = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
-
-        if self.verbose:
-            self.mhsa_params = sum(p.numel() for p in self.mhsa.parameters() if p.requires_grad) / 1000
-            self.ffn_params = sum(p.numel() for p in self.ffn.parameters() if p.requires_grad) / 1000
-
-            s = f"MHSA Params: {self.mhsa_params}\n" f"FFN Params: {self.ffn_params}\n"
-
-            print(s)
+        self.MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
+        self.FFN = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
 
     def forward(self, x: torch.Tensor):
-        x = self.mhsa(x)
-        x = self.ffn(x)
+        x = self.MHSA(x)
+        x = self.FFN(x)
+        return x
+
+
+class GlobalAttentionRNN(nn.Module):
+    def __init__(
+        self,
+        in_chan: int,
+        hid_chan: int = None,
+        dropout: float = 0.1,
+        rnn_type: str = "LSTM",
+        *args,
+        **kwargs,
+    ):
+        super(GlobalAttentionRNN, self).__init__()
+        self.in_chan = in_chan
+        self.hid_chan = hid_chan if hid_chan is not None else self.in_chan
+        self.dropout = dropout
+        self.rnn_type = rnn_type
+
+        self.RNN = cnn_layers.RNNProjection(self.in_chan, self.hid_chan, dropout=self.dropout, rnn_type=self.rnn_type)
+
+    def forward(self, x: torch.Tensor):
+        x = self.RNN(x)
         return x
 
 
@@ -117,7 +134,9 @@ class GlobalAttention2D(nn.Module):
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
-        verbose: bool = False,
+        single_ffn: bool = True,
+        group_ffn: bool = False,
+        pos_enc: bool = True,
         *args,
         **kwargs,
     ):
@@ -128,41 +147,40 @@ class GlobalAttention2D(nn.Module):
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
-        self.verbose = verbose
+        self.single_ffn = single_ffn
+        self.group_ffn = group_ffn
+        self.pos_enc = pos_enc
 
-        self.mhsa_height = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        self.mhsa_width = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
+        self.time_MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
+        self.freq_MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
 
-        self.ffn_height = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
-        self.ffn_width = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        self.group_FFN = nn.Identity()
+        self.time_FFN = nn.Identity()
+        self.freq_FFN = nn.Identity()
 
-        if self.verbose:
-            self.mhsa_height_params = sum(p.numel() for p in self.mhsa_height.parameters() if p.requires_grad) / 1000
-            self.mhsa_width_params = sum(p.numel() for p in self.mhsa_width.parameters() if p.requires_grad) / 1000
-            self.ffn_height_params = sum(p.numel() for p in self.ffn_height.parameters() if p.requires_grad) / 1000
-            self.ffn_width_params = sum(p.numel() for p in self.ffn_width.parameters() if p.requires_grad) / 1000
+        if self.single_ffn:
+            self.time_FFN = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+            self.freq_FFN = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
-            s = (
-                f"MHSA Height: {self.mhsa_height_params}\n"
-                f"MHSA Width: {self.mhsa_width_params}\n"
-                f"FFN Height: {self.ffn_height_params}\n"
-                f"FFN Width: {self.ffn_width_params}\n"
-            )
-
-            print(s)
+        if self.group_ffn:
+            self.group_FFN = cnn_layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
 
-        h_input = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
-        h_output = self.mhsa_height.forward(h_input)
-        h_ffn = self.ffn_height.forward(h_output)
-        x = h_ffn.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
+        x = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
+        x = self.time_MHSA.forward(x)
+        x = self.time_FFN.forward(x)
+        x = x.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
 
-        w_input = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
-        w_output = self.mhsa_width.forward(w_input)
-        w_ffn = self.ffn_width.forward(w_output)
-        x = w_ffn.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
+        x = self.group_FFN(x)
+
+        x = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
+        x = self.freq_MHSA.forward(x)
+        x = self.freq_FFN.forward(x)
+        x = x.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
+
+        x = self.group_FFN(x)
 
         return x
 
@@ -176,7 +194,9 @@ class GlobalGALR(nn.Module):
         kernel_size: int = 5,
         n_head: int = 8,
         dropout: float = 0.1,
-        verbose: bool = False,
+        group_ffn: bool = False,
+        pos_enc: bool = True,
+        rnn_type: str = "LSTM",
         *args,
         **kwargs,
     ):
@@ -187,31 +207,30 @@ class GlobalGALR(nn.Module):
         self.kernel_size = kernel_size
         self.n_head = n_head
         self.dropout = dropout
-        self.verbose = verbose
+        self.group_ffn = group_ffn
+        self.pos_enc = pos_enc
+        self.rnn_type = rnn_type
 
-        self.time_rnn = cnn_layers.RNNProjection(self.in_chan, self.in_chan, dropout=self.dropout)
-        self.freq_mhsa = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout)
-        self.freq_ffn = cnn_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        self.time_RNN = cnn_layers.RNNProjection(self.in_chan, self.in_chan, dropout=self.dropout, rnn_type=self.rnn_type)
+        self.freq_MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
+        self.freq_FFN = cnn_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
-        if self.verbose:
-            self.mhsa_height_params = sum(p.numel() for p in self.time_rnn.parameters() if p.requires_grad) / 1000
-            self.mhsa_width_params = sum(p.numel() for p in self.freq_mhsa.parameters() if p.requires_grad) / 1000
-            self.ffn_width_params = sum(p.numel() for p in self.freq_ffn.parameters() if p.requires_grad) / 1000
-
-            s = f"RNN Height: {self.mhsa_height_params}\n" f"MHSA Width: {self.mhsa_width_params}\n" f"FFN Width: {self.ffn_width_params}\n"
-
-            print(s)
+        self.group_FFN = nn.Identity()
+        if self.group_ffn:
+            self.group_FFN = cnn_layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
 
         x = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
-        x = self.time_rnn.forward(x)
+        x = self.time_RNN.forward(x)
         x = x.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
 
         x = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
-        x = self.freq_mhsa.forward(x)
-        x = self.freq_ffn.forward(x)
+        x = self.freq_MHSA.forward(x)
+        x = self.freq_FFN.forward(x)
         x = x.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
+
+        x = self.group_FFN(x)
 
         return x

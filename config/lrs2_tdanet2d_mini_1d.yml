@@ -1,20 +1,19 @@
 # Video network config
 videonet:
-    model_name: EncoderAE
-    in_channels: 1
-    base_channels: 4
-    num_layers: 3
-    is2d: True
-    pretrain: ../experiments/autoencoder/default/best_model.pth
+    model_name: FRCNNVideoModel
+    backbone_type: resnet
+    relu_type: prelu
+    width_mult: 1.0
+    pretrain: ../pretrain_zoo/frcnn_128_512.backbone.pth.tar
 audionet:
     n_src: 1
-    pretrained_vout_chan: 121                  # output from pretrained model
+    pretrained_vout_chan: 512                  # output from pretrained model
     concat_first: True
 
     video_bn_params:
       out_chan: 64
       kernel_size: 1
-      is2d: True
+      is2d: False
 
     audio_bn_params:
       out_chan: 64
@@ -24,9 +23,9 @@ audionet:
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
-      win: 128
-      hop_length: 64
-      out_chan: 256
+      win: 256
+      hop_length: 128
+      out_chan: 128
       kernel_size: 3
       stride: 1
       bias: False
@@ -36,7 +35,7 @@ audionet:
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 128                       # TDANet hidden channels
+      hid_chan: 64                       # TDANet hidden channels
       upsampling_depth: 5
       shared: True
       repeats: 4
@@ -51,6 +50,8 @@ audionet:
         kernel_size: 5
         n_head: 8
         dropout: 0.1
+        group_ffn: True
+        single_ffn: False
 
     video_params:
       video_net: TDANet
@@ -59,13 +60,13 @@ audionet:
       upsampling_depth: 4
       shared: True
       repeats: 1
-      norm_type: BatchNorm2d
+      norm_type: BatchNorm1d
       act_type: PReLU
       kernel_size: 3
       stride: 2
-      is2d: True
+      is2d: False
       attention_params:
-        attention_type: GlobalAttention2D
+        attention_type: GlobalAttention
         ffn_name: FeedForwardNetwork
         kernel_size: 3
         n_head: 8
@@ -75,6 +76,7 @@ audionet:
       fusion_type: ConcatFusion
       fusion_shared: True
       is2d: True
+      nstack: False
 
     mask_generation_params:
       mask_act: ReLU
@@ -85,7 +87,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 4
+    batch_size: 8
     num_workers: 8
     half_lr: yes
     early_stop: yes
@@ -111,4 +113,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small/tdanet2d/04_05_23
+    exp_name: ctcnet_mini/tdanet2d/30_05_23_1d

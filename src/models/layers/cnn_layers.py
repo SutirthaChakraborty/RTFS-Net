@@ -248,7 +248,6 @@ class RNNProjection(nn.Module):
         **kwargs,
     ):
         super(RNNProjection, self).__init__()
-
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.rnn_type = rnn_type

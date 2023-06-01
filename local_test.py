@@ -40,8 +40,8 @@ def build_dataloaders(conf, bs=None):
     bs = conf["training"]["batch_size"] if bs is None else bs
     audio_only = conf["data"].get("audio_only", False)
 
-    train_set = AVSpeechDataset(200 * bs, audio_only)
-    val_set = AVSpeechDataset(50 * bs, audio_only)
+    train_set = AVSpeechDataset(500 * bs, audio_only)
+    val_set = AVSpeechDataset(60 * bs, audio_only)
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=bs, num_workers=conf["training"]["num_workers"], drop_last=True)
     val_loader = DataLoader(val_set, shuffle=False, batch_size=bs, num_workers=conf["training"]["num_workers"], drop_last=True)
@@ -148,7 +148,6 @@ def main(conf, model=CTCNet, epochs=1, bs=None):
 
 
 if __name__ == "__main__":
-    t0 = time()
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_mini.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
@@ -165,28 +164,30 @@ if __name__ == "__main__":
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)
 
+    t0 = time()
     macs1 = main(def_conf)
-
     t1 = time()
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
-    parser.add_argument("-n", "--name", default=None, help="Experiment name")
-    parser.add_argument("--nodes", type=int, default=1, help="#node")
 
-    args = parser.parse_args()
-    cf_dir2 = str(args.conf_dir).split("/")[-1]
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_mini_group_only.yml")
+    # parser.add_argument("-n", "--name", default=None, help="Experiment name")
+    # parser.add_argument("--nodes", type=int, default=1, help="#node")
 
-    with open(args.conf_dir) as f:
-        def_conf = yaml.safe_load(f)
-    if args.name is not None:
-        def_conf["log"]["exp_name"] = args.name
+    # args = parser.parse_args()
+    # cf_dir2 = str(args.conf_dir).split("/")[-1]
 
-    arg_dic = parse_args_as_dict(parser)
-    def_conf.update(arg_dic)
+    # with open(args.conf_dir) as f:
+    #     def_conf = yaml.safe_load(f)
+    # if args.name is not None:
+    #     def_conf["log"]["exp_name"] = args.name
 
-    macs2 = main(def_conf)
+    # arg_dic = parse_args_as_dict(parser)
+    # def_conf.update(arg_dic)
 
     t2 = time()
+    # macs2 = main(def_conf)
+    t3 = time()
+
     # parser = argparse.ArgumentParser()
     # parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small.yml")
     # parser.add_argument("-n", "--name", default=None, help="Experiment name")
@@ -203,10 +204,10 @@ if __name__ == "__main__":
     # arg_dic = parse_args_as_dict(parser)
     # def_conf.update(arg_dic)
 
+    t4 = time()
     # macs3 = main(def_conf)
-
-    t3 = time()
+    t5 = time()
 
     print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0, macs1))
-    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t2 - t1, macs2))
-    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir3, t3 - t2, macs3))
+    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t3 - t2, macs2))
+    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir3, t5 - t4, macs3))
