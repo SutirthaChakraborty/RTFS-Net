@@ -87,14 +87,14 @@ class FRCNNVideoModel(nn.Module):
         video_input = torch.rand(batch_size, 1, seconds * 25, h, w)
 
         self.macs = profile(self, inputs=(video_input,), verbose=False)[0] / 1000000
-        self.trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        self.non_trainable_params = sum(p.numel() for p in self.parameters() if not p.requires_grad)
+        self.trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad) / 1000
+        self.non_trainable_params = sum(p.numel() for p in self.parameters() if not p.requires_grad) / 1000
 
         s = (
             "Pretrained Video Backbone\n"
-            "Number of MACs in total: {:,.0f}M\n"
-            "Number of trainable parameters: {:,.0f}M\n"
-            "Number of non trainable parameters: {:,.0f}M\n"
+            "Number of MACs in total: {:,.1f}M\n"
+            "Number of trainable parameters: {:,.1f}K\n"
+            "Number of non trainable parameters: {:,.1f}K\n"
         ).format(self.macs, self.trainable_params, self.non_trainable_params)
 
         print(s)
