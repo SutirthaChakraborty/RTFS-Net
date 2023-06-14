@@ -276,7 +276,8 @@ class RNNProjection(nn.Module):
 
         x = self.norm1(x)
         residual = x
-        x = self.rnn(x)[0].contiguous()  # B, L, num_direction * H
+        self.rnn.flatten_parameters()
+        x = self.rnn(x)[0]  # B, L, num_direction * H
         x = self.proj(x)
         x = self.norm2(x + residual)  # B, L, N
 
