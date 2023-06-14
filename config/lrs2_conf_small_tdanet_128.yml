@@ -15,16 +15,16 @@ audionet:
       is2d: False
 
     audio_bn_params:
-      out_chan: 512
+      out_chan: 128
       kernel_size: 1
       is2d: False
 
     enc_dec_params:
       encoder_type: ConvolutionalEncoder
       decoder_type: ConvolutionalDecoder
-      out_chan: 512
-      kernel_size: 21
-      stride: 10
+      out_chan: 128
+      kernel_size: 5
+      stride: 2
       bias: False
       act_type: ReLU
       norm_type: gLN
@@ -33,7 +33,7 @@ audionet:
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 512                       # FRCNN hidden channels
+      hid_chan: 128                       # FRCNN hidden channels
       upsampling_depth: 5
       shared: True
       repeats: 4
@@ -108,4 +108,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_small/tdanet1d/15_06_23
+    exp_name: ctcnet_small/tdanet1d/15_06_23_128
