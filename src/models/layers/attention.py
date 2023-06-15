@@ -109,6 +109,7 @@ class GlobalAttentionRNN(nn.Module):
         hid_chan: int = None,
         dropout: float = 0.1,
         rnn_type: str = "LSTM",
+        bidirectional: bool = True,
         *args,
         **kwargs,
     ):
@@ -117,8 +118,9 @@ class GlobalAttentionRNN(nn.Module):
         self.hid_chan = hid_chan if hid_chan is not None else self.in_chan
         self.dropout = dropout
         self.rnn_type = rnn_type
+        self.bidirectional = bidirectional
 
-        self.RNN = cnn_layers.RNNProjection(self.in_chan, self.hid_chan, dropout=self.dropout, rnn_type=self.rnn_type)
+        self.RNN = cnn_layers.RNNProjection(self.in_chan, self.hid_chan, self.rnn_type, self.dropout, self.bidirectional)
 
     def forward(self, x: torch.Tensor):
         x = self.RNN(x)
@@ -197,6 +199,7 @@ class GlobalGALR(nn.Module):
         group_ffn: bool = False,
         pos_enc: bool = True,
         rnn_type: str = "LSTM",
+        bidirectional: bool = True,
         *args,
         **kwargs,
     ):
@@ -210,8 +213,9 @@ class GlobalGALR(nn.Module):
         self.group_ffn = group_ffn
         self.pos_enc = pos_enc
         self.rnn_type = rnn_type
+        self.bidirectional = bidirectional
 
-        self.time_RNN = cnn_layers.RNNProjection(self.in_chan, self.in_chan, dropout=self.dropout, rnn_type=self.rnn_type)
+        self.time_RNN = cnn_layers.RNNProjection(self.in_chan, self.in_chan, self.rnn_type, self.dropout, self.bidirectional)
         self.freq_MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
         self.freq_FFN = cnn_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
