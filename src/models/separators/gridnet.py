@@ -5,9 +5,13 @@ import torch.nn.functional as F
 
 from ..layers import ConvNormAct
 from .. import normalizations
+from .. import activations
 
 
 class GridNetBlock(nn.Module):
+    def __getitem__(self, key):
+        return getattr(self, key)
+
     def __init__(
         self,
         in_chan: int,
@@ -15,21 +19,20 @@ class GridNetBlock(nn.Module):
         kernel_size: int,
         stride: int,
         n_freqs: int,
-        norm_type: str = "LN4d",
-        act_type: str = "PReLU",
         n_head: int = 4,
         approx_qk_dim: int = 512,
-        eps=1e-5,
+        act_type: str = "PReLU",
+        eps: float = 1e-5,
     ):
         super(GridNetBlock, self).__init__()
 
         in_channels = in_chan * kernel_size
 
-        self.intra_norm = normalizations.get(norm_type)((in_chan, 1), eps=eps)
+        self.intra_norm = normalizations.LayerNormalization4D((in_chan, 1), eps=eps)
         self.intra_rnn = nn.LSTM(in_channels, hid_chan, 1, batch_first=True, bidirectional=True)
         self.intra_linear = nn.ConvTranspose1d(hid_chan * 2, in_chan, kernel_size, stride=stride)
 
-        self.inter_norm = normalizations.get(norm_type)((in_chan, 1), eps=eps)
+        self.inter_norm = normalizations.LayerNormalization4D((in_chan, 1), eps=eps)
         self.inter_rnn = nn.LSTM(in_channels, hid_chan, 1, batch_first=True, bidirectional=True)
         self.inter_linear = nn.ConvTranspose1d(hid_chan * 2, in_chan, kernel_size, stride=stride)
 
@@ -39,19 +42,32 @@ class GridNetBlock(nn.Module):
         for ii in range(n_head):
             self.add_module(
                 "attn_conv_Q_%d" % ii,
-                ConvNormAct(in_chan, E, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs, is2d=True),
+                nn.Sequential(
+                    nn.Conv2d(in_chan, E, 1),
+                    activations.get(act_type)(),
+                    normalizations.LayerNormalization4D((E, n_freqs), eps=eps),
+                ),
             )
             self.add_module(
                 "attn_conv_K_%d" % ii,
-                ConvNormAct(in_chan, E, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs, is2d=True),
+                nn.Sequential(
+                    nn.Conv2d(in_chan, E, 1),
+                    activations.get(act_type)(),
+                    normalizations.LayerNormalization4D((E, n_freqs), eps=eps),
+                ),
             )
             self.add_module(
                 "attn_conv_V_%d" % ii,
-                ConvNormAct(in_chan, in_chan // n_head, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs, is2d=True),
+                nn.Sequential(
+                    nn.Conv2d(in_chan, in_chan // n_head, 1),
+                    activations.get(act_type)(),
+                    normalizations.LayerNormalization4D((in_chan // n_head, n_freqs), eps=eps),
+                ),
             )
-
-        self.attn_concat_proj = ConvNormAct(
-            in_chan, in_chan, 1, act_type=act_type, norm_type=norm_type, eps=eps, n_freqs=n_freqs, is2d=True
+        self.attn_concat_proj = nn.Sequential(
+            nn.Conv2d(in_chan, in_chan, 1),
+            activations.get(act_type)(),
+            normalizations.LayerNormalization4D((in_chan, n_freqs), eps=eps),
         )
 
         self.emb_dim = in_chan
@@ -129,3 +145,116 @@ class GridNetBlock(nn.Module):
 
         out = batch + inter_rnn
         return out
+
+
+class GridNet(nn.Module):
+    def __init__(
+        self,
+        in_chan: int = -1,
+        hid_chan: int = -1,
+        n_freqs: int = -1,
+        kernel_size: int = 8,
+        stride: int = 1,
+        act_type: str = "PReLU",
+        n_head: int = 4,
+        approx_qk_dim: int = 512,
+        repeats: int = 4,
+        shared: bool = False,
+        concat_first: bool = False,
+        is2d: bool = True,
+        *args,
+        **kwargs,
+    ):
+        super(GridNet, self).__init__()
+        self.in_chan = in_chan
+        self.hid_chan = hid_chan
+        self.n_freqs = n_freqs
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.act_type = act_type
+        self.n_head = n_head
+        self.approx_qk_dim = approx_qk_dim
+        self.repeats = repeats
+        self.shared = shared
+        self.concat_first = concat_first
+        self.is2d = is2d
+
+        self.blocks = self.__build_blocks()
+        self.concat_block = self.__build_concat_block()
+
+    def __build_blocks(self):
+        clss = GridNetBlock if self.in_chan > 0 else nn.Identity
+        if self.shared:
+            out = clss(
+                in_chan=self.in_chan,
+                hid_chan=self.hid_chan,
+                kernel_size=self.kernel_size,
+                stride=self.stride,
+                n_freqs=self.n_freqs,
+                act_type=self.act_type,
+                n_head=self.n_head,
+                approx_qk_dim=self.approx_qk_dim,
+            )
+        else:
+            out = nn.ModuleList()
+            for _ in range(self.repeats):
+                out.append(
+                    clss(
+                        in_chan=self.in_chan,
+                        hid_chan=self.hid_chan,
+                        kernel_size=self.kernel_size,
+                        stride=self.stride,
+                        n_freqs=self.n_freqs,
+                        act_type=self.act_type,
+                        n_head=self.n_head,
+                        approx_qk_dim=self.approx_qk_dim,
+                    )
+                )
+
+        return out
+
+    def __build_concat_block(self):
+        clss = ConvNormAct if (self.in_chan > 0) and ((self.repeats > 1) or self.concat_first) else nn.Identity
+        if self.shared:
+            out = clss(
+                in_chan=self.in_chan,
+                out_chan=self.in_chan,
+                kernel_size=1,
+                groups=self.in_chan,
+                act_type=self.act_type,
+                is2d=self.is2d,
+            )
+        else:
+            out = nn.ModuleList() if self.concat_first else nn.ModuleList([None])
+            for _ in range(self.repeats) if self.concat_first else range(self.repeats - 1):
+                out.append(
+                    clss(
+                        in_chan=self.in_chan,
+                        out_chan=self.in_chan,
+                        kernel_size=1,
+                        groups=self.in_chan,
+                        act_type=self.act_type,
+                        is2d=self.is2d,
+                    )
+                )
+
+        return out
+
+    def get_block(self, i: int):
+        if self.shared:
+            return self.blocks
+        else:
+            return self.blocks[i]
+
+    def get_concat_block(self, i: int):
+        if self.shared:
+            return self.concat_block
+        else:
+            return self.concat_block[i]
+
+    def forward(self, x: torch.Tensor):
+        residual = x
+        for i in range(self.repeats):
+            x = self.get_concat_block(i)(x + residual) if i > 0 else x
+            x = self.get_block(i)(x)
+        return x

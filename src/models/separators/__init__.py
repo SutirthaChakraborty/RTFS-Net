@@ -3,6 +3,7 @@ import torch.nn as nn
 from .dpt import DPTNet
 from .frcnn import FRCNN
 from .tdanet import TDANet
+from .gridnet import GridNet
 
 
 def get(identifier):
