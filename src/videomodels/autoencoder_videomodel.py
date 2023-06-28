@@ -14,6 +14,7 @@ class AEVideoModel(nn.Module):
         num_layers: int = 3,
         pretrain: str = None,
         is2d: bool = False,
+        print_macs: bool = True,
         *args,
         **kwargs,
     ):
@@ -35,7 +36,8 @@ class AEVideoModel(nn.Module):
         if self.pretrain:
             self.init_from(self.pretrain)
 
-        self.get_MACs()
+        if print_macs:
+            self.get_MACs()
 
     def forward(self, x: torch.Tensor):
         batch, chan, frames, h, w = x.size()

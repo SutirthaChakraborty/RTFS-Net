@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 from .cnn_layers import ConvNormAct, ConvolutionalRNN, FeedForwardNetwork, InjectionMultiSum, RNNProjection
-from .attention import GlobalAttention, GlobalAttentionRNN, GlobalAttention2D, GlobalGALR
+from .attention import GlobalAttention, GlobalAttentionRNN, GlobalAttention2D, GlobalGALR, MultiHeadSelfAttention
 
 
 def get(identifier):

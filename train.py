@@ -76,11 +76,11 @@ def main(conf):
     # Define model and optimizer
     videomodel = None
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":
-        videomodel = FRCNNVideoModel(**conf["videonet"])
+        videomodel = FRCNNVideoModel(print_macs=False, **conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":
-        videomodel = AEVideoModel(**conf["videonet"])
+        videomodel = AEVideoModel(print_macs=False, **conf["videonet"])
 
-    audiomodel = CTCNet(**conf["audionet"])
+    audiomodel = CTCNet(print_macs=False, **conf["audionet"])
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 

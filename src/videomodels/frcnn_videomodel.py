@@ -20,6 +20,7 @@ class FRCNNVideoModel(nn.Module):
         relu_type="prelu",
         width_mult=1.0,
         pretrain=None,
+        print_macs=True,
         *args,
         **kwargs,
     ):
@@ -55,7 +56,8 @@ class FRCNNVideoModel(nn.Module):
         if pretrain:
             self.init_from(pretrain)
 
-        self.get_MACs()
+        if print_macs:
+            self.get_MACs()
 
     def forward(self, x: torch.Tensor):
         B, C, T, H, W = x.size()

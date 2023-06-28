@@ -21,6 +21,7 @@ class CTCNet(BaseAVModel):
         video_params: dict = dict(),
         fusion_params: dict = dict(),
         concat_first: bool = False,
+        print_macs: bool = True,
         *args,
         **kwargs,
     ):
@@ -36,6 +37,7 @@ class CTCNet(BaseAVModel):
         self.fusion_params = fusion_params
         self.mask_generation_params = mask_generation_params
         self.concat_first = concat_first
+        self.print_macs = print_macs
 
         self.encoder: encoder.BaseEncoder = encoder.get(self.enc_dec_params["encoder_type"])(
             **self.enc_dec_params,
@@ -78,7 +80,8 @@ class CTCNet(BaseAVModel):
             n_src=self.n_src,
         )
 
-        self.get_MACs()
+        if self.print_macs:
+            self.get_MACs()
 
     def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor = None):
         audio_mixture_embedding = self.encoder(audio_mixture)  # B, 1, L -> B, N, T, (F)
