@@ -44,8 +44,10 @@ audionet:
       is2d: False
       attention_params:
         attention_type: GlobalAttentionRNN
+        hid_chan: 512
         dropout: 0.1
         rnn_type: GRU
+        bidirectional: True
     
     video_params:
       video_net: TDANet
