@@ -28,7 +28,7 @@ class BaseAVModel(nn.Module):
         conf = torch.load(pretrained_model_conf_or_path, map_location="cpu")
 
         model_class = get(conf["model_name"])
-        model = model_class(*args, **kwargs)
+        model = model_class(print_macs=False, *args, **kwargs)
         model.load_state_dict(conf["state_dict"])
 
         return model

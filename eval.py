@@ -32,6 +32,7 @@ def main(conf):
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
     audiomodel: CTCNet = CTCNet.from_pretrain(model_path, **conf["audionet"])
+    audiomodel.get_MACs()
     videomodel = None
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":
         videomodel = FRCNNVideoModel(**conf["videonet"])
