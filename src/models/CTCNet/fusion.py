@@ -141,3 +141,11 @@ class MultiModalFusion(nn.Module):
                 audio_fused, video_fused = self.get_fusion_block(i)(audio_fused + audio_residual, video_fused + video_residual)
 
         return audio_fused
+
+    def get_MACs(self, bn_audio=torch.rand([1, 64, 251, 129]), bn_video=torch.rand([1, 512, 50])):
+        from thop import profile
+
+        macs = int(profile(self, inputs=(bn_audio, bn_video), verbose=False)[0] / 1000000)
+        params = int(sum(p.numel() for p in self.parameters() if p.requires_grad) / 1000)
+
+        return macs, params
