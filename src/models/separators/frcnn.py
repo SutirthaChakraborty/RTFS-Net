@@ -192,7 +192,7 @@ class FRCNN(nn.Module):
         self.concat_block = self.__build_concat_block()
 
     def __build_blocks(self):
-        clss = FRCNNBlock if self.in_chan > 0 else nn.Identity
+        clss = FRCNNBlock if (self.in_chan > 0 and self.hid_chan > 0) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
