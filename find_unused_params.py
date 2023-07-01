@@ -5,7 +5,7 @@ import argparse
 
 torch.set_float32_matmul_precision("high")
 
-from src.models import CTCNet
+from src.models import TDAVNet
 from src.utils import parse_args_as_dict
 from src.system import make_optimizer
 from src.losses import PITLossWrapper, pairwise_neg_snr
@@ -17,7 +17,7 @@ y = torch.rand(2, 121, 50, 16)
 
 
 def main(conf):
-    audiomodel = CTCNet(**conf["audionet"])
+    audiomodel = TDAVNet(**conf["audionet"])
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 

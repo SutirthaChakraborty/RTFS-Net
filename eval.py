@@ -13,7 +13,7 @@ import pandas as pd
 
 from tqdm import tqdm
 
-from src.models import CTCNet
+from src.models import TDAVNet
 from src.utils import tensors_to_device, get_free_gpu_indices
 from src.metrics import ALLMetricsTracker
 from src.utils.parser_utils import parse_args_as_dict
@@ -31,7 +31,7 @@ def main(conf):
     conf["videonet"]["model_name"] = conf["videonet"].get("model_name", None)
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
-    audiomodel: CTCNet = CTCNet.from_pretrain(model_path, **conf["audionet"])
+    audiomodel: TDAVNet = TDAVNet.from_pretrain(model_path, **conf["audionet"])
     audiomodel.get_MACs()
     videomodel = None
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":

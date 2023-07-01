@@ -4,6 +4,7 @@ from .dpt import DPTNet
 from .frcnn import FRCNN
 from .tdanet import TDANet
 from .gridnet import GridNet
+from .tdavnet import TDAVNet
 
 
 def get(identifier):

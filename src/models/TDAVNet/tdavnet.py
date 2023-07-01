@@ -8,7 +8,7 @@ from ..base_av_model import BaseAVModel
 from ...models import encoder, decoder, mask_generator
 
 
-class CTCNet(BaseAVModel):
+class TDAVNet(BaseAVModel):
     def __init__(
         self,
         n_src: int,
@@ -25,7 +25,7 @@ class CTCNet(BaseAVModel):
         *args,
         **kwargs,
     ):
-        super(CTCNet, self).__init__()
+        super(TDAVNet, self).__init__()
 
         self.n_src = n_src
         self.pretrained_vout_chan = pretrained_vout_chan
