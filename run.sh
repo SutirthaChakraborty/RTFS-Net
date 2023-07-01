@@ -1,5 +1,8 @@
 name=(
-        lrs2_gridnet_large_1d
+        lrs2_gridnet_mini_LSTM
+        lrs2_gridnet_mini_LSTM_f_first
+        lrs2_gridnet_mini_GRU
+        lrs2_gridnet_mini_GRU_f_first
 )
 for n in "${name[@]}"
 do
@@ -8,7 +11,10 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        ctcnet_large/gridnet/27_06_23
+        avnet_mini/gridnet/01_07_23_LSTM
+        avnet_mini/gridnet/01_07_23_LSTM_f_first
+        avnet_mini/gridnet/01_07_23_GRU
+        avnet_mini/gridnet/01_07_23_GRU_f_first
 )
 for e in "${exp[@]}"
 do

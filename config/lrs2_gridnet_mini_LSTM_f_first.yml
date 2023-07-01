@@ -11,9 +11,7 @@ audionet:
     concat_first: True
 
     video_bn_params:
-      out_chan: 64
-      kernel_size: 1
-      is2d: False
+      kernel_size: -1
 
     audio_bn_params:
       out_chan: 16
@@ -35,12 +33,28 @@ audionet:
     audio_params:
       audio_net: GridNet
       # in_chan same as audio_bn_chan
-      hid_chan: 128
-      kernel_size: 8
-      stride: 1
-      n_freqs: 129 # win//2+1
       repeats: 4
       shared: True
+      rnn_1_conf:
+        hid_chan: 64
+        dim: 4
+        kernel_size: 8
+        stride: 1
+        rnn_type: LSTM
+        bidirectional: True
+      rnn_2_conf:
+        hid_chan: 64
+        dim: 3
+        kernel_size: 8
+        stride: 1
+        rnn_type: LSTM
+        bidirectional: True
+      attention_conf:
+        n_freqs: 129
+        n_head: 4
+        hid_chan: 4
+        act_type: PReLU
+        norm_type: LayerNormalization4D
 
     video_params:
       video_net: TDANet
@@ -76,7 +90,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 2
+    batch_size: 4
     num_workers: 8
     half_lr: yes
     early_stop: yes
@@ -102,4 +116,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/tdanet2d/30_05_23_1d
+    exp_name: avnet_mini/gridnet/01_07_23_LSTM_f_first
