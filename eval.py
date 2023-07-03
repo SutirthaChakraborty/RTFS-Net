@@ -147,7 +147,7 @@ def main(conf):
     for k in keys:
         m, s = round(mean[k], 4), round(std[k], 3)
         results_dict.append((k, str(m) + " ± " + str(s)))
-        print(f"{k}\tmean: {m:.4f}  std: {s:.4f}")
+        print(f"{k}\tmean: {m}  std: {s}")
 
     for k, v in conf["audionet"].items():
         if isinstance(v, dict):
