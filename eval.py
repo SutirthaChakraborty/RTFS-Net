@@ -12,6 +12,7 @@ import warnings
 import pandas as pd
 
 from tqdm import tqdm
+from sigfig import round
 
 from src.models import TDAVNet
 from src.utils import tensors_to_device, get_free_gpu_indices
@@ -125,7 +126,7 @@ def main(conf):
     mean, std = metrics.get_mean(), metrics.get_std()
     keys = list(mean.keys() & std.keys())
 
-    order = ["sdr_i", "si-snr_i", "pesq", "stoi", "sdr", "si-snr"]
+    order = ["si-snr_i", "sdr_i", "pesq", "stoi", "si-snr", "sdr"]
 
     def get_order(k):
         try:
@@ -144,7 +145,7 @@ def main(conf):
 
     keys.sort(key=get_order)
     for k in keys:
-        m, s = mean[k], std[k]
+        m, s = round(mean[k], 4), round(std[k], 3)
         results_dict.append((k, str(m) + " ± " + str(s)))
         print(f"{k}\tmean: {m:.4f}  std: {s:.4f}")
 
