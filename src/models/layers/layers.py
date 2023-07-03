@@ -66,6 +66,16 @@ class ConvNormAct(nn.Module):
         output = self.act(output)
         return output
 
+    def get_config(self):
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
+
 
 class ConvActNorm(nn.Module):
     def __init__(
