@@ -129,7 +129,9 @@ class ConvActNorm(nn.Module):
             self.conv = nn.Identity()
 
         self.act = activations.get(self.act_type)()
-        self.norm = normalizations.get(self.norm_type)((self.out_chan, self.n_freqs) if self.n_freqs > 0 else self.out_chan)
+        self.norm = normalizations.get(self.norm_type)(
+            (self.out_chan, self.n_freqs) if self.norm_type == "LayerNormalization4D" else self.out_chan
+        )
 
     def forward(self, x: torch.Tensor):
         output = self.conv(x)
@@ -367,6 +369,7 @@ class DualPathRNN(nn.Module):
         kernel_size: int = 8,
         stride: int = 1,
         rnn_type: str = "LSTM",
+        norm_type: str = "LayerNormalization4D",
         bidirectional: bool = True,
         *args,
         **kwargs,
@@ -378,12 +381,13 @@ class DualPathRNN(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.rnn_type = rnn_type
+        self.norm_type = norm_type
         self.bidirectional = bidirectional
         self.num_direction = int(bidirectional) + 1
 
         self.unfolded_chan = self.in_chan * self.kernel_size
 
-        self.norm = normalizations.LayerNormalization4D((self.in_chan, 1))
+        self.norm = normalizations.get(self.norm_type)((self.in_chan, 1) if self.norm_type == "LayerNormalization4D" else self.in_chan)
         self.rnn = getattr(nn, self.rnn_type)(
             input_size=self.unfolded_chan,
             hidden_size=self.hid_chan,
