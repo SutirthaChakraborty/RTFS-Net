@@ -9,6 +9,7 @@ import yaml
 import torch
 import argparse
 import warnings
+import torchaudio
 import pandas as pd
 
 from tqdm import tqdm
@@ -90,34 +91,16 @@ def main(conf):
         est_sources_np = reordered_sources.squeeze(0)
         metrics(mix=mix_np, clean=sources_np, estimate=est_sources_np, key=key)
 
-        # print(sources_np.shape)
-        # print(est_sources_np.shape)
+        if idx < conf["n_save_ex"]:
+            if not os.path.exists(os.path.join(ex_save_dir, "examples")):
+                os.makedirs(os.path.join(ex_save_dir, "examples"))
 
-        # save_dir = conf["save_dir"]
-        # gt_dir = "vox_gt"
-        # if save_dir is not None:
-        #     # spk = src_path.split('/')[-2]
-        #     # spk_id = ["s1", "s2"].index(spk)
-        #     # splits = key.replace('.wav', '').split("/")[-1].split('_')
-        #     # res = ["{}_{}_{}".format(splits[0], splits[1], splits[2]), "{}_{}_{}".format(splits[3], splits[4], splits[5])]
-        #     # # import pdb; pdb.set_trace()
-        #     # mouth_key = res[spk_id]
-        #     spk = src_path.split('/')[-2]
-        #     spk_id = ["s1", "s2"].index(spk)
-        #     p = re.compile(r'id\d{5}_.{11}_\d{5}')
-        #     res = p.findall(key)
-        #     mouth_key = res[spk_id]
-
-        #     if not osp.exists(save_dir):
-        #         os.makedirs(save_dir)
-        #     if not osp.exists(gt_dir):
-        #         os.makedirs(gt_dir)
-        #     est_sources_np = est_sources_np[0].cpu().numpy()
-        #     sf.write(osp.join(save_dir, mouth_key+".wav"), est_sources_np, 16000)
-        #     sources_np = sources_np[0].cpu().numpy()
-        #     sf.write(osp.join(gt_dir, mouth_key+".wav"), sources_np, 16000)
-        #     mix_np = mix_np.cpu().numpy()
-        #     sf.write(osp.join(gt_dir, key), mix_np, 16000)
+            est_sources_np = est_sources_np[0].cpu().unsqueeze(0)
+            torchaudio.save(os.path.join(ex_save_dir, "examples", str(idx) + "_est.wav"), est_sources_np, 16000)
+            sources_np = sources_np[0].cpu().unsqueeze(0)
+            torchaudio.save(os.path.join(ex_save_dir, "examples", str(idx) + "_gt.wav"), sources_np, 16000)
+            mix_np = mix_np.cpu().unsqueeze(0)
+            torchaudio.save(os.path.join(ex_save_dir, "examples", str(idx) + "_mix.wav"), mix_np, 16000)
 
         if not (idx % 10):
             pbar.set_postfix(metrics.get_mean())
@@ -173,16 +156,15 @@ if __name__ == "__main__":
         "-c",
         "--conf-dir",
         type=str,
-        default="/ssd2/anxihao/experiments/audio-visual/ctcnet_small_tdanet/conf.yml",
+        default="/ssd2/anxihao/experiments/audio-visual/",
         help="Full path to save best validation model",
     )
     parser.add_argument(
         "--n-save-ex",
         type=int,
         default=-1,
-        help="Number of audio examples to save, -1 means all",
+        help="Number of audio examples to save, -1 means none",
     )
-    # parser.add_argument("-s", "--save-dir", default=None, help="Full path to save the results wav")
 
     args = parser.parse_args()
 
