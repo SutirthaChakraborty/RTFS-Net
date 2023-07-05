@@ -33,11 +33,14 @@ class ConvNormAct(nn.Module):
         self.stride = stride
         self.groups = groups
         self.dilation = dilation
-        self.padding = dilation * (kernel_size - 1) // 2 if padding is None else padding
+        self.padding = padding
         self.norm_type = norm_type
         self.act_type = act_type
         self.xavier_init = xavier_init
         self.bias = bias
+
+        if self.padding is None:
+            self.padding = dilation * (kernel_size - 1) // 2 if self.stride > 1 else "same"
 
         if kernel_size > 0:
             conv = nn.Conv2d if is2d else nn.Conv1d
@@ -103,12 +106,15 @@ class ConvActNorm(nn.Module):
         self.stride = stride
         self.groups = groups
         self.dilation = dilation
-        self.padding = dilation * (kernel_size - 1) // 2 if padding is None else padding
+        self.padding = padding
         self.norm_type = norm_type
         self.act_type = act_type
         self.n_freqs = n_freqs
         self.xavier_init = xavier_init
         self.bias = bias
+
+        if self.padding is None:
+            self.padding = 0 if self.stride > 1 else "same"
 
         if kernel_size > 0:
             conv = nn.Conv2d if is2d else nn.Conv1d
