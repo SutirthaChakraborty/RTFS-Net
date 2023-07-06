@@ -21,7 +21,7 @@ audionet:
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
-      win: 512
+      win: 256
       hop_length: 128
       out_chan: 32
       kernel_size: 3
@@ -38,25 +38,25 @@ audionet:
       stride: 2 
       norm_type: gLN
       act_type: PReLU
-      upsampling_depth: 5
+      upsampling_depth: 3
       repeats: 4
       shared: True
       rnn_1_conf:
-        hid_chan: 256
-        dim: 3
-        kernel_size: 8
-        stride: 1
-        rnn_type: GRU
-        bidirectional: True
-      rnn_2_conf:
-        hid_chan: 256
+        hid_chan: 64
         dim: 4
         kernel_size: 8
         stride: 1
-        rnn_type: GRU
+        rnn_type: LSTM
+        bidirectional: True
+      rnn_2_conf:
+        hid_chan: 64
+        dim: 3
+        kernel_size: 8
+        stride: 1
+        rnn_type: LSTM
         bidirectional: True
       attention_conf:
-        n_freqs: 17
+        n_freqs: 33
         n_head: 4
         hid_chan: 4
         act_type: PReLU
@@ -122,4 +122,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/gridnet/01_07_23_GRU
+    exp_name: avnet_mini/tdavnet/06_07_23
