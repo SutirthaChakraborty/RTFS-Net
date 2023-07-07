@@ -74,8 +74,6 @@ def main(conf):
     # Randomly choose the indexes of sentences to save.
     ex_save_dir = os.path.join(conf["exp_dir"], "results/")
     os.makedirs(ex_save_dir, exist_ok=True)
-    if conf["n_save_ex"] == -1:
-        conf["n_save_ex"] = len(test_set)
     metrics = ALLMetricsTracker(save_file=os.path.join(ex_save_dir, "metrics.csv"))
     torch.no_grad().__enter__()
 
