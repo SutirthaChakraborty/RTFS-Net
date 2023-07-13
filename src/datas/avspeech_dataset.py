@@ -83,11 +83,12 @@ class AVSpeechDataset(Dataset):
                         self.mix.append(mix_infos[i])
                         self.sources.append(src_inf[i])
 
-            print(
-                "Drop {} utts({:.2f} h) from {} (shorter than {} samples)".format(
-                    drop_utt, drop_len / sample_rate / 3600, orig_len, self.seg_len
+            if drop_utt > 0:
+                print(
+                    "Drop {} utts({:.2f} h) from {} (shorter than {} samples)".format(
+                        drop_utt, drop_len / sample_rate / 3600, orig_len, self.seg_len
+                    )
                 )
-            )
             self.length = orig_len
 
         elif self.n_src == 2:

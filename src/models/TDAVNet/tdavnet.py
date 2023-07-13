@@ -8,7 +8,7 @@ from ..base_av_model import BaseAVModel
 from ...models import encoder, decoder, mask_generator
 
 
-class CTCNet(BaseAVModel):
+class TDAVNet(BaseAVModel):
     def __init__(
         self,
         n_src: int,
@@ -21,10 +21,11 @@ class CTCNet(BaseAVModel):
         video_params: dict = dict(),
         fusion_params: dict = dict(),
         concat_first: bool = False,
+        print_macs: bool = True,
         *args,
         **kwargs,
     ):
-        super(CTCNet, self).__init__()
+        super(TDAVNet, self).__init__()
 
         self.n_src = n_src
         self.pretrained_vout_chan = pretrained_vout_chan
@@ -36,6 +37,7 @@ class CTCNet(BaseAVModel):
         self.fusion_params = fusion_params
         self.mask_generation_params = mask_generation_params
         self.concat_first = concat_first
+        self.print_macs = print_macs
 
         self.encoder: encoder.BaseEncoder = encoder.get(self.enc_dec_params["encoder_type"])(
             **self.enc_dec_params,
@@ -78,7 +80,8 @@ class CTCNet(BaseAVModel):
             n_src=self.n_src,
         )
 
-        self.get_MACs()
+        if self.print_macs:
+            self.get_MACs()
 
     def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor = None):
         audio_mixture_embedding = self.encoder(audio_mixture)  # B, 1, L -> B, N, T, (F)

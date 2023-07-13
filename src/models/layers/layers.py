@@ -1,3 +1,4 @@
+import math
 import torch
 import inspect
 import torch.nn as nn
@@ -32,11 +33,14 @@ class ConvNormAct(nn.Module):
         self.stride = stride
         self.groups = groups
         self.dilation = dilation
-        self.padding = dilation * (kernel_size - 1) // 2 if padding is None else padding
+        self.padding = padding
         self.norm_type = norm_type
         self.act_type = act_type
         self.xavier_init = xavier_init
         self.bias = bias
+
+        if self.padding is None:
+            self.padding = dilation * (kernel_size - 1) // 2 if self.stride > 1 else "same"
 
         if kernel_size > 0:
             conv = nn.Conv2d if is2d else nn.Conv1d
@@ -63,6 +67,82 @@ class ConvNormAct(nn.Module):
         output = self.conv(x)
         output = self.norm(output)
         output = self.act(output)
+        return output
+
+    def get_config(self):
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
+
+
+class ConvActNorm(nn.Module):
+    def __init__(
+        self,
+        in_chan: int = 1,
+        out_chan: int = 1,
+        kernel_size: int = -1,
+        stride: int = 1,
+        groups: int = 1,
+        dilation: int = 1,
+        padding: int = None,
+        norm_type: str = None,
+        act_type: str = None,
+        n_freqs: int = -1,
+        xavier_init: bool = False,
+        bias: bool = True,
+        is2d: bool = False,
+        *args,
+        **kwargs,
+    ):
+        super(ConvActNorm, self).__init__()
+        self.in_chan = in_chan
+        self.out_chan = out_chan
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.groups = groups
+        self.dilation = dilation
+        self.padding = padding
+        self.norm_type = norm_type
+        self.act_type = act_type
+        self.n_freqs = n_freqs
+        self.xavier_init = xavier_init
+        self.bias = bias
+
+        if self.padding is None:
+            self.padding = 0 if self.stride > 1 else "same"
+
+        if kernel_size > 0:
+            conv = nn.Conv2d if is2d else nn.Conv1d
+
+            self.conv = conv(
+                in_channels=self.in_chan,
+                out_channels=self.out_chan,
+                kernel_size=self.kernel_size,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                groups=self.groups,
+                bias=self.bias,
+            )
+            if self.xavier_init:
+                nn.init.xavier_uniform_(self.conv.weight)
+        else:
+            self.conv = nn.Identity()
+
+        self.act = activations.get(self.act_type)()
+        self.norm = normalizations.get(self.norm_type)(
+            (self.out_chan, self.n_freqs) if self.norm_type == "LayerNormalization4D" else self.out_chan
+        )
+
+    def forward(self, x: torch.Tensor):
+        output = self.conv(x)
+        output = self.act(output)
+        output = self.norm(output)
         return output
 
     def get_config(self):
@@ -283,6 +363,72 @@ class RNNProjection(nn.Module):
 
         x = x.transpose(1, 2).contiguous()
         x = x + res
+        return x
+
+
+class DualPathRNN(nn.Module):
+    def __init__(
+        self,
+        in_chan: int,
+        hid_chan: int,
+        dim: int,
+        kernel_size: int = 8,
+        stride: int = 1,
+        rnn_type: str = "LSTM",
+        norm_type: str = "LayerNormalization4D",
+        bidirectional: bool = True,
+        *args,
+        **kwargs,
+    ):
+        super(DualPathRNN, self).__init__()
+        self.in_chan = in_chan
+        self.hid_chan = hid_chan
+        self.dim = dim
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.rnn_type = rnn_type
+        self.norm_type = norm_type
+        self.bidirectional = bidirectional
+        self.num_direction = int(bidirectional) + 1
+
+        self.unfolded_chan = self.in_chan * self.kernel_size
+
+        self.norm = normalizations.get(self.norm_type)((self.in_chan, 1) if self.norm_type == "LayerNormalization4D" else self.in_chan)
+        self.rnn = getattr(nn, self.rnn_type)(
+            input_size=self.unfolded_chan,
+            hidden_size=self.hid_chan,
+            num_layers=1,
+            batch_first=True,
+            bidirectional=self.bidirectional,
+        )
+        self.linear = nn.ConvTranspose1d(self.hid_chan * self.num_direction, self.in_chan, self.kernel_size, stride=self.stride)
+
+    def forward(self, x: torch.Tensor):
+        B, C, old_T, old_F = x.shape
+        new_T = math.ceil((old_T - self.kernel_size) / self.stride) * self.stride + self.kernel_size
+        new_F = math.ceil((old_F - self.kernel_size) / self.stride) * self.stride + self.kernel_size
+        x = F.pad(x, (0, new_F - old_F, 0, new_T - old_T))
+
+        residual = x
+        x = self.norm(x)
+        if self.dim == 3:
+            x = x.permute(0, 3, 1, 2).contiguous().view(B * new_F, C, new_T)
+        elif self.dim == 4:
+            x = x.permute(0, 2, 1, 3).contiguous().view(B * new_T, C, new_F)
+        x = F.unfold(x[..., None], (self.kernel_size, 1), stride=(self.stride, 1))
+        x = x.transpose(1, 2)
+        x = self.rnn(x)[0]
+        x = x.transpose(1, 2)
+        x = self.linear(x)
+        if self.dim == 3:
+            x = x.view([B, new_F, C, new_T])
+            x = x.permute(0, 2, 3, 1).contiguous()
+        elif self.dim == 4:
+            x = x.view([B, new_T, C, new_F])
+            x = x.permute(0, 2, 1, 3).contiguous()
+        x = x + residual
+
+        x = x[..., :old_T, :old_F]
         return x
 
 

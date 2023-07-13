@@ -1,10 +1,10 @@
 import math
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as functional
 
+from . import layers
 from timm.models.layers import DropPath
-from . import cnn_layers
 
 
 class PositionalEncoding(nn.Module):
@@ -71,6 +71,114 @@ class MultiHeadSelfAttention(nn.Module):
         return x
 
 
+class MultiHeadSelfAttention2D(nn.Module):
+    def __init__(
+        self,
+        in_chan: int,
+        n_freqs: int,
+        n_head: int = 4,
+        hid_chan: int = 4,
+        act_type: str = "PReLU",
+        norm_type: str = "LayerNormalization4D",
+    ):
+        super(MultiHeadSelfAttention2D, self).__init__()
+        self.in_chan = in_chan
+        self.n_freqs = n_freqs
+        self.n_head = n_head
+        self.hid_chan = hid_chan
+        self.act_type = act_type
+        self.norm_type = norm_type
+
+        assert self.in_chan % self.n_head == 0
+
+        self.Queries = nn.ModuleList()
+        self.Keys = nn.ModuleList()
+        self.Values = nn.ModuleList()
+
+        for _ in range(self.n_head):
+            self.Queries.append(
+                layers.ConvActNorm(
+                    in_chan=self.in_chan,
+                    out_chan=self.hid_chan,
+                    kernel_size=1,
+                    act_type=self.act_type,
+                    norm_type=self.norm_type,
+                    n_freqs=self.n_freqs,
+                    is2d=True,
+                )
+            )
+            self.Keys.append(
+                layers.ConvActNorm(
+                    in_chan=self.in_chan,
+                    out_chan=self.hid_chan,
+                    kernel_size=1,
+                    act_type=self.act_type,
+                    norm_type=self.norm_type,
+                    n_freqs=self.n_freqs,
+                    is2d=True,
+                )
+            )
+            self.Values.append(
+                layers.ConvActNorm(
+                    in_chan=self.in_chan,
+                    out_chan=self.in_chan // self.n_head,
+                    kernel_size=1,
+                    act_type=self.act_type,
+                    norm_type=self.norm_type,
+                    n_freqs=self.n_freqs,
+                    is2d=True,
+                )
+            )
+
+        self.attn_concat_proj = layers.ConvActNorm(
+            in_chan=self.in_chan,
+            out_chan=self.in_chan,
+            kernel_size=1,
+            act_type=self.act_type,
+            norm_type=self.norm_type,
+            n_freqs=self.n_freqs,
+            is2d=True,
+        )
+
+    def forward(self, x: torch.Tensor):
+        batch_size, _, time, freq = x.size()
+        residual = x
+
+        all_Q, all_K, all_V = [], [], []
+        for ii in range(self.n_head):
+            all_Q.append(self.Queries[ii](x))  # [B, E, T, F]
+            all_K.append(self.Keys[ii](x))  # [B, E, T, F]
+            all_V.append(self.Values[ii](x))  # [B, C/n_head, T, F]
+
+        Q = torch.cat(all_Q, dim=0)  # [B', E, T, F]    B' = B*n_head
+        K = torch.cat(all_K, dim=0)  # [B', E, T, F]
+        V = torch.cat(all_V, dim=0)  # [B', C/n_head, T, F]
+
+        Q = Q.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
+        K = K.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
+        V = V.transpose(1, 2)  # [B', T, C/n_head, F]
+        old_shape = V.shape
+        V = V.flatten(start_dim=2)  # [B', T, C*F/n_head]
+        emb_dim = Q.shape[-1]  # C*F/n_head
+
+        attn_mat = torch.matmul(Q, K.transpose(1, 2)) / (emb_dim**0.5)  # [B', T, T]
+        attn_mat = functional.softmax(attn_mat, dim=2)  # [B', T, T]
+        V = torch.matmul(attn_mat, V)  # [B', T, C*F/n_head]
+
+        V = V.reshape(old_shape)  # [B', T, C/n_head, F]
+        V = V.transpose(1, 2)  # [B', C/n_head, T, F]
+        emb_dim = V.shape[1]  # C/n_head
+
+        x = V.view([self.n_head, batch_size, emb_dim, time, freq])  # [n_head, B, C/n_head, T, F])
+        x = x.transpose(0, 1).contiguous()  # [B, n_head, C/n_head, T, F])
+        x = x.view([batch_size, self.n_head * emb_dim, time, freq])  # [B, C, T, F])
+        x = self.attn_concat_proj(x)  # [B, C, T, F])
+
+        x = x + residual
+
+        return x
+
+
 class GlobalAttention(nn.Module):
     def __init__(
         self,
@@ -94,7 +202,7 @@ class GlobalAttention(nn.Module):
         self.pos_enc = pos_enc
 
         self.MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
-        self.FFN = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
+        self.FFN = layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
 
     def forward(self, x: torch.Tensor):
         x = self.MHSA(x)
@@ -120,7 +228,7 @@ class GlobalAttentionRNN(nn.Module):
         self.rnn_type = rnn_type
         self.bidirectional = bidirectional
 
-        self.RNN = cnn_layers.RNNProjection(self.in_chan, self.hid_chan, self.rnn_type, self.dropout, self.bidirectional)
+        self.RNN = layers.RNNProjection(self.in_chan, self.hid_chan, self.rnn_type, self.dropout, self.bidirectional)
 
     def forward(self, x: torch.Tensor):
         x = self.RNN(x)
@@ -161,11 +269,11 @@ class GlobalAttention2D(nn.Module):
         self.freq_FFN = nn.Identity()
 
         if self.single_ffn:
-            self.time_FFN = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
-            self.freq_FFN = cnn_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+            self.time_FFN = layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+            self.freq_FFN = layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
         if self.group_ffn:
-            self.group_FFN = cnn_layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
+            self.group_FFN = layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
@@ -215,13 +323,13 @@ class GlobalGALR(nn.Module):
         self.rnn_type = rnn_type
         self.bidirectional = bidirectional
 
-        self.time_RNN = cnn_layers.RNNProjection(self.in_chan, self.in_chan, self.rnn_type, self.dropout, self.bidirectional)
+        self.time_RNN = layers.RNNProjection(self.in_chan, self.in_chan, self.rnn_type, self.dropout, self.bidirectional)
         self.freq_MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
-        self.freq_FFN = cnn_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        self.freq_FFN = layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
         self.group_FFN = nn.Identity()
         if self.group_ffn:
-            self.group_FFN = cnn_layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
+            self.group_FFN = layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()

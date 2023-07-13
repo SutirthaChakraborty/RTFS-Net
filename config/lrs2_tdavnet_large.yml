@@ -11,9 +11,7 @@ audionet:
     concat_first: True
 
     video_bn_params:
-      out_chan: 64
-      kernel_size: 1
-      is2d: False
+      kernel_size: -1
 
     audio_bn_params:
       out_chan: 64
@@ -25,7 +23,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 128
+      out_chan: 64
       kernel_size: 3
       stride: 1
       bias: False
@@ -33,25 +31,36 @@ audionet:
       norm_type: gLN
       
     audio_params:
-      audio_net: TDANet
+      audio_net: TDAVNet
       # in_chan same as audio_bn_chan
-      hid_chan: 64                       # TDANet hidden channels
-      upsampling_depth: 5
-      shared: True
-      repeats: 4
-      norm_type: gLN
-      act_type: PReLU
+      hid_chan: 64
       kernel_size: 5
       stride: 2 
-      is2d: True
-      attention_params:
-        attention_type: GlobalAttention2D
-        ffn_name: FeedForwardNetwork
-        kernel_size: 5
-        n_head: 8
-        dropout: 0.1
-        group_ffn: True
-        single_ffn: False
+      norm_type: gLN
+      act_type: PReLU
+      upsampling_depth: 3
+      repeats: 16
+      shared: True
+      rnn_1_conf:
+        hid_chan: 128
+        dim: 4
+        kernel_size: 7
+        stride: 1
+        rnn_type: LSTM
+        bidirectional: True
+      rnn_2_conf:
+        hid_chan: 128
+        dim: 3
+        kernel_size: 7
+        stride: 1
+        rnn_type: LSTM
+        bidirectional: True
+      attention_conf:
+        n_freqs: 33
+        n_head: 4
+        hid_chan: 4
+        act_type: PReLU
+        norm_type: LayerNormalization4D
 
     video_params:
       video_net: TDANet
@@ -87,7 +96,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 8
+    batch_size: 4
     num_workers: 8
     half_lr: yes
     early_stop: yes
@@ -113,4 +122,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_mini/tdanet2d/30_05_23_1d
+    exp_name: avnet_large/tdavnet/06_07_23

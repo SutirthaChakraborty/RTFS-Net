@@ -10,9 +10,7 @@ audionet:
     pretrained_vout_chan: 512                  # output from pretrained model
 
     video_bn_params:
-      out_chan: 64
-      kernel_size: 1
-      is2d: False
+      kernel_size: -1
 
     audio_bn_params:
       out_chan: 512
@@ -43,19 +41,19 @@ audionet:
       stride: 2 
       is2d: False
       attention_params:
-        attention_type: GlobalAttention
-        ffn_name: FeedForwardNetwork
-        kernel_size: 5
-        n_head: 8
+        attention_type: GlobalAttentionRNN
+        hid_chan: 512
         dropout: 0.1
+        rnn_type: GRU
+        bidirectional: True
     
     video_params:
       video_net: TDANet
       # in_chan same as video_bn_chan
       hid_chan: 64
       upsampling_depth: 4
-      shared: False
-      repeats: 3
+      shared: True
+      repeats: 1
       norm_type: BatchNorm1d
       act_type: PReLU
       kernel_size: 3
@@ -70,7 +68,7 @@ audionet:
 
     fusion_params:
       fusion_type: ConcatFusion
-      fusion_shared: False
+      fusion_shared: True
       is2d: False
 
     mask_generation_params:
@@ -108,4 +106,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_large/tdanet1d/04_05_23
+    exp_name: avnet_large/tdanet1d/29_06_23_vf_3

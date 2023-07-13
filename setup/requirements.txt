@@ -10,3 +10,4 @@ torch-optimizer
 tensorboard
 black
 pandas
+sigfig
