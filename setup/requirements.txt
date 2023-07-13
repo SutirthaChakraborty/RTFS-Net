@@ -1,7 +1,6 @@
 opencv-python
 soundfile
 scipy
-pypesq
 pystoi
 thop
 timm
