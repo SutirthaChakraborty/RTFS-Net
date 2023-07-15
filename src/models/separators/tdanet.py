@@ -9,7 +9,6 @@ class TDANetBlock(nn.Module):
     def __init__(
         self,
         in_chan: int,
-        hid_chan: int,
         kernel_size: int = 5,
         stride: int = 2,
         norm_type: str = "gLN",
@@ -20,7 +19,6 @@ class TDANetBlock(nn.Module):
     ):
         super(TDANetBlock, self).__init__()
         self.in_chan = in_chan
-        self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.stride = stride
         self.norm_type = norm_type
@@ -33,7 +31,7 @@ class TDANetBlock(nn.Module):
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
         self.downsample_layers = self.__build_downsample_layers()
-        self.globalatt = self.att(in_chan=self.hid_chan, **self.attention_params)
+        self.globalatt = self.att(in_chan=self.in_chan, **self.attention_params)
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
 
@@ -42,11 +40,11 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth):
             out.append(
                 ConvNormAct(
-                    in_chan=self.hid_chan,
-                    out_chan=self.hid_chan,
+                    in_chan=self.in_chan,
+                    out_chan=self.in_chan,
                     kernel_size=self.kernel_size,
                     stride=1 if i == 0 else self.stride,
-                    groups=self.hid_chan,
+                    groups=self.in_chan,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
                 )
@@ -59,8 +57,8 @@ class TDANetBlock(nn.Module):
         for _ in range(self.upsampling_depth):
             out.append(
                 InjectionMultiSum(
-                    in_chan=self.hid_chan,
-                    hid_chan=self.hid_chan,
+                    in_chan=self.in_chan,
+                    hid_chan=self.in_chan,
                     kernel_size=self.kernel_size,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
@@ -74,8 +72,8 @@ class TDANetBlock(nn.Module):
         for _ in range(self.upsampling_depth - 1):
             out.append(
                 InjectionMultiSum(
-                    in_chan=self.hid_chan,
-                    hid_chan=self.hid_chan,
+                    in_chan=self.in_chan,
+                    hid_chan=self.in_chan,
                     kernel_size=1,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
@@ -114,7 +112,6 @@ class TDANet(nn.Module):
     def __init__(
         self,
         in_chan: int = -1,
-        hid_chan: int = -1,
         kernel_size: int = 5,
         stride: int = 2,
         norm_type: str = "gLN",
@@ -125,12 +122,12 @@ class TDANet(nn.Module):
         attention_params: dict = dict(),
         is2d: bool = False,
         concat_first: bool = False,
+        concat_block: bool = True,
         *args,
         **kwargs,
     ):
         super(TDANet, self).__init__()
         self.in_chan = in_chan
-        self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.stride = stride
         self.norm_type = norm_type
@@ -141,16 +138,16 @@ class TDANet(nn.Module):
         self.attention_params = attention_params
         self.is2d = is2d
         self.concat_first = concat_first
+        self.concat_block = concat_block
 
         self.blocks = self.__build_blocks()
         self.concat_block = self.__build_concat_block()
 
     def __build_blocks(self):
-        clss = TDANetBlock if (self.in_chan > 0 and self.hid_chan > 0) else nn.Identity
+        clss = TDANetBlock if self.in_chan > 0 else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
-                hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
                 stride=self.stride,
                 norm_type=self.norm_type,
@@ -165,7 +162,6 @@ class TDANet(nn.Module):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
-                        hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
                         stride=self.stride,
                         norm_type=self.norm_type,
@@ -179,7 +175,7 @@ class TDANet(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if (self.in_chan > 0) and ((self.repeats > 1) or self.concat_first) else nn.Identity
+        clss = ConvNormAct if self.concat_block and ((self.in_chan > 0) and ((self.repeats > 1) or self.concat_first)) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,

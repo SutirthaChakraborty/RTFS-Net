@@ -10,7 +10,6 @@ class TDAVNetBlock(nn.Module):
     def __init__(
         self,
         in_chan: int,
-        hid_chan: int,
         kernel_size: int = 5,
         stride: int = 2,
         norm_type: str = "gLN",
@@ -22,7 +21,6 @@ class TDAVNetBlock(nn.Module):
     ):
         super(TDAVNetBlock, self).__init__()
         self.in_chan = in_chan
-        self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.stride = stride
         self.norm_type = norm_type
@@ -33,7 +31,7 @@ class TDAVNetBlock(nn.Module):
         self.attention_conf = attention_conf
 
         self.downsample_layers = self.__build_downsample_layers()
-        self.globalatt = GridNetBlock(self.hid_chan, self.rnn_1_conf, self.rnn_2_conf, self.attention_conf)
+        self.globalatt = GridNetBlock(self.in_chan, self.rnn_1_conf, self.rnn_2_conf, self.attention_conf)
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
 
@@ -42,11 +40,11 @@ class TDAVNetBlock(nn.Module):
         for i in range(self.upsampling_depth):
             out.append(
                 ConvNormAct(
-                    in_chan=self.hid_chan,
-                    out_chan=self.hid_chan,
+                    in_chan=self.in_chan,
+                    out_chan=self.in_chan,
                     kernel_size=self.kernel_size,
                     stride=1 if i == 0 else self.stride,
-                    groups=self.hid_chan,
+                    groups=self.in_chan,
                     norm_type=self.norm_type,
                     is2d=True,
                 )
@@ -59,8 +57,8 @@ class TDAVNetBlock(nn.Module):
         for _ in range(self.upsampling_depth):
             out.append(
                 InjectionMultiSum(
-                    in_chan=self.hid_chan,
-                    hid_chan=self.hid_chan,
+                    in_chan=self.in_chan,
+                    hid_chan=self.in_chan,
                     kernel_size=self.kernel_size,
                     norm_type=self.norm_type,
                     is2d=True,
@@ -74,8 +72,8 @@ class TDAVNetBlock(nn.Module):
         for _ in range(self.upsampling_depth - 1):
             out.append(
                 InjectionMultiSum(
-                    in_chan=self.hid_chan,
-                    hid_chan=self.hid_chan,
+                    in_chan=self.in_chan,
+                    hid_chan=self.in_chan,
                     kernel_size=1,
                     norm_type=self.norm_type,
                     is2d=True,
@@ -114,7 +112,6 @@ class TDAVNet(nn.Module):
     def __init__(
         self,
         in_chan: int = -1,
-        hid_chan: int = -1,
         kernel_size: int = 5,
         stride: int = 2,
         norm_type: str = "gLN",
@@ -126,12 +123,12 @@ class TDAVNet(nn.Module):
         repeats: int = 4,
         shared: bool = False,
         concat_first: bool = False,
+        concat_block: bool = True,
         *args,
         **kwargs,
     ):
         super(TDAVNet, self).__init__()
         self.in_chan = in_chan
-        self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.stride = stride
         self.norm_type = norm_type
@@ -143,16 +140,16 @@ class TDAVNet(nn.Module):
         self.repeats = repeats
         self.shared = shared
         self.concat_first = concat_first
+        self.concat_block = concat_block
 
         self.blocks = self.__build_blocks()
         self.concat_block = self.__build_concat_block()
 
     def __build_blocks(self):
-        clss = TDAVNetBlock if (self.in_chan > 0 and self.hid_chan > 0) else nn.Identity
+        clss = TDAVNetBlock if self.in_chan > 0 else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
-                hid_chan=self.hid_chan,
                 kernel_size=self.kernel_size,
                 stride=self.stride,
                 norm_type=self.norm_type,
@@ -168,7 +165,6 @@ class TDAVNet(nn.Module):
                 out.append(
                     clss(
                         in_chan=self.in_chan,
-                        hid_chan=self.hid_chan,
                         kernel_size=self.kernel_size,
                         stride=self.stride,
                         norm_type=self.norm_type,
@@ -183,7 +179,7 @@ class TDAVNet(nn.Module):
         return out
 
     def __build_concat_block(self):
-        clss = ConvNormAct if (self.in_chan > 0) and ((self.repeats > 1) or self.concat_first) else nn.Identity
+        clss = ConvNormAct if self.concat_block and ((self.in_chan > 0) and ((self.repeats > 1) or self.concat_first)) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
