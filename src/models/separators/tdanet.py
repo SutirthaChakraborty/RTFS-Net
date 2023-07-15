@@ -32,26 +32,8 @@ class TDANetBlock(nn.Module):
         self.att = get(self.attention_params.get("attention_type", "GlobalAttention2D" if self.is2d else "GlobalAttention"))
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
-        self.projection = ConvNormAct(
-            in_chan=self.in_chan,
-            out_chan=self.hid_chan,
-            kernel_size=1,
-            norm_type=self.norm_type,
-            act_type=self.act_type,
-            is2d=self.is2d,
-        )
-        self.globalatt = self.att(
-            **self.attention_params,
-            in_chan=self.hid_chan,
-        )
-        self.residual_conv = ConvNormAct(
-            in_chan=self.hid_chan,
-            out_chan=self.in_chan,
-            kernel_size=1,
-            is2d=self.is2d,
-        )
-
         self.downsample_layers = self.__build_downsample_layers()
+        self.globalatt = self.att(in_chan=self.hid_chan, **self.attention_params)
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
 
@@ -104,11 +86,9 @@ class TDANetBlock(nn.Module):
 
     def forward(self, x):
         # x: B, C, T, (F)
-        residual = x
-        x_enc = self.projection(x)
 
         # bottom-up
-        downsampled_outputs = [self.downsample_layers[0](x_enc)]
+        downsampled_outputs = [self.downsample_layers[0](x)]
         for i in range(1, self.upsampling_depth):
             downsampled_outputs.append(self.downsample_layers[i](downsampled_outputs[-1]))
 
@@ -127,9 +107,7 @@ class TDANetBlock(nn.Module):
         for i in range(self.upsampling_depth - 3, -1, -1):
             expanded = self.concat_layers[i](x_fused[i], expanded) + downsampled_outputs[i]
 
-        out = self.residual_conv(expanded) + residual
-
-        return out
+        return expanded
 
 
 class TDANet(nn.Module):
