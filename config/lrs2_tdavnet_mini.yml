@@ -42,7 +42,7 @@ audionet:
       upsampling_depth: 3
       repeats: 4
       shared: True
-      concat_block: False
+      concat_block: True
       rnn_1_conf:
         hid_chan: 64
         dim: 4
@@ -69,7 +69,7 @@ audionet:
       # in_chan same as video_bn_chan
       upsampling_depth: 4
       shared: True
-      concat_block: False
+      concat_block: True
       repeats: 1
       norm_type: BatchNorm1d
       act_type: PReLU
