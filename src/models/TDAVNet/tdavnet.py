@@ -20,7 +20,6 @@ class TDAVNet(BaseAVModel):
         video_bn_params: dict = dict(),
         video_params: dict = dict(),
         fusion_params: dict = dict(),
-        concat_first: bool = False,
         print_macs: bool = True,
         *args,
         **kwargs,
@@ -36,7 +35,6 @@ class TDAVNet(BaseAVModel):
         self.video_params = video_params
         self.fusion_params = fusion_params
         self.mask_generation_params = mask_generation_params
-        self.concat_first = concat_first
         self.print_macs = print_macs
 
         self.encoder: encoder.BaseEncoder = encoder.get(self.enc_dec_params["encoder_type"])(
@@ -64,7 +62,6 @@ class TDAVNet(BaseAVModel):
             video_params=self.video_params,
             audio_bn_chan=self.audio_bn_chan,
             video_bn_chan=self.video_bn_chan,
-            concat_first=self.concat_first,
         )
 
         self.mask_generator: mask_generator.BaseMaskGenerator = mask_generator.get(self.mask_generation_params["mask_generator_type"])(

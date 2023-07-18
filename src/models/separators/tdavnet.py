@@ -30,6 +30,14 @@ class TDAVNetBlock(nn.Module):
         self.rnn_2_conf = rnn_2_conf
         self.attention_conf = attention_conf
 
+        self.gateway = ConvNormAct(
+            in_chan=self.in_chan,
+            out_chan=self.in_chan,
+            kernel_size=1,
+            groups=self.in_chan,
+            act_type=self.act_type,
+            is2d=True,
+        )
         self.downsample_layers = self.__build_downsample_layers()
         self.globalatt = GridNetBlock(self.in_chan, self.rnn_1_conf, self.rnn_2_conf, self.attention_conf)
         self.fusion_layers = self.__build_fusion_layers()
@@ -84,9 +92,10 @@ class TDAVNetBlock(nn.Module):
 
     def forward(self, x):
         # x: B, C, T, (F)
+        residual = self.gateway(x)
 
         # bottom-up
-        downsampled_outputs = [self.downsample_layers[0](x)]
+        downsampled_outputs = [self.downsample_layers[0](residual)]
         for i in range(1, self.upsampling_depth):
             downsampled_outputs.append(self.downsample_layers[i](downsampled_outputs[-1]))
 
@@ -105,7 +114,7 @@ class TDAVNetBlock(nn.Module):
         for i in range(self.upsampling_depth - 3, -1, -1):
             expanded = self.concat_layers[i](x_fused[i], expanded) + downsampled_outputs[i]
 
-        return expanded
+        return expanded + residual
 
 
 class TDAVNet(nn.Module):
@@ -122,8 +131,6 @@ class TDAVNet(nn.Module):
         attention_conf: dict = dict(),
         repeats: int = 4,
         shared: bool = False,
-        concat_first: bool = False,
-        concat_block: bool = True,
         *args,
         **kwargs,
     ):
@@ -139,11 +146,8 @@ class TDAVNet(nn.Module):
         self.attention_conf = attention_conf
         self.repeats = repeats
         self.shared = shared
-        self.concat_first = concat_first
-        self.concat_block = concat_block
 
         self.blocks = self.__build_blocks()
-        self.concat_block = self.__build_concat_block()
 
     def __build_blocks(self):
         clss = TDAVNetBlock if self.in_chan > 0 else nn.Identity
@@ -178,48 +182,14 @@ class TDAVNet(nn.Module):
 
         return out
 
-    def __build_concat_block(self):
-        clss = ConvNormAct if self.concat_block and ((self.in_chan > 0) and ((self.repeats > 1) or self.concat_first)) else nn.Identity
-        if self.shared:
-            out = clss(
-                in_chan=self.in_chan,
-                out_chan=self.in_chan,
-                kernel_size=1,
-                groups=self.in_chan,
-                act_type=self.act_type,
-                is2d=True,
-            )
-        else:
-            out = nn.ModuleList() if self.concat_first else nn.ModuleList([None])
-            for _ in range(self.repeats) if self.concat_first else range(self.repeats - 1):
-                out.append(
-                    clss(
-                        in_chan=self.in_chan,
-                        out_chan=self.in_chan,
-                        kernel_size=1,
-                        groups=self.in_chan,
-                        act_type=self.act_type,
-                        is2d=True,
-                    )
-                )
-
-        return out
-
     def get_block(self, i: int):
         if self.shared:
             return self.blocks
         else:
             return self.blocks[i]
 
-    def get_concat_block(self, i: int):
-        if self.shared:
-            return self.concat_block
-        else:
-            return self.concat_block[i]
-
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = self.get_concat_block(i)(x + residual) if i > 0 else x
-            x = self.get_block(i)(x)
+            x = self.get_block(i)((x + residual) if i > 0 else x)
         return x
