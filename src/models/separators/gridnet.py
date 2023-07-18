@@ -15,26 +15,31 @@ class GridNetBlock(nn.Module):
         rnn_1_conf: dict,
         rnn_2_conf: dict,
         attention_conf: dict,
+        concat_block: bool = False,
     ):
         super(GridNetBlock, self).__init__()
         self.in_chan = in_chan
         self.rnn_1_conf = rnn_1_conf
         self.rnn_2_conf = rnn_2_conf
         self.attention_conf = attention_conf
+        self.concat_block = concat_block
 
-        self.gateway = ConvNormAct(
-            in_chan=self.in_chan,
-            out_chan=self.in_chan,
-            kernel_size=1,
-            groups=self.in_chan,
-            act_type=self.attention_conf.get("act_type", "PReLU"),
-            is2d=True,
-        )
+        if self.concat_block:
+            self.gateway = ConvNormAct(
+                in_chan=self.in_chan,
+                out_chan=self.in_chan,
+                kernel_size=1,
+                groups=self.in_chan,
+                act_type=self.attention_conf.get("act_type", "PReLU"),
+                is2d=True,
+            )
         self.first_rnn = DualPathRNN(in_chan=self.in_chan, **self.rnn_1_conf)
         self.second_rnn = DualPathRNN(in_chan=self.in_chan, **self.rnn_2_conf)
         self.attention = MultiHeadSelfAttention2D(in_chan=self.in_chan, **self.attention_conf)
 
     def forward(self, x: torch.Tensor):
+        if self.concat_block:
+            x = self.gateway(x)
         x = self.first_rnn(x)
         x = self.second_rnn(x)
         x = self.attention(x)
