@@ -11,9 +11,7 @@ audionet:
     concat_first: True
 
     video_bn_params:
-      out_chan: 64
-      kernel_size: 1
-      is2d: False
+      kernel_size: -1
 
     audio_bn_params:
       out_chan: 64
@@ -35,14 +33,14 @@ audionet:
     audio_params:
       audio_net: TDAVNet
       # in_chan same as audio_bn_chan
+      hid_chan: 32
       kernel_size: 5
       stride: 2 
       norm_type: gLN
       act_type: PReLU
-      upsampling_depth: 3
+      upsampling_depth: 2
       repeats: 4
       shared: True
-      concat_block: True
       rnn_1_conf:
         hid_chan: 64
         dim: 4
@@ -67,9 +65,9 @@ audionet:
     video_params:
       video_net: TDANet
       # in_chan same as video_bn_chan
+      hid_chan: 64
       upsampling_depth: 4
       shared: True
-      concat_block: True
       repeats: 1
       norm_type: BatchNorm1d
       act_type: PReLU
@@ -124,4 +122,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/16_07_23_simplified_64
+    exp_name: avnet_mini/tdavnet/22_07_23_simplified_64

@@ -15,7 +15,7 @@ class GridNetBlock(nn.Module):
         rnn_1_conf: dict,
         rnn_2_conf: dict,
         attention_conf: dict,
-        concat_block: bool = False,
+        concat_block: bool = True,
     ):
         super(GridNetBlock, self).__init__()
         self.in_chan = in_chan
