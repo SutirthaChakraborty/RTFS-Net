@@ -91,7 +91,7 @@ class TDAVNetBlock(nn.Module):
                 InjectionMultiSum(
                     in_chan=self.hid_chan,
                     hid_chan=self.hid_chan,
-                    kernel_size=1,
+                    kernel_size=self.kernel_size,
                     norm_type=self.norm_type,
                     is2d=True,
                 )

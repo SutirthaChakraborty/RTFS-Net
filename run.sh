@@ -1,5 +1,5 @@
 name=(
-        lrs2_tdavnet_mini
+        lrs2_tdavnet_large
 )
 for n in "${name[@]}"
 do
@@ -8,7 +8,7 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        avnet_mini/tdavnet/06_07_23
+        avnet_large/tdavnet/22_07_23
 )
 for e in "${exp[@]}"
 do
