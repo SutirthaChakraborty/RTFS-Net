@@ -13,7 +13,7 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 64
+      out_chan: 512
       kernel_size: 1
       is2d: True
 
@@ -22,7 +22,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 64
+      out_chan: 512
       kernel_size: 3
       stride: 1
       bias: False
@@ -121,4 +121,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/22_07_23_64
+    exp_name: avnet_mini/tdavnet/22_07_23_512
