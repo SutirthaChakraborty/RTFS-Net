@@ -54,7 +54,7 @@ class DPTNetBlock(nn.Module):
     def forward(self, x):
         # x: B, C, T, (F)
         residual = self.gateway(x)
-        x_enc = self.projection(x)
+        x_enc = self.projection(residual)
 
         expanded = self.globalatt(x_enc)
 

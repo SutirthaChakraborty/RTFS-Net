@@ -35,7 +35,6 @@ class FRCNNBlock(nn.Module):
             act_type=self.act_type,
             is2d=self.is2d,
         )
-
         self.projection = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
@@ -44,6 +43,9 @@ class FRCNNBlock(nn.Module):
             act_type=self.act_type,
             is2d=self.is2d,
         )
+        self.downsample_layers = self.__build_downsample_layers()
+        self.fusion_layers = self.__build_fusion_layers()
+        self.concat_layers = self.__build_concat_layers()
         self.residual_conv = nn.Sequential(
             ConvNormAct(
                 self.hid_chan * self.upsampling_depth,
@@ -60,10 +62,6 @@ class FRCNNBlock(nn.Module):
                 is2d=self.is2d,
             ),
         )
-
-        self.downsample_layers = self.__build_downsample_layers()
-        self.fusion_layers = self.__build_fusion_layers()
-        self.concat_layers = self.__build_concat_layers()
 
     def __build_downsample_layers(self):
         out = nn.ModuleList()
@@ -134,7 +132,7 @@ class FRCNNBlock(nn.Module):
     def forward(self, x):
         # x: B, C, T, (F)
         residual = self.gateway(x)
-        x_enc = self.projection(x)
+        x_enc = self.projection(residual)
 
         # bottom-up
         downsampled_outputs = [self.downsample_layers[0](x_enc)]
