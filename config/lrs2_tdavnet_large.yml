@@ -14,7 +14,7 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 64
+      out_chan: 128
       kernel_size: 1
       is2d: True
 
@@ -23,7 +23,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 64
+      out_chan: 128
       kernel_size: 3
       stride: 1
       bias: False
@@ -33,30 +33,30 @@ audionet:
     audio_params:
       audio_net: TDAVNet
       # in_chan same as audio_bn_chan
-      hid_chan: 64
+      hid_chan: 32
       kernel_size: 5
       stride: 2 
       norm_type: gLN
       act_type: PReLU
-      upsampling_depth: 3
-      repeats: 16
+      upsampling_depth: 2
+      repeats: 12
       shared: True
       rnn_1_conf:
-        hid_chan: 128
+        hid_chan: 64
         dim: 4
-        kernel_size: 7
+        kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       rnn_2_conf:
-        hid_chan: 128
+        hid_chan: 64
         dim: 3
-        kernel_size: 7
+        kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       attention_conf:
-        n_freqs: 33
+        n_freqs: 65
         n_head: 4
         hid_chan: 4
         act_type: PReLU
@@ -122,4 +122,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_large/tdavnet/06_07_23
+    exp_name: avnet_large/tdavnet/22_07_23
