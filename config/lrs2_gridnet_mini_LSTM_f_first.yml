@@ -8,13 +8,12 @@ videonet:
 audionet:
     n_src: 1
     pretrained_vout_chan: 512                  # output from pretrained model
-    concat_first: True
 
     video_bn_params:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 16
+      out_chan: 256
       kernel_size: 1
       is2d: True
 
@@ -23,7 +22,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 16
+      out_chan: 256
       kernel_size: 3
       stride: 1
       bias: False
@@ -33,6 +32,7 @@ audionet:
     audio_params:
       audio_net: GridNet
       # in_chan same as audio_bn_chan
+      hid_chan: 32
       repeats: 4
       shared: True
       rnn_1_conf:
@@ -82,15 +82,16 @@ audionet:
       nstack: False
 
     mask_generation_params:
+      mask_generator_type: RI_MaskGenerator
       mask_act: ReLU
       is2d: True
-      output_gate: True
+      output_gate: False
       
 # Training config
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 4
+    batch_size: 2
     num_workers: 8
     half_lr: yes
     early_stop: yes
@@ -116,4 +117,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/gridnet/01_07_23_LSTM_f_first
+    exp_name: avnet_mini/gridnet/27_07_23_LSTM_f_first
