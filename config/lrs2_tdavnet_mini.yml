@@ -13,7 +13,7 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 32
+      out_chan: 256
       kernel_size: 1
       is2d: True
 
@@ -22,7 +22,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 32
+      out_chan: 256
       kernel_size: 3
       stride: 1
       bias: False
@@ -87,9 +87,10 @@ audionet:
       nstack: False
 
     mask_generation_params:
+      mask_generator_type: RI_MaskGenerator
       mask_act: ReLU
       is2d: True
-      output_gate: True
+      output_gate: False
       
 # Training config
 training:
