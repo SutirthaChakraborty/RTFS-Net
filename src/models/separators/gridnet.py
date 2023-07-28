@@ -30,7 +30,7 @@ class GridNetBlock(nn.Module):
         return x
 
 
-class TFGridNet(GridNetBlock):
+class TFGridNet(nn.Module):
     def __init__(
         self,
         in_chan: int,
@@ -39,9 +39,12 @@ class TFGridNet(GridNetBlock):
         rnn_2_conf: dict,
         attention_conf: dict,
     ):
-        super(TFGridNet, self).__init__(hid_chan, rnn_1_conf, rnn_2_conf, attention_conf)
+        super(TFGridNet, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
+        self.rnn_1_conf = rnn_1_conf
+        self.rnn_2_conf = rnn_2_conf
+        self.attention_conf = attention_conf
 
         self.gateway = ConvNormAct(
             in_chan=self.in_chan,
@@ -57,6 +60,7 @@ class TFGridNet(GridNetBlock):
             kernel_size=1,
             is2d=True,
         )
+        self.globalatt = GridNetBlock(self.hid_chan, self.rnn_1_conf, self.rnn_2_conf, self.attention_conf)
         self.residual_conv = ConvNormAct(
             in_chan=self.hid_chan,
             out_chan=self.in_chan,
@@ -67,9 +71,8 @@ class TFGridNet(GridNetBlock):
     def forward(self, x: torch.Tensor):
         residual = self.gateway(x)
         x = self.projection(residual)
-        x = super().forward(x)
+        x = self.globalatt(x)
         x = self.residual_conv(x) + residual
-
         return x
 
 

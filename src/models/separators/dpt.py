@@ -39,8 +39,6 @@ class DPTNetBlock(nn.Module):
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=1,
-            norm_type=self.norm_type,
-            act_type=self.act_type,
             is2d=self.is2d,
         )
         self.globalatt = self.att(in_chan=self.hid_chan, **self.attention_params)
@@ -51,16 +49,12 @@ class DPTNetBlock(nn.Module):
             is2d=self.is2d,
         )
 
-    def forward(self, x):
-        # x: B, C, T, (F)
+    def forward(self, x: torch.Tensor):
         residual = self.gateway(x)
-        x_enc = self.projection(residual)
-
-        expanded = self.globalatt(x_enc)
-
-        out = self.residual_conv(expanded) + residual
-
-        return out
+        x = self.projection(residual)
+        x = self.globalatt(x)
+        x = self.residual_conv(x) + residual
+        return x
 
 
 class DPTNet(nn.Module):
