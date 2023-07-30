@@ -83,8 +83,8 @@ audionet:
     fusion_params:
       fusion_type: ConcatFusion
       fusion_shared: True
+      kernel_size: 1
       is2d: True
-      nstack: False
 
     mask_generation_params:
       mask_generator_type: RI_MaskGenerator
@@ -122,4 +122,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/27_07_23
+    exp_name: avnet_mini/tdavnet/31_07_23

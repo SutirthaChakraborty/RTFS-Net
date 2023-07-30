@@ -13,7 +13,7 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 128
+      out_chan: 256
       kernel_size: 1
       is2d: True
 
@@ -22,7 +22,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 128
+      out_chan: 256
       kernel_size: 3
       stride: 1
       bias: False
@@ -81,15 +81,16 @@ audionet:
         dropout: 0.1
 
     fusion_params:
-      fusion_type: ConcatFusion
+      fusion_type: InjectionFusion
       fusion_shared: True
+      kernel_size: 5
       is2d: True
-      nstack: False
 
     mask_generation_params:
+      mask_generator_type: RI_MaskGenerator
       mask_act: ReLU
       is2d: True
-      output_gate: True
+      output_gate: False
       
 # Training config
 training:
@@ -121,4 +122,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/22_07_23_128
+    exp_name: avnet_mini/tdavnet/31_07_23_InjFus_1
