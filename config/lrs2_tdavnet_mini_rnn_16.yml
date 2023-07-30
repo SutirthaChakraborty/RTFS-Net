@@ -41,14 +41,14 @@ audionet:
       repeats: 4
       shared: True
       rnn_1_conf:
-        hid_chan: 32
+        hid_chan: 16
         dim: 4
         kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       rnn_2_conf:
-        hid_chan: 32
+        hid_chan: 16
         dim: 3
         kernel_size: 8
         stride: 1
@@ -122,4 +122,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/31_07_23_RNN
+    exp_name: avnet_mini/tdavnet/31_07_23_RNN_16
