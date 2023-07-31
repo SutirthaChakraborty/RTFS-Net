@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.models.layers import BiLSTM2D
+from src.models.encoder import STFTEncoder
 
-win = 32
-hop_length = 16
-
-# win = 256
-# hop_length = 128
+win = 256
+hop_length = 128
+chan = 64
 
 audio_len = 32000
 
@@ -15,13 +15,11 @@ window = torch.hann_window(win).to(0)
 
 x = torch.rand((4, audio_len)).to(0)
 
-spec = torch.stft(x, n_fft=win, hop_length=hop_length, window=window, return_complex=True)
-spec = torch.stack([spec.real, spec.imag], 1).transpose(2, 3).contiguous()  # B, 2, T, F
+encoder = STFTEncoder(win, hop_length, chan, act_type="ReLU").to(0)
+time_bilstm = BiLSTM2D(chan, chan, 3, 3).to(0)
+freq_bilstm = BiLSTM2D(chan, chan, 4, 7).to(0)
 
-print(spec.shape)
-print(spec.shape[-1] * spec.shape[-2])
 
-spec = torch.complex(spec[:, 0], spec[:, 1])  # B*n_src, T, F
-spec = spec.transpose(1, 2).contiguous()
-
-output = torch.istft(spec, n_fft=win, hop_length=hop_length, window=window, length=audio_len)  # B*n_src, L
+x = encoder(x)
+x = time_bilstm(x)
+x = freq_bilstm(x)

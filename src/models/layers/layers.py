@@ -438,6 +438,96 @@ class DualPathRNN(nn.Module):
         return x
 
 
+class ConvLSTMCell(nn.Module):
+    def __init__(self, in_chan: int, hid_chan: int, kernel_size: int = 1):
+        super(ConvLSTMCell, self).__init__()
+        self.in_chan = in_chan
+        self.hid_chan = hid_chan
+        self.kernel_size = kernel_size
+
+        self.linear_ih = ConvActNorm(self.in_chan, 4 * self.hid_chan, self.kernel_size)
+        self.linear_hh = ConvActNorm(self.hid_chan, 4 * self.hid_chan, self.kernel_size)
+
+    def forward(self, input, hx):
+        h, c = hx
+
+        gates = self.linear_ih(input) + self.linear_hh(h)
+
+        ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
+
+        ingate = torch.sigmoid(ingate)
+        forgetgate = torch.sigmoid(forgetgate)
+        cellgate = torch.tanh(cellgate)
+        outgate = torch.sigmoid(outgate)
+
+        c_next = (forgetgate * c) + (ingate * cellgate)
+        h_next = outgate * torch.tanh(c_next)
+
+        return h_next, c_next
+
+
+class BiLSTM2D(nn.Module):
+    def __init__(
+        self,
+        in_chan: int,
+        hid_chan: int,
+        dim: int = 3,
+        kernel_size: int = 1,
+        act_type: str = "PReLU",
+        norm_type: str = "gLN",
+        bidirectional: bool = True,
+    ):
+        super(BiLSTM2D, self).__init__()
+        self.in_chan = in_chan
+        self.hid_chan = hid_chan
+        self.dim = dim
+        self.kernel_size = kernel_size
+        self.act_type = act_type
+        self.norm_type = norm_type
+        self.bidirectional = bidirectional
+
+        self.num_directions = int(bidirectional) + 1
+
+        self.act = activations.get(self.act_type)()
+        self.norm = normalizations.get(self.norm_type)(self.in_chan)
+
+        self.lstm_cell_forward = ConvLSTMCell(self.in_chan, self.hid_chan, self.kernel_size)
+        self.projection = ConvActNorm(self.hid_chan * self.num_directions, self.in_chan, 1, act_type=self.act_type, is2d=True)
+
+        if bidirectional:
+            self.lstm_cell_backward = ConvLSTMCell(self.in_chan, self.hid_chan, self.kernel_size)
+
+    def forward(self, x: torch.Tensor):
+        # input: B, C, T, F
+        batch_size, _, time_steps, freq = x.shape
+        length, lstm_steps = (freq, time_steps) if self.dim == 3 else (time_steps, freq)
+
+        residual = x
+        x: torch.Tensor = self.norm(x)
+
+        h_forward = torch.zeros((batch_size, self.hid_chan, length)).to(x.device)
+        c_forward = torch.zeros((batch_size, self.hid_chan, length)).to(x.device)
+        if self.bidirectional:
+            h_backward = torch.zeros((batch_size, self.hid_chan, length)).to(x.device)
+            c_backward = torch.zeros((batch_size, self.hid_chan, length)).to(x.device)
+
+        outputs = [None] * lstm_steps
+        for i in range(lstm_steps):
+            x_f = x[:, :, i] if self.dim == 3 else x[:, :, :, i]
+            x_b = x[:, :, -1 - i] if self.dim == 3 else x[:, :, :, -1 - i]
+            h_forward, c_forward = self.lstm_cell_forward(x_f, (h_forward, c_forward))
+            if self.bidirectional:
+                h_backward, c_backward = self.lstm_cell_backward(x_b, (h_backward, c_backward))
+                outputs[i] = torch.cat((h_forward, h_backward), dim=1)
+            else:
+                outputs[i] = h_forward
+
+        output = self.act(torch.stack(outputs, dim=2 if self.dim == 3 else 3))
+        output = self.projection(output) + residual
+
+        return output
+
+
 def get(identifier):
     if identifier is None:
         return nn.Identity

@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from .layers import ConvNormAct, ConvActNorm, ConvolutionalRNN, FeedForwardNetwork, InjectionMultiSum, RNNProjection, DualPathRNN
+from .layers import ConvNormAct, ConvActNorm, ConvolutionalRNN, FeedForwardNetwork, InjectionMultiSum, RNNProjection, DualPathRNN, BiLSTM2D
 from .attention import GlobalAttention, GlobalAttentionRNN, GlobalAttention2D, GlobalGALR, MultiHeadSelfAttention, MultiHeadSelfAttention2D
 
 

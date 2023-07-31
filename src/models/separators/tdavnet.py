@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ..layers import ConvNormAct, InjectionMultiSum
-from .gridnet import GridNetBlock
+from .gridnet import get
 
 
 class TDAVNetBlock(nn.Module):
@@ -16,6 +16,7 @@ class TDAVNetBlock(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
+        block_type: str = "GridNetBlock",
         rnn_1_conf: dict = dict(),
         rnn_2_conf: dict = dict(),
         attention_conf: dict = dict(),
@@ -28,6 +29,7 @@ class TDAVNetBlock(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
+        self.block_type = block_type
         self.rnn_1_conf = rnn_1_conf
         self.rnn_2_conf = rnn_2_conf
         self.attention_conf = attention_conf
@@ -47,7 +49,7 @@ class TDAVNetBlock(nn.Module):
             is2d=True,
         )
         self.downsample_layers = self.__build_downsample_layers()
-        self.globalatt = GridNetBlock(self.hid_chan, self.rnn_1_conf, self.rnn_2_conf, self.attention_conf)
+        self.globalatt = get(self.block_type)(self.hid_chan, self.rnn_1_conf, self.rnn_2_conf, self.attention_conf)
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
         self.residual_conv = ConvNormAct(
@@ -144,6 +146,7 @@ class TDAVNet(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
+        block_type: str = "GridNetBlock",
         rnn_1_conf: dict = dict(),
         rnn_2_conf: dict = dict(),
         attention_conf: dict = dict(),
@@ -160,6 +163,7 @@ class TDAVNet(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
+        self.block_type = block_type
         self.rnn_1_conf = rnn_1_conf
         self.rnn_2_conf = rnn_2_conf
         self.attention_conf = attention_conf
@@ -179,6 +183,7 @@ class TDAVNet(nn.Module):
                 norm_type=self.norm_type,
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
+                block_type=self.block_type,
                 rnn_1_conf=self.rnn_1_conf,
                 rnn_2_conf=self.rnn_2_conf,
                 attention_conf=self.attention_conf,
@@ -195,6 +200,7 @@ class TDAVNet(nn.Module):
                         norm_type=self.norm_type,
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
+                        block_type=self.block_type,
                         rnn_1_conf=self.rnn_1_conf,
                         rnn_2_conf=self.rnn_2_conf,
                         attention_conf=self.attention_conf,
