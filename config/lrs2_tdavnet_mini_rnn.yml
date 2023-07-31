@@ -30,27 +30,32 @@ audionet:
       norm_type: gLN
       
     audio_params:
-      audio_net: GridNet
+      audio_net: TDAVNet
       # in_chan same as audio_bn_chan
-      hid_chan: 32
+      hid_chan: 64
+      kernel_size: 5
+      stride: 2 
+      norm_type: gLN
+      act_type: PReLU
+      upsampling_depth: 2
       repeats: 4
       shared: True
       rnn_1_conf:
-        hid_chan: 64
+        hid_chan: 32
         dim: 4
         kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       rnn_2_conf:
-        hid_chan: 64
+        hid_chan: 32
         dim: 3
         kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       attention_conf:
-        n_freqs: 129
+        n_freqs: 65
         n_head: 4
         hid_chan: 4
         act_type: PReLU
@@ -78,8 +83,8 @@ audionet:
     fusion_params:
       fusion_type: ConcatFusion
       fusion_shared: True
+      kernel_size: 1
       is2d: True
-      nstack: False
 
     mask_generation_params:
       mask_generator_type: RI_MaskGenerator
@@ -117,4 +122,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/gridnet/27_07_23_LSTM_f_first
+    exp_name: avnet_mini/tdavnet/31_07_23_RNN

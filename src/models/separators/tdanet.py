@@ -32,28 +32,30 @@ class TDANetBlock(nn.Module):
         self.att = get(self.attention_params.get("attention_type", "GlobalAttention2D" if self.is2d else "GlobalAttention"))
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
+        self.gateway = ConvNormAct(
+            in_chan=self.in_chan,
+            out_chan=self.in_chan,
+            kernel_size=1,
+            groups=self.in_chan,
+            act_type=self.act_type,
+            is2d=self.is2d,
+        )
         self.projection = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=1,
-            norm_type=self.norm_type,
-            act_type=self.act_type,
             is2d=self.is2d,
         )
-        self.globalatt = self.att(
-            **self.attention_params,
-            in_chan=self.hid_chan,
-        )
+        self.downsample_layers = self.__build_downsample_layers()
+        self.globalatt = self.att(in_chan=self.hid_chan, **self.attention_params)
+        self.fusion_layers = self.__build_fusion_layers()
+        self.concat_layers = self.__build_concat_layers()
         self.residual_conv = ConvNormAct(
             in_chan=self.hid_chan,
             out_chan=self.in_chan,
             kernel_size=1,
             is2d=self.is2d,
         )
-
-        self.downsample_layers = self.__build_downsample_layers()
-        self.fusion_layers = self.__build_fusion_layers()
-        self.concat_layers = self.__build_concat_layers()
 
     def __build_downsample_layers(self):
         out = nn.ModuleList()
@@ -104,8 +106,8 @@ class TDANetBlock(nn.Module):
 
     def forward(self, x):
         # x: B, C, T, (F)
-        residual = x
-        x_enc = self.projection(x)
+        residual = self.gateway(x)
+        x_enc = self.projection(residual)
 
         # bottom-up
         downsampled_outputs = [self.downsample_layers[0](x_enc)]
@@ -142,11 +144,10 @@ class TDANet(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
+        attention_params: dict = dict(),
         repeats: int = 4,
         shared: bool = False,
-        attention_params: dict = dict(),
         is2d: bool = False,
-        concat_first: bool = False,
         *args,
         **kwargs,
     ):
@@ -158,14 +159,12 @@ class TDANet(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
+        self.attention_params = attention_params
         self.repeats = repeats
         self.shared = shared
-        self.attention_params = attention_params
         self.is2d = is2d
-        self.concat_first = concat_first
 
         self.blocks = self.__build_blocks()
-        self.concat_block = self.__build_concat_block()
 
     def __build_blocks(self):
         clss = TDANetBlock if (self.in_chan > 0 and self.hid_chan > 0) else nn.Identity
@@ -200,48 +199,14 @@ class TDANet(nn.Module):
 
         return out
 
-    def __build_concat_block(self):
-        clss = ConvNormAct if (self.in_chan > 0) and ((self.repeats > 1) or self.concat_first) else nn.Identity
-        if self.shared:
-            out = clss(
-                in_chan=self.in_chan,
-                out_chan=self.in_chan,
-                kernel_size=1,
-                groups=self.in_chan,
-                act_type=self.act_type,
-                is2d=self.is2d,
-            )
-        else:
-            out = nn.ModuleList() if self.concat_first else nn.ModuleList([None])
-            for _ in range(self.repeats) if self.concat_first else range(self.repeats - 1):
-                out.append(
-                    clss(
-                        in_chan=self.in_chan,
-                        out_chan=self.in_chan,
-                        kernel_size=1,
-                        groups=self.in_chan,
-                        act_type=self.act_type,
-                        is2d=self.is2d,
-                    )
-                )
-
-        return out
-
     def get_block(self, i: int):
         if self.shared:
             return self.blocks
         else:
             return self.blocks[i]
 
-    def get_concat_block(self, i: int):
-        if self.shared:
-            return self.concat_block
-        else:
-            return self.concat_block[i]
-
     def forward(self, x: torch.Tensor):
         residual = x
         for i in range(self.repeats):
-            x = self.get_concat_block(i)(x + residual) if i > 0 else x
-            x = self.get_block(i)(x)
+            x = self.get_block(i)((x + residual) if i > 0 else x)
         return x

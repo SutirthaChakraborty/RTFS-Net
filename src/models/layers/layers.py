@@ -305,11 +305,17 @@ class InjectionMultiSum(nn.Module):
         )
 
     def forward(self, local_features: torch.Tensor, global_features: torch.Tensor):
-        length = local_features.shape[-(len(local_features.shape) // 2) :]
+        old_shape = global_features.shape[-(len(local_features.shape) // 2) :]
+        new_shape = local_features.shape[-(len(local_features.shape) // 2) :]
 
         local_emb = self.local_embedding(local_features)
-        global_emb = F.interpolate(self.global_embedding(global_features), size=length, mode="nearest")
-        gate = F.interpolate(self.global_gate(global_features), size=length, mode="nearest")
+        if torch.prod(torch.tensor(new_shape)) > torch.prod(torch.tensor(old_shape)):
+            global_emb = F.interpolate(self.global_embedding(global_features), size=new_shape, mode="nearest")
+            gate = F.interpolate(self.global_gate(global_features), size=new_shape, mode="nearest")
+        else:
+            g_interp = F.interpolate(global_features, size=new_shape, mode="nearest")
+            global_emb = self.global_embedding(g_interp)
+            gate = self.global_gate(g_interp)
 
         injection_sum = local_emb * gate + global_emb
 
