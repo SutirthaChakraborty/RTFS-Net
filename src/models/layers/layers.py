@@ -439,19 +439,32 @@ class DualPathRNN(nn.Module):
 
 
 class ConvLSTMCell(nn.Module):
-    def __init__(self, in_chan: int, hid_chan: int, kernel_size: int = 1):
+    def __init__(self, in_chan: int, hid_chan: int, kernel_size: int = 1, num_directions: int = 1):
         super(ConvLSTMCell, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
+        self.num_directions = num_directions
 
         self.linear_ih = ConvActNorm(self.in_chan, 4 * self.hid_chan, self.kernel_size)
-        self.linear_hh = ConvActNorm(self.hid_chan, 4 * self.hid_chan, self.kernel_size)
+        self.linear_hh = ConvActNorm(self.hid_chan, 4 * self.hid_chan, 1)
+
+        if self.num_directions > 1:
+            self.linear_ih_b = ConvActNorm(self.in_chan, 4 * self.hid_chan, self.kernel_size)
+            self.linear_hh_b = ConvActNorm(self.hid_chan, 4 * self.hid_chan, 1)
 
     def forward(self, input, hx):
         h, c = hx
 
-        gates = self.linear_ih(input) + self.linear_hh(h)
+        if self.num_directions > 1:
+            input_f, input_g = input.chunk(2, 1)
+            h_f, h_g = h.chunk(2, 1)
+            gates_f = self.linear_ih(input_f) + self.linear_hh(h_f)
+            gates_b = self.linear_ih_b(input_g) + self.linear_hh_b(h_g)
+            gates = torch.cat((gates_f, gates_b), dim=1)
+
+        else:
+            gates = self.linear_ih(input) + self.linear_hh(h)
 
         ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
 
@@ -491,11 +504,8 @@ class BiLSTM2D(nn.Module):
         self.act = activations.get(self.act_type)()
         self.norm = normalizations.get(self.norm_type)(self.in_chan)
 
-        self.lstm_cell_forward = ConvLSTMCell(self.in_chan, self.hid_chan, self.kernel_size)
+        self.lstm_cell = ConvLSTMCell(self.in_chan, self.hid_chan, self.kernel_size, self.num_directions)
         self.projection = ConvActNorm(self.hid_chan * self.num_directions, self.in_chan, 1, act_type=self.act_type, is2d=True)
-
-        if bidirectional:
-            self.lstm_cell_backward = ConvLSTMCell(self.in_chan, self.hid_chan, self.kernel_size)
 
     def forward(self, x: torch.Tensor):
         # input: B, C, T, F
@@ -503,26 +513,19 @@ class BiLSTM2D(nn.Module):
         length, lstm_steps = (freq, time_steps) if self.dim == 3 else (time_steps, freq)
 
         residual = x
-        x: torch.Tensor = self.norm(x)
+        x = self.norm(x)
+        x = torch.cat((x, x.flip(self.dim - 1)), dim=1)
 
-        h_forward = torch.zeros((batch_size, self.hid_chan, length)).to(x.device)
-        c_forward = torch.zeros((batch_size, self.hid_chan, length)).to(x.device)
-        if self.bidirectional:
-            h_backward = torch.zeros((batch_size, self.hid_chan, length)).to(x.device)
-            c_backward = torch.zeros((batch_size, self.hid_chan, length)).to(x.device)
+        h_forward = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
+        c_forward = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
 
         outputs = [None] * lstm_steps
         for i in range(lstm_steps):
-            x_f = x[:, :, i] if self.dim == 3 else x[:, :, :, i]
-            x_b = x[:, :, -1 - i] if self.dim == 3 else x[:, :, :, -1 - i]
-            h_forward, c_forward = self.lstm_cell_forward(x_f, (h_forward, c_forward))
-            if self.bidirectional:
-                h_backward, c_backward = self.lstm_cell_backward(x_b, (h_backward, c_backward))
-                outputs[i] = torch.cat((h_forward, h_backward), dim=1)
-            else:
-                outputs[i] = h_forward
+            x_slice = x[:, :, i] if self.dim == 3 else x[:, :, :, i]
+            h_forward, c_forward = self.lstm_cell(x_slice, (h_forward, c_forward))
+            outputs[i] = h_forward.unsqueeze(2 if self.dim == 3 else 3)
 
-        output = self.act(torch.stack(outputs, dim=2 if self.dim == 3 else 3))
+        output = self.act(torch.cat(outputs, dim=2 if self.dim == 3 else 3))
         output = self.projection(output) + residual
 
         return output
