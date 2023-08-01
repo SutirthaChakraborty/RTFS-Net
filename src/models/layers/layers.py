@@ -453,28 +453,27 @@ class ConvLSTMCell(nn.Module):
             self.linear_ih_b = ConvActNorm(self.in_chan, 4 * self.hid_chan, self.kernel_size)
             self.linear_hh_b = ConvActNorm(self.hid_chan, 4 * self.hid_chan, 1)
 
-    def forward(self, input, hx):
-        h, c = hx
+    def forward(self, input: torch.Tensor, hidden_t: torch.Tensor, cell_t: torch.Tensor):
+        # x has size: (B, C, L)
 
         if self.num_directions > 1:
-            input_f, input_g = input.chunk(2, 1)
-            h_f, h_g = h.chunk(2, 1)
-            gates_f = self.linear_ih(input_f) + self.linear_hh(h_f)
-            gates_b = self.linear_ih_b(input_g) + self.linear_hh_b(h_g)
+            input_f, input_b = input.chunk(2, 1)
+            hidden_t_f, hidden_t_b = hidden_t.chunk(2, 1)
+            gates_f = self.linear_ih(input_f) + self.linear_hh(hidden_t_f)
+            gates_b = self.linear_ih_b(input_b) + self.linear_hh_b(hidden_t_b)
             gates = torch.cat((gates_f, gates_b), dim=1)
-
         else:
-            gates = self.linear_ih(input) + self.linear_hh(h)
+            gates = self.linear_ih(input) + self.linear_hh(hidden_t)
 
-        ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
+        i_t, f_t, g_t, o_t = gates.chunk(4, 1)
 
-        ingate = torch.sigmoid(ingate)
-        forgetgate = torch.sigmoid(forgetgate)
-        cellgate = torch.tanh(cellgate)
-        outgate = torch.sigmoid(outgate)
+        i_t = torch.sigmoid(i_t)
+        f_t = torch.sigmoid(f_t)
+        g_t = torch.tanh(g_t)
+        o_t = torch.sigmoid(o_t)
 
-        c_next = (forgetgate * c) + (ingate * cellgate)
-        h_next = outgate * torch.tanh(c_next)
+        c_next = (f_t * cell_t) + (i_t * g_t)
+        h_next = o_t * torch.tanh(c_next)
 
         return h_next, c_next
 
@@ -508,7 +507,7 @@ class BiLSTM2D(nn.Module):
         self.projection = ConvActNorm(self.hid_chan * self.num_directions, self.in_chan, 1, act_type=self.act_type, is2d=True)
 
     def forward(self, x: torch.Tensor):
-        # input: B, C, T, F
+        # x has size: (B, C, T, F)
         batch_size, _, time_steps, freq = x.shape
         length, lstm_steps = (freq, time_steps) if self.dim == 3 else (time_steps, freq)
 
@@ -516,14 +515,14 @@ class BiLSTM2D(nn.Module):
         x = self.norm(x)
         x = torch.cat((x, x.flip(self.dim - 1)), dim=1)
 
-        h_forward = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
-        c_forward = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
+        hidden_t = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
+        cell_t = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
 
         outputs = [None] * lstm_steps
         for i in range(lstm_steps):
             x_slice = x[:, :, i] if self.dim == 3 else x[:, :, :, i]
-            h_forward, c_forward = self.lstm_cell(x_slice, (h_forward, c_forward))
-            outputs[i] = h_forward.unsqueeze(2 if self.dim == 3 else 3)
+            hidden_t, cell_t = self.lstm_cell(x_slice, hidden_t, cell_t)
+            outputs[i] = hidden_t.unsqueeze(2 if self.dim == 3 else 3)
 
         output = self.act(torch.cat(outputs, dim=2 if self.dim == 3 else 3))
         output = self.projection(output) + residual
