@@ -487,7 +487,7 @@ class BiLSTM2D(nn.Module):
         dim: int = 3,
         kernel_size: int = 5,
         window: int = 8,
-        stride: int = 2,
+        stride: int = 1,
         act_type: str = "PReLU",
         norm_type: str = "gLN",
         bidirectional: bool = True,
@@ -519,42 +519,36 @@ class BiLSTM2D(nn.Module):
         residual = x
         x = self.norm(x)
         x = torch.cat((x, x.flip(self.dim - 1)), dim=1)
+        if self.dim == 4:
+            x = x.transpose(-1, -2).contiguous()
 
         hidden_t = torch.zeros((1, self.hid_chan * self.num_directions, 1), device=x.device)
         cell_t = torch.zeros((1, self.hid_chan * self.num_directions, 1), device=x.device)
 
         outputs = [None] * math.ceil(lstm_steps / self.window)
         for i in range(math.ceil(lstm_steps / self.window)):
-            if self.dim == 3:
-                x_slice = x[:, :, i * self.window : (i + 1) * self.window]
-            else:
-                x_slice = x[:, :, :, i * self.window : (i + 1) * self.window]
+            x_slice = x[:, :, i * self.window : (i + 1) * self.window]  # B, 2C, win_o, len_o
+            old_w, old_h = x_slice.shape[-2:]
+            new_w = math.ceil((old_w - self.window) / self.stride) * self.stride + self.window
+            new_h = math.ceil((old_h - self.window) / self.stride) * self.stride + self.window
+            x_slice = F.pad(x_slice, (0, new_h - old_h, 0, new_w - old_w))  # B, 2C, win, len
 
-            old_T, old_F = x_slice.shape[-2:]  # B, C*2, old_T, old_F
-            new_T = math.ceil((old_T - self.window) / self.stride) * self.stride + self.window
-            new_F = math.ceil((old_F - self.window) / self.stride) * self.stride + self.window
-            x_slice = F.pad(x_slice, (0, new_F - old_F, 0, new_T - old_T))  # B, C*2, new_T, new_F
+            x_slice = x_slice.transpose(1, 2).contiguous().view(batch_size * new_w, self.in_chan * 2, new_h)  # B*win, 2C, len
+            x_slice = F.unfold(x_slice[..., None], (self.window, 1), stride=(self.stride, 1))  # B*win, 2C*win, (len-w)//2+1
 
-            if self.dim == 4:
-                x_slice = x_slice.permute(0, 3, 1, 2).contiguous().view(batch_size * new_F, self.in_chan * 2, new_T)
-            elif self.dim == 3:
-                x_slice = x_slice.permute(0, 2, 1, 3).contiguous().view(batch_size * new_T, self.in_chan * 2, new_F)
+            hidden_t, cell_t = self.lstm_cell(x_slice, hidden_t, cell_t)  # B*win, dir*hid, (len-w)//2+1
 
-            x_slice = F.unfold(x_slice[..., None], (self.window, 1), stride=(self.stride, 1))
-            hidden_t, cell_t = self.lstm_cell(x_slice, hidden_t, cell_t)
+            x_slice = self.projection(hidden_t)  # B*win, C, len
 
-            x_slice = self.projection(hidden_t)
+            x_slice = x_slice.view(batch_size, new_w, self.in_chan, -1).transpose(1, 2).contiguous()  # B, C, win, len
 
-            if self.dim == 4:
-                x_slice = x_slice.view([batch_size, new_F, self.in_chan, -1])
-                x_slice = x_slice.permute(0, 2, 3, 1).contiguous()
-            elif self.dim == 3:
-                x_slice = x_slice.view([batch_size, new_T, self.in_chan, -1])
-                x_slice = x_slice.permute(0, 2, 1, 3).contiguous()
-            outputs[i] = x_slice[..., :old_T, :old_F]
+            outputs[i] = x_slice[..., :old_w, :old_h]  # B, C, win_o, len_o
 
-        output = self.act(torch.cat(outputs, dim=self.dim - 1))
-        output = self.act(output) + residual
+        output = self.act(torch.cat(outputs, dim=2))
+        if self.dim == 4:
+            output = output.transpose(-1, -2).contiguous()
+
+        output = output + residual
 
         return output
 
