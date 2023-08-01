@@ -44,16 +44,16 @@ audionet:
       rnn_1_conf:
         hid_chan: 64
         dim: 4
-        kernel_size: 1
+        kernel_size: 5
         window: 8
         stride: 1
         act_type: PReLU
         norm_type: gLN
-        bidirectional: True
+        bidirectional: True 
       rnn_2_conf:
         hid_chan: 64
         dim: 3
-        kernel_size: 1
+        kernel_size: 5
         window: 8
         stride: 1
         act_type: PReLU
