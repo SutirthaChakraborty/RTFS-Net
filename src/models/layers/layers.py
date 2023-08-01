@@ -455,12 +455,13 @@ class ConvLSTMCell(nn.Module):
 
     def forward(self, input: torch.Tensor, hidden_t: torch.Tensor, cell_t: torch.Tensor):
         # x has size: (B, C, L)
+        batch_size = input.shape[0]
 
         if self.num_directions > 1:
             input_f, input_b = input.chunk(2, 1)
             hidden_t_f, hidden_t_b = hidden_t.chunk(2, 1)
-            gates_f = self.linear_ih(input_f) + self.linear_hh(hidden_t_f)
-            gates_b = self.linear_ih_b(input_b) + self.linear_hh_b(hidden_t_b)
+            gates_f = self.linear_ih(input_f) + self.linear_hh(hidden_t_f)[:batch_size]
+            gates_b = self.linear_ih_b(input_b) + self.linear_hh_b(hidden_t_b)[:batch_size]
             gates = torch.cat((gates_f, gates_b), dim=1)
         else:
             gates = self.linear_ih(input) + self.linear_hh(hidden_t)
@@ -472,7 +473,7 @@ class ConvLSTMCell(nn.Module):
         g_t = torch.tanh(g_t)
         o_t = torch.sigmoid(o_t)
 
-        c_next = (f_t * cell_t) + (i_t * g_t)
+        c_next = (f_t * cell_t[:batch_size]) + (i_t * g_t)
         h_next = o_t * torch.tanh(c_next)
 
         return h_next, c_next
@@ -484,7 +485,9 @@ class BiLSTM2D(nn.Module):
         in_chan: int,
         hid_chan: int,
         dim: int = 3,
-        kernel_size: int = 1,
+        kernel_size: int = 5,
+        window: int = 8,
+        stride: int = 2,
         act_type: str = "PReLU",
         norm_type: str = "gLN",
         bidirectional: bool = True,
@@ -494,6 +497,8 @@ class BiLSTM2D(nn.Module):
         self.hid_chan = hid_chan
         self.dim = dim
         self.kernel_size = kernel_size
+        self.window = window
+        self.stride = stride
         self.act_type = act_type
         self.norm_type = norm_type
         self.bidirectional = bidirectional
@@ -503,31 +508,107 @@ class BiLSTM2D(nn.Module):
         self.act = activations.get(self.act_type)()
         self.norm = normalizations.get(self.norm_type)(self.in_chan)
 
-        self.lstm_cell = ConvLSTMCell(self.in_chan, self.hid_chan, self.kernel_size, self.num_directions)
-        self.projection = ConvActNorm(self.hid_chan * self.num_directions, self.in_chan, 1, act_type=self.act_type, is2d=True)
+        self.lstm_cell = ConvLSTMCell(self.in_chan * self.window, self.hid_chan, self.kernel_size, self.num_directions)
+        self.projection = nn.ConvTranspose1d(self.hid_chan * self.num_directions, self.in_chan, self.window, stride=self.stride)
 
     def forward(self, x: torch.Tensor):
         # x has size: (B, C, T, F)
         batch_size, _, time_steps, freq = x.shape
-        length, lstm_steps = (freq, time_steps) if self.dim == 3 else (time_steps, freq)
+        lstm_steps = time_steps if self.dim == 3 else freq
 
         residual = x
         x = self.norm(x)
         x = torch.cat((x, x.flip(self.dim - 1)), dim=1)
 
-        hidden_t = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
-        cell_t = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
+        hidden_t = torch.zeros((1, self.hid_chan * self.num_directions, 1), device=x.device)
+        cell_t = torch.zeros((1, self.hid_chan * self.num_directions, 1), device=x.device)
 
-        outputs = [None] * lstm_steps
-        for i in range(lstm_steps):
-            x_slice = x[:, :, i] if self.dim == 3 else x[:, :, :, i]
+        outputs = [None] * math.ceil(lstm_steps / self.window)
+        for i in range(math.ceil(lstm_steps / self.window)):
+            if self.dim == 3:
+                x_slice = x[:, :, i * self.window : (i + 1) * self.window]
+            else:
+                x_slice = x[:, :, :, i * self.window : (i + 1) * self.window]
+
+            old_T, old_F = x_slice.shape[-2:]  # B, C*2, old_T, old_F
+            new_T = math.ceil((old_T - self.window) / self.stride) * self.stride + self.window
+            new_F = math.ceil((old_F - self.window) / self.stride) * self.stride + self.window
+            x_slice = F.pad(x_slice, (0, new_F - old_F, 0, new_T - old_T))  # B, C*2, new_T, new_F
+
+            if self.dim == 4:
+                x_slice = x_slice.permute(0, 3, 1, 2).contiguous().view(batch_size * new_F, self.in_chan * 2, new_T)
+            elif self.dim == 3:
+                x_slice = x_slice.permute(0, 2, 1, 3).contiguous().view(batch_size * new_T, self.in_chan * 2, new_F)
+
+            x_slice = F.unfold(x_slice[..., None], (self.window, 1), stride=(self.stride, 1))
             hidden_t, cell_t = self.lstm_cell(x_slice, hidden_t, cell_t)
-            outputs[i] = hidden_t.unsqueeze(2 if self.dim == 3 else 3)
 
-        output = self.act(torch.cat(outputs, dim=2 if self.dim == 3 else 3))
-        output = self.projection(output) + residual
+            x_slice = self.projection(hidden_t)
+
+            if self.dim == 4:
+                x_slice = x_slice.view([batch_size, new_F, self.in_chan, -1])
+                x_slice = x_slice.permute(0, 2, 3, 1).contiguous()
+            elif self.dim == 3:
+                x_slice = x_slice.view([batch_size, new_T, self.in_chan, -1])
+                x_slice = x_slice.permute(0, 2, 1, 3).contiguous()
+            outputs[i] = x_slice[..., :old_T, :old_F]
+
+        output = self.act(torch.cat(outputs, dim=self.dim - 1))
+        output = self.act(output) + residual
 
         return output
+
+
+# class BiLSTM2D(nn.Module):
+#     def __init__(
+#         self,
+#         in_chan: int,
+#         hid_chan: int,
+#         dim: int = 3,
+#         kernel_size: int = 1,
+#         act_type: str = "PReLU",
+#         norm_type: str = "gLN",
+#         bidirectional: bool = True,
+#     ):
+#         super(BiLSTM2D, self).__init__()
+#         self.in_chan = in_chan
+#         self.hid_chan = hid_chan
+#         self.dim = dim
+#         self.kernel_size = kernel_size
+#         self.act_type = act_type
+#         self.norm_type = norm_type
+#         self.bidirectional = bidirectional
+
+#         self.num_directions = int(bidirectional) + 1
+
+#         self.act = activations.get(self.act_type)()
+#         self.norm = normalizations.get(self.norm_type)(self.in_chan)
+
+#         self.lstm_cell = ConvLSTMCell(self.in_chan, self.hid_chan, self.kernel_size, self.num_directions)
+#         self.projection = ConvActNorm(self.hid_chan * self.num_directions, self.in_chan, 1, act_type=self.act_type, is2d=True)
+
+#     def forward(self, x: torch.Tensor):
+#         # x has size: (B, C, T, F)
+#         batch_size, _, time_steps, freq = x.shape
+#         length, lstm_steps = (freq, time_steps) if self.dim == 3 else (time_steps, freq)
+
+#         residual = x
+#         x = self.norm(x)
+#         x = torch.cat((x, x.flip(self.dim - 1)), dim=1)
+
+#         hidden_t = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
+#         cell_t = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
+
+#         outputs = [None] * lstm_steps
+#         for i in range(lstm_steps):
+#             x_slice = x[:, :, i] if self.dim == 3 else x[:, :, :, i]
+#             hidden_t, cell_t = self.lstm_cell(x_slice, hidden_t, cell_t)
+#             outputs[i] = hidden_t.unsqueeze(2 if self.dim == 3 else 3)
+
+#         output = self.act(torch.cat(outputs, dim=2 if self.dim == 3 else 3))
+#         output = self.projection(output) + residual
+
+#         return output
 
 
 def get(identifier):
