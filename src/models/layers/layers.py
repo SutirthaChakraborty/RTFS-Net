@@ -512,15 +512,17 @@ class BiLSTM2D(nn.Module):
         self.num_dir = int(bidirectional) + 1
 
         self.norm = normalizations.get(self.norm_type)(self.in_chan)
-        self.unfold = nn.Unfold(kernel_size=(self.window, 1), stride=(self.stride, 1))
         self.lstm_cell = ConvLSTMCell(self.in_chan * self.window, self.hid_chan, self.kernel_size, self.num_dir)
+        ks = (self.window, 1)
+        s = (self.stride, 1)
+        self.unfold = nn.Unfold(kernel_size=ks, stride=s)
         self.projection = nn.Sequential(
             nn.ConvTranspose2d(
                 self.hid_chan * self.num_dir,
                 self.hid_chan * self.num_dir,
-                (1, self.window),
+                ks,
                 groups=self.hid_chan * self.num_dir,
-                stride=(1, self.stride),
+                stride=s,
             ),
             activations.get(self.act_type)(),
             normalizations.get(self.norm_type)(self.hid_chan * self.num_dir),
@@ -534,7 +536,7 @@ class BiLSTM2D(nn.Module):
         new_h = math.ceil((old_h - self.window) / self.stride) * self.stride + self.window
         x = F.pad(x, (0, new_h - old_h, 0, new_w - old_w))
 
-        iterations = math.ceil(new_w / self.window)
+        iterations = math.ceil(new_h / self.window)
 
         return x, old_w, old_h, iterations
 
@@ -552,77 +554,25 @@ class BiLSTM2D(nn.Module):
         x = self.norm(x)
 
         x = torch.cat((x, x.flip(self.dim - 1)), dim=1) if self.bidirectional else x
-        x = x.transpose(-1, -2).contiguous() if self.dim == 4 else x
+        x = x.transpose(-1, -2).contiguous() if self.dim == 3 else x
 
         x, old_w, old_h, iterations = self.pad(x)
         hidden_t, cell_t = self.init_states(x)
 
         outputs = [None] * iterations
         for i in range(iterations):
-            x_slice = x[:, :, i * self.window : (i + 1) * self.window]
+            x_slice = x[..., i * self.window : (i + 1) * self.window]
             w, h = x_slice.shape[-2:]
-            x_slice = x_slice.transpose(1, 2).contiguous().view(bs * w, self.in_chan * self.num_dir, h, 1)
+            x_slice = x_slice.permute(0, 3, 1, 2).contiguous().view(bs * h, self.in_chan * self.num_dir, w, 1)
             x_slice = self.unfold(x_slice)
             hidden_t, cell_t = self.lstm_cell(x_slice, hidden_t, cell_t)
-            outputs[i] = hidden_t.view(bs, w, self.hid_chan * self.num_dir, -1).transpose(1, 2).contiguous()
+            outputs[i] = hidden_t.view(bs, h, self.hid_chan * self.num_dir, -1).permute(0, 2, 3, 1).contiguous()
 
-        x = self.projection(torch.cat(outputs, dim=2))[..., :old_w, :old_h]
-        x = x.transpose(-1, -2).contiguous() if self.dim == 4 else x
+        x = self.projection(torch.cat(outputs, dim=-1))[..., :old_w, :old_h]
+        x = x.transpose(-1, -2).contiguous() if self.dim == 3 else x
         x = x + residual
 
         return x
-
-
-# class BiLSTM2D(nn.Module):
-#     def __init__(
-#         self,
-#         in_chan: int,
-#         hid_chan: int,
-#         dim: int = 3,
-#         kernel_size: int = 1,
-#         act_type: str = "PReLU",
-#         norm_type: str = "gLN",
-#         bidirectional: bool = True,
-#     ):
-#         super(BiLSTM2D, self).__init__()
-#         self.in_chan = in_chan
-#         self.hid_chan = hid_chan
-#         self.dim = dim
-#         self.kernel_size = kernel_size
-#         self.act_type = act_type
-#         self.norm_type = norm_type
-#         self.bidirectional = bidirectional
-
-#         self.num_directions = int(bidirectional) + 1
-
-#         self.act = activations.get(self.act_type)()
-#         self.norm = normalizations.get(self.norm_type)(self.in_chan)
-
-#         self.lstm_cell = ConvLSTMCell(self.in_chan, self.hid_chan, self.kernel_size, self.num_directions)
-#         self.projection = ConvActNorm(self.hid_chan * self.num_directions, self.in_chan, 1, act_type=self.act_type, is2d=True)
-
-#     def forward(self, x: torch.Tensor):
-#         # x has size: (B, C, T, F)
-#         batch_size, _, time_steps, freq = x.shape
-#         length, lstm_steps = (freq, time_steps) if self.dim == 3 else (time_steps, freq)
-
-#         residual = x
-#         x = self.norm(x)
-#         x = torch.cat((x, x.flip(self.dim - 1)), dim=1)
-
-#         hidden_t = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
-#         cell_t = torch.zeros((batch_size, self.hid_chan * self.num_directions, length), device=x.device)
-
-#         outputs = [None] * lstm_steps
-#         for i in range(lstm_steps):
-#             x_slice = x[:, :, i] if self.dim == 3 else x[:, :, :, i]
-#             hidden_t, cell_t = self.lstm_cell(x_slice, hidden_t, cell_t)
-#             outputs[i] = hidden_t.unsqueeze(2 if self.dim == 3 else 3)
-
-#         output = self.act(torch.cat(outputs, dim=2 if self.dim == 3 else 3))
-#         output = self.projection(output) + residual
-
-#         return output
 
 
 def get(identifier):
