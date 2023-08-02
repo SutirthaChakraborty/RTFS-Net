@@ -61,13 +61,13 @@ class TDAVNetBlock(nn.Module):
 
     def __build_downsample_layers(self):
         out = nn.ModuleList()
-        for i in range(self.upsampling_depth - 1):
+        for i in range(self.upsampling_depth):
             out.append(
                 ConvNormAct(
                     in_chan=self.hid_chan,
                     out_chan=self.hid_chan,
                     kernel_size=self.kernel_size,
-                    stride=self.stride,
+                    stride=1 if i == 0 else self.stride,
                     groups=self.hid_chan,
                     norm_type=self.norm_type,
                     is2d=True,
@@ -112,8 +112,8 @@ class TDAVNetBlock(nn.Module):
         x_enc = self.projection(residual)
 
         # bottom-up
-        downsampled_outputs = [x_enc]
-        for i in range(self.upsampling_depth - 1):
+        downsampled_outputs = [self.downsample_layers[0](x_enc)]
+        for i in range(1, self.upsampling_depth):
             downsampled_outputs.append(self.downsample_layers[i](downsampled_outputs[-1]))
 
         # global pooling
