@@ -5,13 +5,7 @@ from ..layers import DualPathRNN, MultiHeadSelfAttention2D, ConvNormAct, BiLSTM2
 
 
 class GridNetBlock(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        rnn_1_conf: dict,
-        rnn_2_conf: dict,
-        attention_conf: dict,
-    ):
+    def __init__(self, in_chan: int, rnn_1_conf: dict, rnn_2_conf: dict, attention_conf: dict, *args, **kwargs):
         super(GridNetBlock, self).__init__()
         self.in_chan = in_chan
         self.rnn_1_conf = rnn_1_conf
@@ -30,13 +24,7 @@ class GridNetBlock(nn.Module):
 
 
 class LSTM2DBlock(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        rnn_1_conf: dict,
-        rnn_2_conf: dict,
-        attention_conf: dict,
-    ):
+    def __init__(self, in_chan: int, rnn_1_conf: dict, rnn_2_conf: dict, attention_conf: dict, *args, **kwargs):
         super(LSTM2DBlock, self).__init__()
         self.in_chan = in_chan
         self.rnn_1_conf = rnn_1_conf
@@ -51,6 +39,21 @@ class LSTM2DBlock(nn.Module):
         x = self.first_rnn(x)
         x = self.second_rnn(x)
         x = self.attention(x)
+        return x
+
+
+class GridNetTransformerBlock(nn.Module):
+    def __init__(self, in_chan: int, attention_conf: dict, *args, **kwargs):
+        super(GridNetTransformerBlock, self).__init__()
+        self.in_chan = in_chan
+        self.attention_conf = attention_conf
+
+        self.attention4 = MultiHeadSelfAttention2D(in_chan=self.in_chan, **self.attention_conf, dim=4)
+        self.attention3 = MultiHeadSelfAttention2D(in_chan=self.in_chan, **self.attention_conf, dim=3)
+
+    def forward(self, x: torch.Tensor):
+        x = self.attention4(x)
+        x = self.attention3(x)
         return x
 
 

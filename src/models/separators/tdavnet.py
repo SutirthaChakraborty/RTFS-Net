@@ -49,7 +49,9 @@ class TDAVNetBlock(nn.Module):
             is2d=True,
         )
         self.downsample_layers = self.__build_downsample_layers()
-        self.globalatt = get(self.block_type)(self.hid_chan, self.rnn_1_conf, self.rnn_2_conf, self.attention_conf)
+        self.globalatt = get(self.block_type)(
+            in_chan=self.hid_chan, rnn_1_conf=self.rnn_1_conf, rnn_2_conf=self.rnn_2_conf, attention_conf=self.attention_conf
+        )
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
         self.residual_conv = ConvNormAct(

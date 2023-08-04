@@ -80,6 +80,7 @@ class MultiHeadSelfAttention2D(nn.Module):
         hid_chan: int = 4,
         act_type: str = "PReLU",
         norm_type: str = "LayerNormalization4D",
+        dim: int = 3,
     ):
         super(MultiHeadSelfAttention2D, self).__init__()
         self.in_chan = in_chan
@@ -88,6 +89,7 @@ class MultiHeadSelfAttention2D(nn.Module):
         self.hid_chan = hid_chan
         self.act_type = act_type
         self.norm_type = norm_type
+        self.dim = dim
 
         assert self.in_chan % self.n_head == 0
 
@@ -154,23 +156,33 @@ class MultiHeadSelfAttention2D(nn.Module):
         K = torch.cat(all_K, dim=0)  # [B', E, T, F]
         V = torch.cat(all_V, dim=0)  # [B', C/n_head, T, F]
 
-        Q = Q.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
-        K = K.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
-        V = V.transpose(1, 2)  # [B', T, C/n_head, F]
+        if self.dim == 3:
+            Q = Q.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
+            K = K.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
+            V = V.transpose(1, 2)  # [B', T, C/n_head, F]
+        elif self.dim == 4:
+            Q = Q.permute(0, 3, 1, 2).flatten(start_dim=2)  # [B', F, E*T]
+            K = K.permute(0, 3, 1, 2).flatten(start_dim=2)  # [B', F, E*T]
+            V = V.permute(0, 3, 1, 2)  # [B', F, C/n_head, T]
         old_shape = V.shape
         V = V.flatten(start_dim=2)  # [B', T, C*F/n_head]
         emb_dim = Q.shape[-1]  # C*F/n_head
 
-        attn_mat = torch.matmul(Q, K.transpose(1, 2)) / (emb_dim**0.5)  # [B', T, T]
-        attn_mat = functional.softmax(attn_mat, dim=2)  # [B', T, T]
-        V = torch.matmul(attn_mat, V)  # [B', T, C*F/n_head]
+        attn_mat = torch.matmul(Q, K.transpose(1, 2)) / (emb_dim**0.5)  # [B', T, T] [B', F, F]
+        attn_mat = functional.softmax(attn_mat, dim=2)  # [B', T, T] [B', F, F]
+        V = torch.matmul(attn_mat, V)  # [B', T, C*F/n_head] [B', F, C*T/n_head]
 
-        V = V.reshape(old_shape)  # [B', T, C/n_head, F]
-        V = V.transpose(1, 2)  # [B', C/n_head, T, F]
+        V = V.reshape(old_shape)  # [B', T, C/n_head, F] [B', F, C/n_head, T]
+        V = V.transpose(1, 2)  # [B', C/n_head, T, F] [B', C/n_head, F, T]
         emb_dim = V.shape[1]  # C/n_head
 
-        x = V.view([self.n_head, batch_size, emb_dim, time, freq])  # [n_head, B, C/n_head, T, F])
-        x = x.transpose(0, 1).contiguous()  # [B, n_head, C/n_head, T, F])
+        if self.dim == 3:
+            x = V.view([self.n_head, batch_size, emb_dim, time, freq])  # [n_head, B, C/n_head, T, F])
+            x = x.transpose(0, 1).contiguous()  # [B, n_head, C/n_head, T, F])
+        elif self.dim == 4:
+            x = V.view([self.n_head, batch_size, emb_dim, freq, time])  # [n_head, B, C/n_head, F, T])
+            x = x.permute(1, 0, 2, 4, 3).contiguous()  # [B, n_head, C/n_head, T, F])
+
         x = x.view([batch_size, self.n_head * emb_dim, time, freq])  # [B, C, T, F])
         x = self.attn_concat_proj(x)  # [B, C, T, F])
 
