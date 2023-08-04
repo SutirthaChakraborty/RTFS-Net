@@ -69,3 +69,17 @@ class RefinementModule(nn.Module):
                     encoder_args[k] = v
 
         return encoder_args
+
+    def get_MACs(self, bn_audio, bn_video):
+        from thop import profile
+
+        audio_macs = int(profile(self.audio_net, inputs=(bn_audio,), verbose=False)[0] / 1000000)
+        audio_params = int(sum(p.numel() for p in self.audio_net.parameters() if p.requires_grad) / 1000)
+
+        video_macs = int(profile(self.video_net, inputs=(bn_video,), verbose=False)[0] / 1000000)
+        video_params = int(sum(p.numel() for p in self.video_net.parameters() if p.requires_grad) / 1000)
+
+        fusion_macs = int(profile(self.crossmodal_fusion, inputs=(bn_audio, bn_video), verbose=False)[0] / 1000000)
+        fusion_params = int(sum(p.numel() for p in self.crossmodal_fusion.parameters() if p.requires_grad) / 1000)
+
+        return audio_macs, audio_params, video_macs, video_params, fusion_macs, fusion_params

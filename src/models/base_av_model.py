@@ -92,9 +92,8 @@ class BaseAVModel(nn.Module):
         MACs.append(int(profile(self.refinement_module, inputs=(bn_audio, bn_video), verbose=False)[0] / 1000000))
         MACs.append(int(sum(p.numel() for p in self.refinement_module.parameters() if p.requires_grad) / 1000))
 
-        f_macs, f_params = self.refinement_module.crossmodal_fusion.get_MACs(bn_audio, bn_video)
-        MACs.append(f_macs)
-        MACs.append(f_params)
+        params = self.refinement_module.get_MACs(bn_audio, bn_video)
+        [MACs.append(p) for p in params]
 
         MACs.append(int(profile(self.mask_generator, inputs=(bn_audio, encoded_audio), verbose=False)[0] / 1000000))
         MACs.append(int(sum(p.numel() for p in self.mask_generator.parameters() if p.requires_grad) / 1000))
@@ -119,7 +118,9 @@ class BaseAVModel(nn.Module):
             "Audio BN ------------ MACs: {:>8} M    Params: {:>6} K\n"
             "Video BN ------------ MACs: {:>8} M    Params: {:>6} K\n"
             "RefinementModule ---- MACs: {:>8} M    Params: {:>6} K\n"
-            "   CM FusionModule -- MACs: {:>8} M    Params: {:>6} K\n"
+            "   AudioNet --------- MACs: {:>8} M    Params: {:>6} K\n"
+            "   VideoNet --------- MACs: {:>8} M    Params: {:>6} K\n"
+            "   FusionNet -------- MACs: {:>8} M    Params: {:>6} K\n"
             "Mask Generator ------ MACs: {:>8} M    Params: {:>6} K\n"
             "Decoder ------------- MACs: {:>8} M    Params: {:>6} K\n"
             "Total --------------- MACs: {:>8} M    Params: {:>6} K\n\n"
