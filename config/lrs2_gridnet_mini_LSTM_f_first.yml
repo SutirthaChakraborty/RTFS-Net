@@ -76,10 +76,10 @@ audionet:
         dropout: 0.1
 
     fusion_params:
-      fusion_type: ConcatFusion
+      fusion_type: InjectionFusion
       fusion_shared: True
+      kernel_size: 1
       is2d: True
-      nstack: False
 
     mask_generation_params:
       mask_generator_type: RI_MaskGenerator
