@@ -38,7 +38,7 @@ audionet:
       norm_type: gLN
       act_type: PReLU
       upsampling_depth: 2
-      repeats: 16
+      repeats: 12
       shared: True
       rnn_1_conf:
         hid_chan: 64
