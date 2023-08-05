@@ -131,8 +131,8 @@ class LSTMFusion(FusionBasemodule):
         self.bidirectional = bidirectional
 
         if video_fusion:
-            self.video_lstm = ConvLSTMFusionCell(self.vin_chan, self.ain_chan, self.vin_chan, self.kernel_size, self.bidirectional)
-        self.audio_lstm = ConvLSTMFusionCell(self.ain_chan, self.vin_chan, self.ain_chan, self.kernel_size, self.bidirectional)
+            self.video_lstm = ConvLSTMFusionCell(self.vin_chan, self.ain_chan, self.kernel_size, self.bidirectional)
+        self.audio_lstm = ConvLSTMFusionCell(self.ain_chan, self.vin_chan, self.kernel_size, self.bidirectional)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
         audio, video = self.wrangle_dims(audio, video)

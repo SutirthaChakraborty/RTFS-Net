@@ -143,50 +143,44 @@ class MultiHeadSelfAttention2D(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
+        if self.dim == 4:
+            x = x.transpose(-2, -1).contiguous()
+
         batch_size, _, time, freq = x.size()
         residual = x
 
-        all_Q, all_K, all_V = [], [], []
-        for ii in range(self.n_head):
-            all_Q.append(self.Queries[ii](x))  # [B, E, T, F]
-            all_K.append(self.Keys[ii](x))  # [B, E, T, F]
-            all_V.append(self.Values[ii](x))  # [B, C/n_head, T, F]
+        all_Q = [q(x) for q in self.Queries]  # [B, E, T, F]
+        all_K = [k(x) for k in self.Keys]  # [B, E, T, F]
+        all_V = [v(x) for v in self.Values]  # [B, C/n_head, T, F]
 
         Q = torch.cat(all_Q, dim=0)  # [B', E, T, F]    B' = B*n_head
         K = torch.cat(all_K, dim=0)  # [B', E, T, F]
         V = torch.cat(all_V, dim=0)  # [B', C/n_head, T, F]
 
-        if self.dim == 3:
-            Q = Q.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
-            K = K.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
-            V = V.transpose(1, 2)  # [B', T, C/n_head, F]
-        elif self.dim == 4:
-            Q = Q.permute(0, 3, 1, 2).flatten(start_dim=2)  # [B', F, E*T]
-            K = K.permute(0, 3, 1, 2).flatten(start_dim=2)  # [B', F, E*T]
-            V = V.permute(0, 3, 1, 2)  # [B', F, C/n_head, T]
+        Q = Q.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
+        K = K.transpose(1, 2).flatten(start_dim=2)  # [B', T, E*F]
+        V = V.transpose(1, 2)  # [B', T, C/n_head, F]
         old_shape = V.shape
         V = V.flatten(start_dim=2)  # [B', T, C*F/n_head]
         emb_dim = Q.shape[-1]  # C*F/n_head
 
-        attn_mat = torch.matmul(Q, K.transpose(1, 2)) / (emb_dim**0.5)  # [B', T, T] [B', F, F]
-        attn_mat = functional.softmax(attn_mat, dim=2)  # [B', T, T] [B', F, F]
-        V = torch.matmul(attn_mat, V)  # [B', T, C*F/n_head] [B', F, C*T/n_head]
-
-        V = V.reshape(old_shape)  # [B', T, C/n_head, F] [B', F, C/n_head, T]
-        V = V.transpose(1, 2)  # [B', C/n_head, T, F] [B', C/n_head, F, T]
+        attn_mat = torch.matmul(Q, K.transpose(1, 2)) / (emb_dim**0.5)  # [B', T, T]
+        attn_mat = functional.softmax(attn_mat, dim=2)  # [B', T, T]
+        V = torch.matmul(attn_mat, V)  # [B', T, C*F/n_head]
+        V = V.reshape(old_shape)  # [B', T, C/n_head, F]
+        V = V.transpose(1, 2)  # [B', C/n_head, T, F]
         emb_dim = V.shape[1]  # C/n_head
 
-        if self.dim == 3:
-            x = V.view([self.n_head, batch_size, emb_dim, time, freq])  # [n_head, B, C/n_head, T, F])
-            x = x.transpose(0, 1).contiguous()  # [B, n_head, C/n_head, T, F])
-        elif self.dim == 4:
-            x = V.view([self.n_head, batch_size, emb_dim, freq, time])  # [n_head, B, C/n_head, F, T])
-            x = x.permute(1, 0, 2, 4, 3).contiguous()  # [B, n_head, C/n_head, T, F])
+        x = V.view([self.n_head, batch_size, emb_dim, time, freq])  # [n_head, B, C/n_head, T, F]
+        x = x.transpose(0, 1).contiguous()  # [B, n_head, C/n_head, T, F]
 
-        x = x.view([batch_size, self.n_head * emb_dim, time, freq])  # [B, C, T, F])
-        x = self.attn_concat_proj(x)  # [B, C, T, F])
+        x = x.view([batch_size, self.n_head * emb_dim, time, freq])  # [B, C, T, F]
+        x = self.attn_concat_proj(x)  # [B, C, T, F]
 
         x = x + residual
+
+        if self.dim == 4:
+            x = x.transpose(-2, -1).contiguous()
 
         return x
 

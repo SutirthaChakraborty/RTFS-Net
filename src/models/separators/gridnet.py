@@ -43,13 +43,14 @@ class LSTM2DBlock(nn.Module):
 
 
 class GridNetTransformerBlock(nn.Module):
-    def __init__(self, in_chan: int, attention_conf: dict, *args, **kwargs):
+    def __init__(self, in_chan: int, rnn_1_conf: dict, attention_conf: dict, *args, **kwargs):
         super(GridNetTransformerBlock, self).__init__()
         self.in_chan = in_chan
+        self.rnn_1_conf = rnn_1_conf
         self.attention_conf = attention_conf
 
-        self.attention4 = MultiHeadSelfAttention2D(in_chan=self.in_chan, **self.attention_conf, dim=4)
-        self.attention3 = MultiHeadSelfAttention2D(in_chan=self.in_chan, **self.attention_conf, dim=3)
+        self.attention4 = DualPathRNN(in_chan=self.in_chan, **self.rnn_1_conf)
+        self.attention3 = MultiHeadSelfAttention2D(in_chan=self.in_chan, **self.attention_conf)
 
     def forward(self, x: torch.Tensor):
         x = self.attention4(x)

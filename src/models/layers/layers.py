@@ -400,6 +400,7 @@ class DualPathRNN(nn.Module):
         self.unfolded_chan = self.in_chan * self.kernel_size
 
         self.norm = normalizations.get(self.norm_type)((self.in_chan, 1) if self.norm_type == "LayerNormalization4D" else self.in_chan)
+        self.unfold = nn.Unfold((self.kernel_size, 1), stride=(self.stride, 1))
         self.rnn = getattr(nn, self.rnn_type)(
             input_size=self.unfolded_chan,
             hidden_size=self.hid_chan,
@@ -410,6 +411,9 @@ class DualPathRNN(nn.Module):
         self.linear = nn.ConvTranspose1d(self.hid_chan * self.num_direction, self.in_chan, self.kernel_size, stride=self.stride)
 
     def forward(self, x: torch.Tensor):
+        if self.dim == 4:
+            x = x.transpose(-2, -1).contiguous()
+
         B, C, old_T, old_F = x.shape
         new_T = math.ceil((old_T - self.kernel_size) / self.stride) * self.stride + self.kernel_size
         new_F = math.ceil((old_F - self.kernel_size) / self.stride) * self.stride + self.kernel_size
@@ -417,24 +421,20 @@ class DualPathRNN(nn.Module):
 
         residual = x
         x = self.norm(x)
-        if self.dim == 3:
-            x = x.permute(0, 3, 1, 2).contiguous().view(B * new_F, C, new_T)
-        elif self.dim == 4:
-            x = x.permute(0, 2, 1, 3).contiguous().view(B * new_T, C, new_F)
-        x = F.unfold(x[..., None], (self.kernel_size, 1), stride=(self.stride, 1))
+        x = x.permute(0, 3, 1, 2).contiguous().view(B * new_F, C, new_T, 1)
+        x = self.unfold(x)
         x = x.transpose(1, 2)
         x = self.rnn(x)[0]
         x = x.transpose(1, 2)
         x = self.linear(x)
-        if self.dim == 3:
-            x = x.view([B, new_F, C, new_T])
-            x = x.permute(0, 2, 3, 1).contiguous()
-        elif self.dim == 4:
-            x = x.view([B, new_T, C, new_F])
-            x = x.permute(0, 2, 1, 3).contiguous()
+        x = x.view([B, new_F, C, new_T])
+        x = x.permute(0, 2, 3, 1).contiguous()
         x = x + residual
-
         x = x[..., :old_T, :old_F]
+
+        if self.dim == 4:
+            x = x.transpose(-2, -1).contiguous()
+
         return x
 
 
@@ -576,34 +576,29 @@ class BiLSTM2D(nn.Module):
 
 
 class ConvLSTMFusionCell(nn.Module):
-    def __init__(self, in_chan_a: int, in_chan_b, out_chan: int, kernel_size: int = 1, bidirectional: bool = False):
+    def __init__(self, in_chan_a: int, in_chan_b, kernel_size: int = 1, bidirectional: bool = False):
         super(ConvLSTMFusionCell, self).__init__()
         self.in_chan_a = in_chan_a
         self.in_chan_b = in_chan_b
-        self.hid_chan = out_chan
         self.kernel_size = kernel_size
         self.bidirectional = bidirectional
         self.num_dir = int(bidirectional) + 1
 
-        self.conv_a = nn.Sequential(
-            ConvActNorm(
-                self.in_chan_a * self.num_dir,
-                self.in_chan_a * self.num_dir,
-                self.kernel_size,
-                groups=self.in_chan_a * self.num_dir,
-                is2d=True,
-            ),
-            ConvActNorm(self.in_chan_a * self.num_dir, 4 * self.hid_chan, 1, is2d=True),
+        self.conv_a = ConvActNorm(
+            self.in_chan_a * self.num_dir,
+            self.in_chan_a * 4,
+            self.kernel_size,
+            is2d=True,
+            groups=self.in_chan_a * self.num_dir,
+            norm_type="gLN",
         )
-        self.conv_b = nn.Sequential(
-            ConvActNorm(
-                self.in_chan_b * self.num_dir,
-                self.in_chan_b * self.num_dir,
-                self.kernel_size,
-                groups=self.in_chan_b * self.num_dir,
-                is2d=True,
-            ),
-            ConvActNorm(self.in_chan_b * self.num_dir, 4 * self.hid_chan, 1, is2d=True),
+        self.conv_b = ConvActNorm(
+            self.in_chan_b * self.num_dir,
+            self.in_chan_a * 4,
+            self.kernel_size,
+            is2d=True,
+            groups=self.in_chan_a * self.num_dir,
+            norm_type="gLN",
         )
 
     def forward(self, tensor_a: torch.Tensor, tensor_b: torch.Tensor):
