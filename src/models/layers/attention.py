@@ -1,9 +1,10 @@
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 
-from . import layers
+from . import conv_layers
+from .conv_layers import ConvActNorm, FeedForwardNetwork
+from .rnn_layers import RNNProjection
 from timm.models.layers import DropPath
 
 
@@ -99,7 +100,7 @@ class MultiHeadSelfAttention2D(nn.Module):
 
         for _ in range(self.n_head):
             self.Queries.append(
-                layers.ConvActNorm(
+                ConvActNorm(
                     in_chan=self.in_chan,
                     out_chan=self.hid_chan,
                     kernel_size=1,
@@ -110,7 +111,7 @@ class MultiHeadSelfAttention2D(nn.Module):
                 )
             )
             self.Keys.append(
-                layers.ConvActNorm(
+                ConvActNorm(
                     in_chan=self.in_chan,
                     out_chan=self.hid_chan,
                     kernel_size=1,
@@ -121,7 +122,7 @@ class MultiHeadSelfAttention2D(nn.Module):
                 )
             )
             self.Values.append(
-                layers.ConvActNorm(
+                ConvActNorm(
                     in_chan=self.in_chan,
                     out_chan=self.in_chan // self.n_head,
                     kernel_size=1,
@@ -132,7 +133,7 @@ class MultiHeadSelfAttention2D(nn.Module):
                 )
             )
 
-        self.attn_concat_proj = layers.ConvActNorm(
+        self.attn_concat_proj = ConvActNorm(
             in_chan=self.in_chan,
             out_chan=self.in_chan,
             kernel_size=1,
@@ -208,7 +209,7 @@ class GlobalAttention(nn.Module):
         self.pos_enc = pos_enc
 
         self.MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
-        self.FFN = layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
+        self.FFN = conv_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=self.dropout)
 
     def forward(self, x: torch.Tensor):
         x = self.MHSA(x)
@@ -234,7 +235,7 @@ class GlobalAttentionRNN(nn.Module):
         self.rnn_type = rnn_type
         self.bidirectional = bidirectional
 
-        self.RNN = layers.RNNProjection(self.in_chan, self.hid_chan, self.rnn_type, self.dropout, self.bidirectional)
+        self.RNN = RNNProjection(self.in_chan, self.hid_chan, self.rnn_type, self.dropout, self.bidirectional)
 
     def forward(self, x: torch.Tensor):
         x = self.RNN(x)
@@ -275,11 +276,11 @@ class GlobalAttention2D(nn.Module):
         self.freq_FFN = nn.Identity()
 
         if self.single_ffn:
-            self.time_FFN = layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
-            self.freq_FFN = layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+            self.time_FFN = conv_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+            self.freq_FFN = conv_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
         if self.group_ffn:
-            self.group_FFN = layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
+            self.group_FFN = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
@@ -329,13 +330,13 @@ class GlobalGALR(nn.Module):
         self.rnn_type = rnn_type
         self.bidirectional = bidirectional
 
-        self.time_RNN = layers.RNNProjection(self.in_chan, self.in_chan, self.rnn_type, self.dropout, self.bidirectional)
+        self.time_RNN = RNNProjection(self.in_chan, self.in_chan, self.rnn_type, self.dropout, self.bidirectional)
         self.freq_MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
-        self.freq_FFN = layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
+        self.freq_FFN = conv_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
         self.group_FFN = nn.Identity()
         if self.group_ffn:
-            self.group_FFN = layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
+            self.group_FFN = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
