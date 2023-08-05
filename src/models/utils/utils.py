@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 
+from thop import profile
 from torch.autograd import Variable
 
 
@@ -74,3 +75,10 @@ def get_bandwidths(win: int, sr: int = 16000):
     band_width.append(enc_dim - np.sum(band_width))
 
     return band_width
+
+
+def get_MACs(layer: nn.Module, inputs=tuple):
+    macs = int(profile(layer, inputs=inputs, verbose=False)[0] / 1000000)
+    params = int(sum(p.numel() for p in layer.parameters() if p.requires_grad) / 1000)
+
+    return [macs, params]
