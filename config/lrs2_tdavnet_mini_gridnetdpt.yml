@@ -41,7 +41,15 @@ audionet:
       repeats: 4
       shared: True
       block_type: GridNetTransformerBlock
+      rnn_1_conf:
+        dim: 4
+        hid_chan: 64
+        kernel_size: 8
+        stride: 1
+        rnn_type: LSTM
+        bidirectional: True
       attention_conf:
+        dim: 3
         n_freqs: 65
         n_head: 4
         hid_chan: 4
