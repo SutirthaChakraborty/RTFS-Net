@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from .fusion import MultiModalFusion
 from .. import separators
-from ..utils import get_MACs
+from ..utils import get_MACS_params
 
 
 class RefinementModule(nn.Module):
@@ -74,10 +74,10 @@ class RefinementModule(nn.Module):
     def get_MACs(self, bn_audio, bn_video):
         macs = []
 
-        macs += get_MACs(self.audio_net, (bn_audio,))
+        macs += get_MACS_params(self.audio_net, (bn_audio,))
 
-        macs += get_MACs(self.video_net, (bn_video,))
+        macs += get_MACS_params(self.video_net, (bn_video,))
 
-        macs += get_MACs(self.crossmodal_fusion, (bn_audio, bn_video))
+        macs += get_MACS_params(self.crossmodal_fusion, (bn_audio, bn_video))
 
         return macs

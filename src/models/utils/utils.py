@@ -77,7 +77,7 @@ def get_bandwidths(win: int, sr: int = 16000):
     return band_width
 
 
-def get_MACs(layer: nn.Module, inputs: tuple = None):
+def get_MACS_params(layer: nn.Module, inputs: tuple = None):
     macs = None
     if inputs is not None:
         macs = int(profile(layer, inputs=inputs, verbose=False)[0] / 1000000)

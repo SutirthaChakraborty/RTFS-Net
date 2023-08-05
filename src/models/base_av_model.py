@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as ptl
 
-from .utils import get_MACs
+from .utils import get_MACS_params
 
 
 class BaseAVModel(nn.Module):
@@ -80,21 +80,21 @@ class BaseAVModel(nn.Module):
 
         MACs = []
 
-        MACs += get_MACs(self.encoder, (audio_input,))
+        MACs += get_MACS_params(self.encoder, (audio_input,))
 
-        MACs += get_MACs(self.audio_bottleneck, (encoded_audio,))
+        MACs += get_MACS_params(self.audio_bottleneck, (encoded_audio,))
 
-        MACs += get_MACs(self.video_bottleneck, (video_input,))
+        MACs += get_MACS_params(self.video_bottleneck, (video_input,))
 
-        MACs += get_MACs(self.refinement_module, (bn_audio, bn_video))
+        MACs += get_MACS_params(self.refinement_module, (bn_audio, bn_video))
 
         MACs += self.refinement_module.get_MACs(bn_audio, bn_video)
 
-        MACs += get_MACs(self.mask_generator, (bn_audio, encoded_audio))
+        MACs += get_MACS_params(self.mask_generator, (bn_audio, encoded_audio))
 
-        MACs += get_MACs(self.decoder, inputs=(separated_audio_embedding, encoded_audio.shape))
+        MACs += get_MACS_params(self.decoder, inputs=(separated_audio_embedding, encoded_audio.shape))
 
-        MACs += get_MACs(self, inputs=(audio_input, video_input))
+        MACs += get_MACS_params(self, inputs=(audio_input, video_input))
 
         MACs = ["{:,}".format(m) for m in MACs]
 
