@@ -21,7 +21,6 @@ class ConvNormAct(nn.Module):
         xavier_init: bool = False,
         bias: bool = True,
         is2d: bool = False,
-        before: bool = False,
         *args,
         **kwargs,
     ):
@@ -37,7 +36,6 @@ class ConvNormAct(nn.Module):
         self.act_type = act_type
         self.xavier_init = xavier_init
         self.bias = bias
-        self.before = before
 
         if self.padding is None:
             self.padding = dilation * (kernel_size - 1) // 2 if self.stride > 1 else "same"
@@ -64,11 +62,6 @@ class ConvNormAct(nn.Module):
         self.act = activations.get(self.act_type)()
 
     def forward(self, x: torch.Tensor):
-        if self.before:
-            output = self.norm(x)
-            output = self.conv(output)
-            output = self.act(output)
-            return output
         output = self.conv(x)
         output = self.norm(output)
         output = self.act(output)

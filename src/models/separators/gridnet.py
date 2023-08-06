@@ -178,7 +178,6 @@ class GridNet(nn.Module):
             x = self.get_block(i)((x + residual) if i > 0 else x)
         return x
 
-
 class ChannelAttention(nn.Module):
     def __init__(self,channel,reduction=16):
         super().__init__()
@@ -351,7 +350,7 @@ class CoTAttention(nn.Module):
 
 
         return k1+k2
-    
+   
 def get(identifier):
     if identifier is None:
         return nn.Identity
