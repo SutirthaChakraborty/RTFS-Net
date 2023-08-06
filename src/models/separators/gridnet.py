@@ -49,12 +49,12 @@ class GridNetTransformerBlock(nn.Module):
         self.rnn_1_conf = rnn_1_conf
         self.attention_conf = attention_conf
 
-        self.attention4 = DualPathRNN(in_chan=self.in_chan, **self.rnn_1_conf)
-        self.attention3 = MultiHeadSelfAttention2D(in_chan=self.in_chan, **self.attention_conf)
+        self.rnn = DualPathRNN(in_chan=self.in_chan, **self.rnn_1_conf)
+        self.mhsa = MultiHeadSelfAttention2D(in_chan=self.in_chan, **self.attention_conf)
 
     def forward(self, x: torch.Tensor):
-        x = self.attention4(x)
-        x = self.attention3(x)
+        x = self.rnn(x)
+        x = self.mhsa(x)
         return x
 
 

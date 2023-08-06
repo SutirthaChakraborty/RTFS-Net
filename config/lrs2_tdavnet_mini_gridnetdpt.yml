@@ -42,14 +42,14 @@ audionet:
       shared: True
       block_type: GridNetTransformerBlock
       rnn_1_conf:
-        dim: 4
+        dim: 3
         hid_chan: 64
         kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       attention_conf:
-        dim: 3
+        dim: 4
         n_freqs: 65
         n_head: 4
         hid_chan: 4
@@ -117,4 +117,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/05_08_23_gridnetdpt
+    exp_name: avnet_mini/tdavnet/06_08_23_gridnetdpt
