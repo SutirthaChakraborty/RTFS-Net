@@ -28,7 +28,7 @@ audionet:
       bias: False
       act_type: ReLU
       norm_type: gLN
-      
+
     audio_params:
       audio_net: GridNet
       # in_chan same as audio_bn_chan
@@ -77,7 +77,7 @@ audionet:
         dropout: 0.1
 
     fusion_params:
-      fusion_type: InjectionFusion
+      fusion_type: ConcatFusion
       fusion_shared: True
       kernel_size: 1
       is2d: True
