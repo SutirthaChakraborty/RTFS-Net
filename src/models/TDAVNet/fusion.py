@@ -184,7 +184,7 @@ class MultiModalFusion(nn.Module):
             for i in range(self.fusion_repeats):
                 out.append(
                     fusion_class(
-                        self.audio_bn_chan, self.video_bn_chan, self.kernel_size, i != self.fusion_repeats - 1, self.is2d * args, **kwargs
+                        self.audio_bn_chan, self.video_bn_chan, self.kernel_size, i != self.fusion_repeats - 1, self.is2d, *args, **kwargs
                     )
                 )
 
