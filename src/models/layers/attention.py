@@ -6,7 +6,7 @@ from . import conv_layers
 from .conv_layers import ConvActNorm, FeedForwardNetwork
 from .rnn_layers import RNNProjection
 from timm.models.layers import DropPath
-from torch.nn import init
+
 
 class PositionalEncoding(nn.Module):
     def __init__(
