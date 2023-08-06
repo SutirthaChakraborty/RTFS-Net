@@ -13,7 +13,7 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 256
+      out_chan: 64
       kernel_size: 1
       is2d: True
 
@@ -22,7 +22,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 256
+      out_chan: 64
       kernel_size: 3
       stride: 1
       bias: False
@@ -42,15 +42,15 @@ audionet:
       shared: True
       block_type: GridNetTransformerBlock
       rnn_1_conf:
+        hid_chan: 32
         dim: 3
-        hid_chan: 64
         kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       attention_conf:
         dim: 4
-        n_freqs: 65
+        n_freqs: 126
         n_head: 4
         hid_chan: 4
         act_type: PReLU
