@@ -42,13 +42,10 @@ audionet:
       repeats: 4
       shared: True
       block_type: CBAMBlock
-      # rnn_1_conf:
-      #   hid_chan: 64
-      #   dim: 4
-      #   kernel_size: 8
-      #   stride: 1
-      #   rnn_type: LSTM
-      #   bidirectional: True
+      rnn_1_conf:
+        channel: 32
+        reduction: 4
+        kernel_size: 3
       # rnn_2_conf:
       #   hid_chan: 64
       #   dim: 3

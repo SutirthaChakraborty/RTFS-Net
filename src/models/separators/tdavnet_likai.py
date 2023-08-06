@@ -50,7 +50,7 @@ class TDAVNetBlock(nn.Module):
         )
         self.downsample_layers = self.__build_downsample_layers()
         self.globalatt = get(self.block_type)(
-            channel=self.hid_chan, reduction=16, kernel_size=5
+            **rnn_1_conf
         )
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()

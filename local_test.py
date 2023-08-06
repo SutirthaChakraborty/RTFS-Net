@@ -161,7 +161,7 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/tdavnet_q=2_likai.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/tdavnet_q=2_likai_cotatt.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
