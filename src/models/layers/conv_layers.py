@@ -6,6 +6,59 @@ from timm.models.layers import DropPath
 from .. import normalizations, activations
 
 
+class DepthwiseSeparableConvolution(nn.Module):
+    def __init__(
+        self,
+        in_chan: int,
+        out_chan: int,
+        kernel_size: int = -1,
+        stride: int = 1,
+        norm_type: str = None,
+        act_type: str = None,
+        xavier_init: bool = False,
+        is2d: bool = False,
+    ):
+        super().__init__()
+        ks = kernel_size[0] if hasattr(kernel_size, "__len__") else kernel_size
+
+        if ks > 0:
+            self.conv = nn.Sequential(
+                ConvNormAct(
+                    in_chan=in_chan,
+                    out_chan=in_chan,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    groups=in_chan,
+                    xavier_init=xavier_init,
+                    is2d=is2d,
+                ),
+                ConvNormAct(
+                    in_chan=in_chan,
+                    out_chan=out_chan,
+                    kernel_size=1,
+                    xavier_init=xavier_init,
+                    is2d=is2d,
+                ),
+                activations.get(act_type)(),
+                normalizations.get(norm_type)(out_chan),
+            )
+        else:
+            self.conv = nn.Identity()
+
+    def forward(self, x):
+        return self.conv(x)
+
+    def get_config(self):
+        encoder_args = {}
+
+        for k, v in (self.__dict__).items():
+            if not k.startswith("_") and k != "training":
+                if not inspect.ismethod(v):
+                    encoder_args[k] = v
+
+        return encoder_args
+
+
 class ConvNormAct(nn.Module):
     def __init__(
         self,

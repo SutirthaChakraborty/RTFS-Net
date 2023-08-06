@@ -95,9 +95,9 @@ class InjectionFusion(FusionBasemodule):
 
         if video_fusion:
             self.audio_conv = ConvNormAct(self.ain_chan, self.vin_chan, 1, is2d=self.is2d)
-            self.video_inj = InjectionMultiSum(self.vin_chan, self.vin_chan, self.kernel_size, "gLN", is2d=self.is2d)
+            self.video_inj = InjectionMultiSum(self.vin_chan, self.kernel_size, "gLN", is2d=self.is2d)
         self.video_conv = ConvNormAct(self.vin_chan, self.ain_chan, 1, is2d=self.is2d)
-        self.audio_inj = InjectionMultiSum(self.ain_chan, self.ain_chan, self.kernel_size, "gLN", is2d=self.is2d)
+        self.audio_inj = InjectionMultiSum(self.ain_chan, self.kernel_size, "gLN", is2d=self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
         audio, video = self.wrangle_dims(audio, video)

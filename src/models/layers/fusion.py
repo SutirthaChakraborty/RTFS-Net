@@ -10,43 +10,39 @@ class InjectionMultiSum(nn.Module):
     def __init__(
         self,
         in_chan: int,
-        hid_chan: int,
         kernel_size: int,
         norm_type: str = "gLN",
         is2d: bool = False,
     ):
         super(InjectionMultiSum, self).__init__()
         self.in_chan = in_chan
-        self.hid_chan = hid_chan
         self.kernel_size = kernel_size
         self.norm_type = norm_type
         self.is2d = is2d
 
-        self.groups = in_chan if in_chan == hid_chan else 1
-
         self.local_embedding = ConvNormAct(
             in_chan=self.in_chan,
-            out_chan=self.hid_chan,
+            out_chan=self.in_chan,
             kernel_size=self.kernel_size,
-            groups=self.groups,
+            groups=self.in_chan,
             norm_type=self.norm_type,
             bias=False,
             is2d=self.is2d,
         )
         self.global_embedding = ConvNormAct(
             in_chan=self.in_chan,
-            out_chan=self.hid_chan,
+            out_chan=self.in_chan,
             kernel_size=self.kernel_size,
-            groups=self.groups,
+            groups=self.in_chan,
             norm_type=self.norm_type,
             bias=False,
             is2d=self.is2d,
         )
         self.global_gate = ConvNormAct(
             in_chan=self.in_chan,
-            out_chan=self.hid_chan,
+            out_chan=self.in_chan,
             kernel_size=self.kernel_size,
-            groups=self.groups,
+            groups=self.in_chan,
             norm_type=self.norm_type,
             act_type="Sigmoid",
             bias=False,
@@ -85,7 +81,7 @@ class ConvLSTMFusionCell(nn.Module):
             self.in_chan_a * 4,
             self.kernel_size,
             is2d=True,
-            groups=self.in_chan_a * self.num_dir,
+            groups=self.in_chan_a // 4,
             norm_type="gLN",
         )
         self.conv_b = ConvNormAct(
@@ -93,7 +89,7 @@ class ConvLSTMFusionCell(nn.Module):
             self.in_chan_a * 4,
             self.kernel_size,
             is2d=True,
-            groups=self.in_chan_a * self.num_dir,
+            groups=self.in_chan_a // 4,
             norm_type="gLN",
         )
 
