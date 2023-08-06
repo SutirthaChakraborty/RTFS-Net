@@ -50,6 +50,7 @@ audionet:
         rnn_type: LSTM
         bidirectional: True
       attention_conf:
+        dim: 3
         n_freqs: 129
         n_head: 4
         hid_chan: 4
