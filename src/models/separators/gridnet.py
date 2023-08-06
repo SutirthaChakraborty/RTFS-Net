@@ -90,7 +90,12 @@ class TFGridNet(nn.Module):
             kernel_size=1,
             is2d=True,
         )
-        self.globalatt = get(self.block_type)(self.hid_chan, self.rnn_1_conf, self.rnn_2_conf, self.attention_conf)
+        self.globalatt = get(self.block_type)(
+            in_chan=self.hid_chan,
+            rnn_1_conf=self.rnn_1_conf,
+            rnn_2_conf=self.rnn_2_conf,
+            attention_conf=self.attention_conf,
+        )
         self.residual_conv = ConvNormAct(
             in_chan=self.hid_chan,
             out_chan=self.in_chan,

@@ -35,6 +35,7 @@ audionet:
       hid_chan: 32
       repeats: 4
       shared: True
+      block_type: GridNetBlock
       rnn_1_conf:
         hid_chan: 64
         dim: 4
