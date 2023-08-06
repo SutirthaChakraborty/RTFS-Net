@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from .fusion import MultiModalFusion
 from .. import separators
+from ..utils import get_MACS_params
 
 
 class RefinementModule(nn.Module):
@@ -14,7 +15,6 @@ class RefinementModule(nn.Module):
         audio_bn_chan: int,
         video_bn_chan: int,
         fusion_params: dict,
-        concat_first: bool,
     ):
         super(RefinementModule, self).__init__()
         self.audio_params = audio_params
@@ -22,7 +22,6 @@ class RefinementModule(nn.Module):
         self.audio_bn_chan = audio_bn_chan
         self.video_bn_chan = video_bn_chan
         self.fusion_params = fusion_params
-        self.concat_first = concat_first
 
         self.fusion_repeats = self.video_params.get("repeats", 0)
         self.audio_repeats = self.audio_params["repeats"] - self.fusion_repeats
@@ -30,12 +29,10 @@ class RefinementModule(nn.Module):
         self.audio_net = separators.get(self.audio_params.get("audio_net", None))(
             **self.audio_params,
             in_chan=self.audio_bn_chan,
-            concat_first=self.concat_first,
         )
         self.video_net = separators.get(self.video_params.get("video_net", None))(
             **self.video_params,
             in_chan=self.video_bn_chan,
-            concat_first=self.concat_first,
         )
 
         self.crossmodal_fusion = MultiModalFusion(
@@ -51,15 +48,8 @@ class RefinementModule(nn.Module):
 
         # cross modal fusion
         for i in range(self.fusion_repeats):
-            if i > 0:
-                audio = self.audio_net.get_concat_block(i)(audio + audio_residual)
-                video = self.video_net.get_concat_block(i)(video + video_residual)
-            elif i == 0 and self.concat_first:
-                audio = self.audio_net.get_concat_block(i)(audio)
-                video = self.video_net.get_concat_block(i)(video)
-
-            audio = self.audio_net.get_block(i)(audio)
-            video = self.video_net.get_block(i)(video)
+            audio = self.audio_net.get_block(i)(audio + audio_residual if i > 0 else audio)
+            video = self.video_net.get_block(i)(video + video_residual if i > 0 else video)
 
             audio, video = self.crossmodal_fusion.get_fusion_block(i)(audio, video)
 
@@ -67,12 +57,7 @@ class RefinementModule(nn.Module):
         for j in range(self.audio_repeats):
             i = j + self.fusion_repeats
 
-            if i > 0:
-                audio = self.audio_net.get_concat_block(i)(audio + audio_residual)
-            elif i == 0 and self.concat_first:
-                audio = self.audio_net.get_concat_block(i)(audio)
-
-            audio = self.audio_net.get_block(i)(audio)
+            audio = self.audio_net.get_block(i)(audio + audio_residual if i > 0 else audio)
 
         return audio
 
@@ -85,3 +70,14 @@ class RefinementModule(nn.Module):
                     encoder_args[k] = v
 
         return encoder_args
+
+    def get_MACs(self, bn_audio, bn_video):
+        macs = []
+
+        macs += get_MACS_params(self.audio_net, (bn_audio,))
+
+        macs += get_MACS_params(self.video_net, (bn_video,))
+
+        macs += get_MACS_params(self.crossmodal_fusion, (bn_audio, bn_video))
+
+        return macs

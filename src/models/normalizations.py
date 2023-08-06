@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from collections.abc import Iterable
 
-EPS = torch.finfo(torch.float32).eps
+EPS = 1e-5
 
 
 class GlobalLayerNorm(nn.Module):

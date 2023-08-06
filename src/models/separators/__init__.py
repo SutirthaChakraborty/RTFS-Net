@@ -3,7 +3,9 @@ import torch.nn as nn
 from .dpt import DPTNet
 from .frcnn import FRCNN
 from .tdanet import TDANet
-
+from .gridnet import GridNet
+from .tdavnet import TDAVNet
+from .tdavnet_likai import TDAVNetLikai
 
 def get(identifier):
     if identifier is None:

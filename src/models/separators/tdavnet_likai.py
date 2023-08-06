@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..layers import ConvNormAct, InjectionMultiSum, get
+from ..layers import ConvNormAct, InjectionMultiSum
+from .gridnet import get
 
 
-class TDANetBlock(nn.Module):
+class TDAVNetBlock(nn.Module):
     def __init__(
         self,
         in_chan: int,
@@ -15,10 +16,12 @@ class TDANetBlock(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
-        attention_params: dict = dict(),
-        is2d: bool = False,
+        block_type: str = "GridNetBlock",
+        rnn_1_conf: dict = dict(),
+        rnn_2_conf: dict = dict(),
+        attention_conf: dict = dict(),
     ):
-        super(TDANetBlock, self).__init__()
+        super(TDAVNetBlock, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
@@ -26,11 +29,10 @@ class TDANetBlock(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
-        self.attention_params = attention_params
-        self.is2d = is2d
-
-        self.att = get(self.attention_params.get("attention_type", "GlobalAttention2D" if self.is2d else "GlobalAttention"))
-        self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
+        self.block_type = block_type
+        self.rnn_1_conf = rnn_1_conf
+        self.rnn_2_conf = rnn_2_conf
+        self.attention_conf = attention_conf
 
         self.gateway = ConvNormAct(
             in_chan=self.in_chan,
@@ -38,23 +40,25 @@ class TDANetBlock(nn.Module):
             kernel_size=1,
             groups=self.in_chan,
             act_type=self.act_type,
-            is2d=self.is2d,
+            is2d=True,
         )
         self.projection = ConvNormAct(
             in_chan=self.in_chan,
             out_chan=self.hid_chan,
             kernel_size=1,
-            is2d=self.is2d,
+            is2d=True,
         )
         self.downsample_layers = self.__build_downsample_layers()
-        self.globalatt = self.att(in_chan=self.hid_chan, **self.attention_params)
+        self.globalatt = get(self.block_type)(
+            channel=self.hid_chan, reduction=16, kernel_size=5
+        )
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
         self.residual_conv = ConvNormAct(
             in_chan=self.hid_chan,
             out_chan=self.in_chan,
             kernel_size=1,
-            is2d=self.is2d,
+            is2d=True,
         )
 
     def __build_downsample_layers(self):
@@ -68,7 +72,7 @@ class TDANetBlock(nn.Module):
                     stride=1 if i == 0 else self.stride,
                     groups=self.hid_chan,
                     norm_type=self.norm_type,
-                    is2d=self.is2d,
+                    is2d=True,
                 )
             )
 
@@ -83,7 +87,7 @@ class TDANetBlock(nn.Module):
                     hid_chan=self.hid_chan,
                     kernel_size=self.kernel_size,
                     norm_type=self.norm_type,
-                    is2d=self.is2d,
+                    is2d=True,
                 )
             )
 
@@ -98,7 +102,7 @@ class TDANetBlock(nn.Module):
                     hid_chan=self.hid_chan,
                     kernel_size=self.kernel_size,
                     norm_type=self.norm_type,
-                    is2d=self.is2d,
+                    is2d=True,
                 )
             )
 
@@ -116,7 +120,7 @@ class TDANetBlock(nn.Module):
 
         # global pooling
         shape = downsampled_outputs[-1].shape
-        global_features = sum(self.pool(features, output_size=shape[-(len(shape) // 2) :]) for features in downsampled_outputs)
+        global_features = sum(F.adaptive_avg_pool2d(features, output_size=shape[-2:]) for features in downsampled_outputs)
 
         # global attention module
         global_features = self.globalatt(global_features)  # B, N, T, (F)
@@ -134,7 +138,7 @@ class TDANetBlock(nn.Module):
         return out
 
 
-class TDANet(nn.Module):
+class TDAVNetLikai(nn.Module):
     def __init__(
         self,
         in_chan: int = -1,
@@ -144,14 +148,16 @@ class TDANet(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
-        attention_params: dict = dict(),
+        block_type: str = "GridNetBlock",
+        rnn_1_conf: dict = dict(),
+        rnn_2_conf: dict = dict(),
+        attention_conf: dict = dict(),
         repeats: int = 4,
         shared: bool = False,
-        is2d: bool = False,
         *args,
         **kwargs,
     ):
-        super(TDANet, self).__init__()
+        super(TDAVNetLikai, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
         self.kernel_size = kernel_size
@@ -159,15 +165,17 @@ class TDANet(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
-        self.attention_params = attention_params
+        self.block_type = block_type
+        self.rnn_1_conf = rnn_1_conf
+        self.rnn_2_conf = rnn_2_conf
+        self.attention_conf = attention_conf
         self.repeats = repeats
         self.shared = shared
-        self.is2d = is2d
 
         self.blocks = self.__build_blocks()
 
     def __build_blocks(self):
-        clss = TDANetBlock if (self.in_chan > 0 and self.hid_chan > 0) else nn.Identity
+        clss = TDAVNetBlock if (self.in_chan > 0 and self.hid_chan > 0) else nn.Identity
         if self.shared:
             out = clss(
                 in_chan=self.in_chan,
@@ -177,8 +185,10 @@ class TDANet(nn.Module):
                 norm_type=self.norm_type,
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
-                attention_params=self.attention_params,
-                is2d=self.is2d,
+                block_type=self.block_type,
+                rnn_1_conf=self.rnn_1_conf,
+                rnn_2_conf=self.rnn_2_conf,
+                attention_conf=self.attention_conf,
             )
         else:
             out = nn.ModuleList()
@@ -192,8 +202,10 @@ class TDANet(nn.Module):
                         norm_type=self.norm_type,
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
-                        attention_params=self.attention_params,
-                        is2d=self.is2d,
+                        block_type=self.block_type,
+                        rnn_1_conf=self.rnn_1_conf,
+                        rnn_2_conf=self.rnn_2_conf,
+                        attention_conf=self.attention_conf,
                     )
                 )
 

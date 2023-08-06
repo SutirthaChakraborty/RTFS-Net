@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
-from src.models import CTCNet
+from src.models import TDAVNet
 from src.datas import AVSpeechDataset
 from src.utils import parse_args_as_dict, get_free_gpu_indices
 from src.system import System, make_optimizer
@@ -76,11 +76,11 @@ def main(conf):
     # Define model and optimizer
     videomodel = None
     if conf["videonet"]["model_name"] == "FRCNNVideoModel":
-        videomodel = FRCNNVideoModel(**conf["videonet"])
+        videomodel = FRCNNVideoModel(print_macs=False, **conf["videonet"])
     elif conf["videonet"]["model_name"] == "EncoderAE":
-        videomodel = AEVideoModel(**conf["videonet"])
+        videomodel = AEVideoModel(print_macs=False, **conf["videonet"])
 
-    audiomodel = CTCNet(**conf["audionet"])
+    audiomodel = TDAVNet(print_macs=False, **conf["audionet"])
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 

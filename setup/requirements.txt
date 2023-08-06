@@ -1,7 +1,6 @@
 opencv-python
 soundfile
 scipy
-pypesq
 pystoi
 thop
 timm
@@ -10,3 +9,4 @@ torch-optimizer
 tensorboard
 black
 pandas
+sigfig

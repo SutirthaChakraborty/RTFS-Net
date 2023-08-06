@@ -5,10 +5,10 @@
 # LastEditTime: 2021-09-13 18:37:23
 ###
 
-from .CTCNet import CTCNet
+from .TDAVNet import TDAVNet
 
 __all__ = [
-    "CTCNet",
+    "TDAVNet",
 ]
 
 

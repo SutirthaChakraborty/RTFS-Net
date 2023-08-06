@@ -5,24 +5,24 @@ import argparse
 
 torch.set_float32_matmul_precision("high")
 
-from src.models import CTCNet
+from src.models import TDAVNet
 from src.utils import parse_args_as_dict
 from src.system import make_optimizer
 from src.losses import PITLossWrapper, pairwise_neg_snr
 
 
-x = torch.rand(2, 32000)
-z = torch.rand(2, 1, 32000)
-y = torch.rand(2, 121, 50, 16)
+x = torch.rand(2, 32000).to(0)
+z = torch.rand(2, 1, 32000).to(0)
+y = torch.rand(2, 512, 50).to(0)
 
 
 def main(conf):
-    audiomodel = CTCNet(**conf["audionet"])
+    audiomodel = TDAVNet(**conf["audionet"]).to(0)
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
     # Define Loss function.
-    loss_func = PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx")
+    loss_func = PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx").to(0)
     optimizer.zero_grad()
 
     z1 = audiomodel(x, y)
@@ -37,7 +37,7 @@ def main(conf):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
     parser.add_argument("--checkpoint", type=str, default=None, help="path to checkpoint if training crashes")
