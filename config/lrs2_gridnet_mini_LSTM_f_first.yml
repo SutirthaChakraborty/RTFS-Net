@@ -28,13 +28,14 @@ audionet:
       bias: False
       act_type: ReLU
       norm_type: gLN
-      
+
     audio_params:
       audio_net: GridNet
       # in_chan same as audio_bn_chan
       hid_chan: 32
       repeats: 4
       shared: True
+      block_type: GridNetBlock
       rnn_1_conf:
         hid_chan: 64
         dim: 4
@@ -50,6 +51,7 @@ audionet:
         rnn_type: LSTM
         bidirectional: True
       attention_conf:
+        dim: 3
         n_freqs: 129
         n_head: 4
         hid_chan: 4
@@ -78,8 +80,8 @@ audionet:
     fusion_params:
       fusion_type: ConcatFusion
       fusion_shared: True
+      kernel_size: 1
       is2d: True
-      nstack: False
 
     mask_generation_params:
       mask_generator_type: RI_MaskGenerator

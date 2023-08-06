@@ -11,18 +11,18 @@ from src.system import make_optimizer
 from src.losses import PITLossWrapper, pairwise_neg_snr
 
 
-x = torch.rand(2, 32000)
-z = torch.rand(2, 1, 32000)
-y = torch.rand(2, 512, 50)
+x = torch.rand(2, 32000).to(0)
+z = torch.rand(2, 1, 32000).to(0)
+y = torch.rand(2, 512, 50).to(0)
 
 
 def main(conf):
-    audiomodel = TDAVNet(**conf["audionet"])
+    audiomodel = TDAVNet(**conf["audionet"]).to(0)
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
     # Define Loss function.
-    loss_func = PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx")
+    loss_func = PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx").to(0)
     optimizer.zero_grad()
 
     z1 = audiomodel(x, y)

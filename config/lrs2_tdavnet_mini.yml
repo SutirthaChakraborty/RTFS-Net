@@ -40,21 +40,23 @@ audionet:
       upsampling_depth: 2
       repeats: 4
       shared: True
+      block_type: GridNetBlock
       rnn_1_conf:
-        hid_chan: 64
+        hid_chan: 32
         dim: 4
         kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       rnn_2_conf:
-        hid_chan: 64
+        hid_chan: 32
         dim: 3
         kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
       attention_conf:
+        dim: 3
         n_freqs: 65
         n_head: 4
         hid_chan: 4
@@ -81,7 +83,7 @@ audionet:
         dropout: 0.1
 
     fusion_params:
-      fusion_type: ConcatFusion
+      fusion_type: InjectionFusion
       fusion_shared: True
       kernel_size: 1
       is2d: True
@@ -122,4 +124,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/31_07_23
+    exp_name: avnet_mini/tdavnet/06_08_23

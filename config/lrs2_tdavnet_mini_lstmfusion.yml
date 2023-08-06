@@ -8,13 +8,12 @@ videonet:
 audionet:
     n_src: 1
     pretrained_vout_chan: 512                  # output from pretrained model
-    concat_first: True
 
     video_bn_params:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 16
+      out_chan: 256
       kernel_size: 1
       is2d: True
 
@@ -23,7 +22,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 16
+      out_chan: 256
       kernel_size: 3
       stride: 1
       bias: False
@@ -31,26 +30,34 @@ audionet:
       norm_type: gLN
       
     audio_params:
-      audio_net: GridNet
+      audio_net: TDAVNet
       # in_chan same as audio_bn_chan
+      hid_chan: 32
+      kernel_size: 5
+      stride: 2 
+      norm_type: gLN
+      act_type: PReLU
+      upsampling_depth: 2
       repeats: 4
       shared: True
+      block_type: GridNetBlock
       rnn_1_conf:
-        hid_chan: 64
-        dim: 3
-        kernel_size: 8
-        stride: 1
-        rnn_type: LSTM
-        bidirectional: True
-      rnn_2_conf:
-        hid_chan: 64
+        hid_chan: 32
         dim: 4
         kernel_size: 8
         stride: 1
         rnn_type: LSTM
         bidirectional: True
+      rnn_2_conf:
+        hid_chan: 32
+        dim: 3
+        kernel_size: 8
+        stride: 1
+        rnn_type: LSTM
+        bidirectional: True
       attention_conf:
-        n_freqs: 129
+        dim: 3
+        n_freqs: 65
         n_head: 4
         hid_chan: 4
         act_type: PReLU
@@ -76,15 +83,16 @@ audionet:
         dropout: 0.1
 
     fusion_params:
-      fusion_type: ConcatFusion
+      fusion_type: LSTMFusion
       fusion_shared: True
-      is2d: True
-      nstack: False
+      kernel_size: 1
+      bidirectional: True
 
     mask_generation_params:
+      mask_generator_type: RI_MaskGenerator
       mask_act: ReLU
       is2d: True
-      output_gate: True
+      output_gate: False
       
 # Training config
 training:
@@ -116,4 +124,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/gridnet/01_07_23_LSTM
+    exp_name: avnet_mini/tdavnet/06_08_23_lstm_fusion_1

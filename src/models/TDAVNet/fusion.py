@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-from ..layers import ConvNormAct, InjectionMultiSum
+from ..layers import ConvNormAct, InjectionMultiSum, ConvLSTMFusionCell
 
 
 class FusionBasemodule(nn.Module):
@@ -114,6 +114,41 @@ class InjectionFusion(FusionBasemodule):
         return audio_fused, video_fused
 
 
+class LSTMFusion(FusionBasemodule):
+    def __init__(
+        self,
+        ain_chan: int,
+        vin_chan: int,
+        kernel_size: int,
+        video_fusion: bool = True,
+        is2d=True,
+        bidirectional: bool = True,
+        *args,
+        **kwargs,
+    ):
+        super(LSTMFusion, self).__init__(ain_chan, vin_chan, kernel_size, video_fusion, is2d)
+
+        self.bidirectional = bidirectional
+
+        if video_fusion:
+            self.video_lstm = ConvLSTMFusionCell(self.vin_chan, self.ain_chan, self.kernel_size, self.bidirectional)
+        self.audio_lstm = ConvLSTMFusionCell(self.ain_chan, self.vin_chan, self.kernel_size, self.bidirectional)
+
+    def forward(self, audio: torch.Tensor, video: torch.Tensor):
+        audio, video = self.wrangle_dims(audio, video)
+
+        if self.video_fusion:
+            video_fused = self.video_lstm(video, audio)
+        else:
+            video_fused = video
+
+        audio_fused = self.audio_lstm(audio, video)
+
+        audio_fused, video_fused = self.unwrangle_dims(audio_fused, video_fused)
+
+        return audio_fused, video_fused
+
+
 class MultiModalFusion(nn.Module):
     def __init__(
         self,
@@ -136,16 +171,22 @@ class MultiModalFusion(nn.Module):
         self.fusion_shared = fusion_shared
         self.is2d = is2d
 
-        self.fusion_module = self.__build_fusion_module()
+        self.fusion_module = self.__build_fusion_module(*args, **kwargs)
 
-    def __build_fusion_module(self):
+    def __build_fusion_module(self, *args, **kwargs):
         fusion_class = globals().get(self.fusion_type) if self.fusion_repeats > 0 else nn.Identity
         if self.fusion_shared:
-            out = fusion_class(self.audio_bn_chan, self.video_bn_chan, self.kernel_size, self.fusion_repeats > 1, self.is2d)
+            out = fusion_class(
+                self.audio_bn_chan, self.video_bn_chan, self.kernel_size, self.fusion_repeats > 1, self.is2d, *args, **kwargs
+            )
         else:
             out = nn.ModuleList()
             for i in range(self.fusion_repeats):
-                out.append(fusion_class(self.audio_bn_chan, self.video_bn_chan, self.kernel_size, i != self.fusion_repeats - 1, self.is2d))
+                out.append(
+                    fusion_class(
+                        self.audio_bn_chan, self.video_bn_chan, self.kernel_size, i != self.fusion_repeats - 1, self.is2d, *args, **kwargs
+                    )
+                )
 
         return out
 
@@ -166,11 +207,3 @@ class MultiModalFusion(nn.Module):
                 audio_fused, video_fused = self.get_fusion_block(i)(audio_fused + audio_residual, video_fused + video_residual)
 
         return audio_fused
-
-    def get_MACs(self, bn_audio, bn_video):
-        from thop import profile
-
-        macs = int(profile(self, inputs=(bn_audio, bn_video), verbose=False)[0] / 1000000)
-        params = int(sum(p.numel() for p in self.parameters() if p.requires_grad) / 1000)
-
-        return macs, params
