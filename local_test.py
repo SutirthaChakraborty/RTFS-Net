@@ -19,6 +19,7 @@ from src.system import System, make_optimizer
 from src.videomodels import AEVideoModel, FRCNNVideoModel
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
+from ptflops import get_model_complexity_info
 
 class AVSpeechDataset(Dataset):
     def __init__(self, epochs=5, audio_only=False):
@@ -48,6 +49,8 @@ def build_dataloaders(conf, bs=None):
 
     return train_loader, val_loader
 
+def input_func(input):
+    return {"audio_mixture":input[0],"mouth_embedding":input[1]}
 
 def main(conf, model=TDAVNet, epochs=1, bs=None):
     train_loader, val_loader = build_dataloaders(conf, bs)
@@ -63,93 +66,102 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
         videomodel = AEVideoModel(**conf["videonet"])
 
     audiomodel = model(**conf["audionet"])
-
-    optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
-
-    # Define scheduler
-    scheduler = None
-    if conf["training"]["half_lr"]:
-        scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.5, patience=10)
-
-    # Just after instantiating, save the args. Easy loading in the future.
-    conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", "testing")
-    exp_dir = conf["main_args"]["exp_dir"]
-    os.makedirs(exp_dir, exist_ok=True)
-    conf_path = os.path.join(exp_dir, "conf.yml")
-    with open(conf_path, "w") as outfile:
-        yaml.safe_dump(conf, outfile)
-
-    # Define Loss function.
-    loss_func = {
-        "train": PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx"),
-        "val": PITLossWrapper(pairwise_neg_sisdr, pit_from="pw_mtx"),
-    }
-
-    # define system
-    system = System(
-        audio_model=audiomodel,
-        video_model=videomodel,
-        loss_func=loss_func,
-        optimizer=optimizer,
-        train_loader=train_loader,
-        val_loader=val_loader,
-        scheduler=scheduler,
-        config=conf,
+    
+    audio_input = torch.rand(1, 2 * 16000)
+    video_input = torch.rand(1, 512, 2 * 25)
+    
+    macs, params = get_model_complexity_info(
+        audiomodel, (audio_input, video_input), input_constructor=input_func, as_strings=False, print_per_layer_stat=True, verbose=False
     )
+    print("MACs: ", macs / 10.0 ** 9)
+    print("Params: ", params / 10.0 ** 6)
+    
+    # optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
-    # Define callbacks
-    callbacks = []
-    checkpoint_dir = os.path.join(exp_dir, "checkpoints/")
-    checkpoint = ModelCheckpoint(
-        checkpoint_dir,
-        filename="{epoch}-{val_loss:.2f}",
-        monitor="val_loss",
-        mode="min",
-        save_top_k=5,
-        verbose=True,
-        save_last=True,
-    )
-    callbacks.append(checkpoint)
-    if conf["training"]["early_stop"]:
-        callbacks.append(EarlyStopping(monitor="val_loss", mode="min", patience=15, verbose=True))
+    # # Define scheduler
+    # scheduler = None
+    # if conf["training"]["half_lr"]:
+    #     scheduler = ReduceLROnPlateau(optimizer=optimizer, factor=0.5, patience=10)
 
-    # default logger used by trainer
-    comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
+    # # Just after instantiating, save the args. Easy loading in the future.
+    # conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", "testing")
+    # exp_dir = conf["main_args"]["exp_dir"]
+    # os.makedirs(exp_dir, exist_ok=True)
+    # conf_path = os.path.join(exp_dir, "conf.yml")
+    # with open(conf_path, "w") as outfile:
+    #     yaml.safe_dump(conf, outfile)
 
-    # instantiate ptl trainer
-    trainer = pl.Trainer(
-        max_epochs=epochs,
-        callbacks=callbacks,
-        default_root_dir=exp_dir,
-        devices=[0],
-        num_nodes=conf["main_args"]["nodes"],
-        accelerator="auto",
-        limit_train_batches=1.0,
-        gradient_clip_val=5.0,
-        logger=comet_logger,
-        sync_batchnorm=True,
-    )
+    # # Define Loss function.
+    # loss_func = {
+    #     "train": PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx"),
+    #     "val": PITLossWrapper(pairwise_neg_sisdr, pit_from="pw_mtx"),
+    # }
 
-    trainer.fit(system)
+    # # define system
+    # system = System(
+    #     audio_model=audiomodel,
+    #     video_model=videomodel,
+    #     loss_func=loss_func,
+    #     optimizer=optimizer,
+    #     train_loader=train_loader,
+    #     val_loader=val_loader,
+    #     scheduler=scheduler,
+    #     config=conf,
+    # )
 
-    # Save best_k models
-    best_k = {k: v.item() for k, v in checkpoint.best_k_models.items()}
-    with open(os.path.join(exp_dir, "best_k_models.json"), "w") as f:
-        json.dump(best_k, f, indent=0)
+    # # Define callbacks
+    # callbacks = []
+    # checkpoint_dir = os.path.join(exp_dir, "checkpoints/")
+    # checkpoint = ModelCheckpoint(
+    #     checkpoint_dir,
+    #     filename="{epoch}-{val_loss:.2f}",
+    #     monitor="val_loss",
+    #     mode="min",
+    #     save_top_k=5,
+    #     verbose=True,
+    #     save_last=True,
+    # )
+    # callbacks.append(checkpoint)
+    # if conf["training"]["early_stop"]:
+    #     callbacks.append(EarlyStopping(monitor="val_loss", mode="min", patience=15, verbose=True))
 
-    # put on cpu and serialize
-    state_dict = torch.load(checkpoint.best_model_path, map_location="cpu")
-    system.load_state_dict(state_dict=state_dict["state_dict"])
+    # # default logger used by trainer
+    # comet_logger = TensorBoardLogger("./logs", name=conf["log"]["exp_name"])
 
-    to_save = system.audio_model.serialize()
-    torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
+    # # instantiate ptl trainer
+    # trainer = pl.Trainer(
+    #     max_epochs=epochs,
+    #     callbacks=callbacks,
+    #     default_root_dir=exp_dir,
+    #     devices=[0],
+    #     num_nodes=conf["main_args"]["nodes"],
+    #     accelerator="auto",
+    #     limit_train_batches=1.0,
+    #     gradient_clip_val=5.0,
+    #     logger=comet_logger,
+    #     sync_batchnorm=True,
+    # )
 
-    return audiomodel.macs
+    # trainer.fit(system)
+
+    # # Save best_k models
+    # best_k = {k: v.item() for k, v in checkpoint.best_k_models.items()}
+    # with open(os.path.join(exp_dir, "best_k_models.json"), "w") as f:
+    #     json.dump(best_k, f, indent=0)
+
+    # # put on cpu and serialize
+    # state_dict = torch.load(checkpoint.best_model_path, map_location="cpu")
+    # system.load_state_dict(state_dict=state_dict["state_dict"])
+
+    # to_save = system.audio_model.serialize()
+    # torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
+
+    
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/tdavnet_q=2_likai.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
