@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 from .. import normalizations, activations
 from .conv_layers import ConvActNorm
-from torch.nn import init
+
 
 class RNNProjection(nn.Module):
     def __init__(
