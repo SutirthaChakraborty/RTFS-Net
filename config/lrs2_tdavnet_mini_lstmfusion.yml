@@ -13,7 +13,7 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 256
+      out_chan: 64
       kernel_size: 1
       is2d: True
 
@@ -22,7 +22,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 256
+      out_chan: 64
       kernel_size: 3
       stride: 1
       bias: False
@@ -56,6 +56,7 @@ audionet:
         rnn_type: LSTM
         bidirectional: True
       attention_conf:
+        dim: 3
         n_freqs: 65
         n_head: 4
         hid_chan: 4
@@ -84,7 +85,7 @@ audionet:
     fusion_params:
       fusion_type: LSTMFusion
       fusion_shared: True
-      kernel_size: 5
+      kernel_size: 1
       bidirectional: True
 
     mask_generation_params:
@@ -123,4 +124,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/03_08_23
+    exp_name: avnet_mini/tdavnet/06_08_23_lstm_fusion_1
