@@ -13,7 +13,7 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 64
+      out_chan: 256
       kernel_size: 1
       is2d: True
 
@@ -22,7 +22,7 @@ audionet:
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 64
+      out_chan: 256
       kernel_size: 3
       stride: 1
       bias: False
