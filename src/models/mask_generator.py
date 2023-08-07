@@ -18,7 +18,7 @@ class BaseMaskGenerator(nn.Module):
         return encoder_args
 
 
-class RI_MaskGenerator(BaseMaskGenerator):
+class MaskGenerator(BaseMaskGenerator):
     def __init__(
         self,
         n_src: int,
@@ -34,15 +34,15 @@ class RI_MaskGenerator(BaseMaskGenerator):
         *args,
         **kwargs,
     ):
-        super(RI_MaskGenerator, self).__init__()
+        super(MaskGenerator, self).__init__()
         self.n_src = n_src
         self.in_chan = audio_emb_dim
         self.bottleneck_chan = bottleneck_chan
         self.kernel_size = kernel_size
         self.mask_act = mask_act
         self.output_gate = output_gate
-        self.dw_gate=dw_gate
-        self.RI=RI
+        self.dw_gate = dw_gate
+        self.RI = RI
         self.direct = direct
         self.is2d = is2d
 
@@ -61,7 +61,7 @@ class RI_MaskGenerator(BaseMaskGenerator):
             )
 
             if self.output_gate:
-                groups =mask_output_chan if self.dw_gate else 1
+                groups = mask_output_chan if self.dw_gate else 1
                 self.output = ConvNormAct(mask_output_chan, mask_output_chan, 1, act_type="Tanh", is2d=self.is2d, groups=groups)
                 self.gate = ConvNormAct(mask_output_chan, mask_output_chan, 1, act_type="Sigmoid", is2d=self.is2d, groups=groups)
 
@@ -71,7 +71,7 @@ class RI_MaskGenerator(BaseMaskGenerator):
         if self.RI:
             masks = masks.view(batch_size, self.n_src, 2, self.in_chan // 2, *dims)
             audio_mixture_embedding = audio_mixture_embedding.view(batch_size, 2, self.in_chan // 2, *dims)
-            
+
             mask_real = masks[:, :, 0]  # B, n_src, C/2, T, (F)
             mask_imag = masks[:, :, 1]  # B, n_src, C/2, T, (F)
             emb_real = audio_mixture_embedding[:, 0].unsqueeze(1)  # B, 1, C/2, T, (F)
