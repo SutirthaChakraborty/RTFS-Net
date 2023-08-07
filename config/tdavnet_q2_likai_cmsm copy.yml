@@ -13,19 +13,21 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      kernel_size: -1
+      out_chan: 256
+      kernel_size: 3
+      stride: 1
+      xavier_init: true
+      norm_type: gLN
+      act_type: ReLU
+      is2d: true
+      bias: false
 
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 256
-      kernel_size: 3
-      stride: 1
-      bias: false
-      act_type: ReLU
-      norm_type: gLN
+      kernel_size: -1
 
     audio_params:
       audio_net: TDAVNet
@@ -70,11 +72,12 @@ audionet:
       is2d: true
 
     mask_generation_params:
-      mask_generator_type: MaskGenerator
+      mask_generator_type: MaskGenerator2Chan
       mask_act: ReLU
-      RI_split: false
-      spec_mult: true
-      is2d: true
+      kernel_size: 3
+      stride: 1
+      bias: false
+      RI_split: true
       
 # Training config
 training:
