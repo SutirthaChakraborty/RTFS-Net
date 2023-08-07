@@ -94,6 +94,7 @@ class ConvActNorm(nn.Module):
         xavier_init: bool = False,
         bias: bool = True,
         is2d: bool = False,
+        before: bool = False,
         *args,
         **kwargs,
     ):
@@ -110,6 +111,7 @@ class ConvActNorm(nn.Module):
         self.n_freqs = n_freqs
         self.xavier_init = xavier_init
         self.bias = bias
+        self.before = before
 
         if self.padding is None:
             self.padding = 0 if self.stride > 1 else "same"
@@ -138,6 +140,10 @@ class ConvActNorm(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
+        if self.before:
+            output = self.norm(x)
+            output = self.conv(output)
+            return output
         output = self.conv(x)
         output = self.act(output)
         output = self.norm(output)
