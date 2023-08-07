@@ -26,9 +26,9 @@ class MaskGenerator(BaseMaskGenerator):
         bottleneck_chan: int,
         kernel_size: int = 1,
         mask_act: str = "ReLU",
+        RI_split=False,
         output_gate=False,
         dw_gate=False,
-        RI=True,
         direct=False,
         is2d: bool = False,
         *args,
@@ -42,7 +42,7 @@ class MaskGenerator(BaseMaskGenerator):
         self.mask_act = mask_act
         self.output_gate = output_gate
         self.dw_gate = dw_gate
-        self.RI = RI
+        self.RI_split = RI_split
         self.direct = direct
         self.is2d = is2d
 
@@ -68,7 +68,7 @@ class MaskGenerator(BaseMaskGenerator):
     def __apply_masks(self, masks: torch.Tensor, audio_mixture_embedding: torch.Tensor):
         batch_size = audio_mixture_embedding.size(0)
         dims = audio_mixture_embedding.shape[-(len(audio_mixture_embedding.shape) // 2) :]
-        if self.RI:
+        if self.RI_split:
             masks = masks.view(batch_size, self.n_src, 2, self.in_chan // 2, *dims)
             audio_mixture_embedding = audio_mixture_embedding.view(batch_size, 2, self.in_chan // 2, *dims)
 
