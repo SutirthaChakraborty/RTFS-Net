@@ -15,7 +15,7 @@ audionet:
     audio_bn_params:
       out_chan: 512
       kernel_size: 1
-      is2d: False
+      is2d: false
 
     enc_dec_params:
       encoder_type: ConvolutionalEncoder
@@ -23,7 +23,7 @@ audionet:
       out_chan: 512
       kernel_size: 21
       stride: 10
-      bias: False
+      bias: false
       act_type: ReLU
       norm_type: gLN
       layers: 1
@@ -32,33 +32,33 @@ audionet:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
       hid_chan: 512                       # FRCNN hidden channels
-      upsampling_depth: 5
-      shared: True
-      repeats: 16
-      norm_type: gLN
-      act_type: PReLU
       kernel_size: 5
       stride: 2 
-      is2d: False
+      norm_type: gLN
+      act_type: PReLU
+      upsampling_depth: 5
+      repeats: 16
+      shared: true
+      is2d: false
       attention_params:
         attention_type: GlobalAttentionRNN
         hid_chan: 512
         dropout: 0.1
         rnn_type: GRU
-        bidirectional: True
-    
+        bidirectional: true
+
     video_params:
       video_net: TDANet
       # in_chan same as video_bn_chan
       hid_chan: 64
-      upsampling_depth: 4
-      shared: True
-      repeats: 1
-      norm_type: BatchNorm1d
-      act_type: PReLU
       kernel_size: 3
       stride: 2
-      is2d: False
+      norm_type: BatchNorm1d
+      act_type: PReLU
+      upsampling_depth: 4
+      repeats: 1
+      shared: true
+      is2d: false
       attention_params:
         attention_type: GlobalAttention
         ffn_name: FeedForwardNetwork
@@ -68,13 +68,15 @@ audionet:
 
     fusion_params:
       fusion_type: ConcatFusion
-      fusion_shared: True
-      is2d: False
+      fusion_shared: true
+      kernel_size: 1
+      is2d: false
 
     mask_generation_params:
+      mask_generator_type: MaskGenerator
       mask_act: ReLU
-      is2d: False
-      output_gate: True
+      output_gate: true
+      is2d: false
       
 # Training config
 training:
@@ -82,8 +84,8 @@ training:
     epochs: 200
     batch_size: 4
     num_workers: 8
-    half_lr: yes
-    early_stop: yes
+    half_lr: true
+    early_stop: true
     divide_lr_by: null
     online_mix: false
 # Optim config
