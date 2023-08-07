@@ -15,23 +15,22 @@ audionet:
     audio_bn_params:
       out_chan: 256
       kernel_size: 1
-      is2d: True
-      before: True
+      is2d: true
 
     enc_dec_params:
-      encoder_type: STFTEncoderNoConvNormAct
+      encoder_type: STFTEncoder
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 2
+      out_chan: 256
       kernel_size: 3
       stride: 1
-      bias: False
+      bias: false
       act_type: ReLU
       norm_type: gLN
 
     audio_params:
-      audio_net: TDAVNetLikai
+      audio_net: TDAVNet
       # in_chan same as audio_bn_chan
       hid_chan: 32
       kernel_size: 5
@@ -40,38 +39,24 @@ audionet:
       act_type: PReLU
       upsampling_depth: 2
       repeats: 4
-      shared: True
-      block_type: CoTAttention
-      rnn_1_conf:
-        dim: 32
+      shared: true
+      block_type: AttentionBlock2D
+      attention_conf: 
+        att_type: CoTAttention
         kernel_size: 3
-      # rnn_2_conf:
-      #   hid_chan: 64
-      #   dim: 3
-      #   kernel_size: 8
-      #   stride: 1
-      #   rnn_type: LSTM
-      #   bidirectional: True
-      # attention_conf:
-      #   dim: 3
-      #   n_freqs: 65
-      #   n_head: 4
-      #   hid_chan: 4
-      #   act_type: PReLU
-        # norm_type: LayerNormalization4D
 
     video_params:
       video_net: TDANet
       # in_chan same as video_bn_chan
       hid_chan: 64
-      upsampling_depth: 4
-      shared: True
-      repeats: 1
-      norm_type: BatchNorm1d
-      act_type: PReLU
       kernel_size: 3
       stride: 2
-      is2d: False
+      norm_type: BatchNorm1d
+      act_type: PReLU
+      upsampling_depth: 4
+      repeats: 1
+      shared: true
+      is2d: false
       attention_params:
         attention_type: GlobalAttention
         ffn_name: FeedForwardNetwork
@@ -81,15 +66,15 @@ audionet:
 
     fusion_params:
       fusion_type: ConcatFusion
-      fusion_shared: True
+      fusion_shared: true
       kernel_size: 1
-      is2d: True
+      is2d: true
 
     mask_generation_params:
-      mask_generator_type: RI_MaskGenerator
+      mask_generator_type: MaskGenerator
       mask_act: ReLU
-      is2d: True
-      output_gate: False
+      RI_split: true
+      is2d: true
       
 # Training config
 training:
@@ -97,8 +82,8 @@ training:
     epochs: 200
     batch_size: 4
     num_workers: 8
-    half_lr: yes
-    early_stop: yes
+    half_lr: true
+    early_stop: true
     divide_lr_by: null
     online_mix: false
 # Optim config

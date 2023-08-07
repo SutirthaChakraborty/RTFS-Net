@@ -1,7 +1,6 @@
 import torch
 import inspect
 import torch.nn as nn
-import torch.nn.functional as F
 
 from .layers import ConvNormAct
 
@@ -26,10 +25,10 @@ class MaskGenerator(BaseMaskGenerator):
         bottleneck_chan: int,
         kernel_size: int = 1,
         mask_act: str = "ReLU",
-        RI_split=False,
-        output_gate=False,
-        dw_gate=False,
-        direct=False,
+        RI_split: bool = False,
+        output_gate: bool = False,
+        dw_gate: bool = False,
+        direct: bool = False,
         is2d: bool = False,
         *args,
         **kwargs,

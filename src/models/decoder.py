@@ -83,7 +83,6 @@ class STFTDecoder(BaseDecoder):
         **kwargs,
     ):
         super(STFTDecoder, self).__init__()
-
         self.win = win
         self.hop_length = hop_length
         self.in_chan = in_chan

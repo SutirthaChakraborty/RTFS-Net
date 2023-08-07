@@ -13,9 +13,7 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 256
-      kernel_size: 1
-      is2d: true
+      kernel_size: -1
 
     enc_dec_params:
       encoder_type: STFTEncoder
@@ -40,10 +38,11 @@ audionet:
       upsampling_depth: 2
       repeats: 4
       shared: true
-      block_type: AttentionBlock2D 
+      block_type: AttentionBlock2D
       attention_conf:
-        att_type: ShuffleAttention
-        G: 4
+        att_type: CBAMBlock
+        reduction: 4
+        kernel_size: 3
 
     video_params:
       video_net: TDANet
@@ -73,7 +72,8 @@ audionet:
     mask_generation_params:
       mask_generator_type: MaskGenerator
       mask_act: ReLU
-      RI_split: true
+      RI_split: false
+      spec_mult: true
       is2d: true
       
 # Training config
