@@ -17,6 +17,8 @@ class DepthwiseSeparableConvolution(nn.Module):
         act_type: str = None,
         xavier_init: bool = False,
         is2d: bool = False,
+        *args,
+        **kwargs,
     ):
         super().__init__()
         ks = kernel_size[0] if hasattr(kernel_size, "__len__") else kernel_size
