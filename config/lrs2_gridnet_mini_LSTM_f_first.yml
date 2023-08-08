@@ -30,11 +30,12 @@ audionet:
       norm_type: gLN
 
     audio_params:
-      audio_net: GridNet
+      audio_net: DPTNet
       # in_chan same as audio_bn_chan
       hid_chan: 32
       repeats: 4
       shared: true
+      is2d: true
       layers:
         layer_1:
           layer_type: DualPathRNN
