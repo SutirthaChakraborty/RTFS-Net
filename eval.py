@@ -119,8 +119,7 @@ def main(conf):
     results_dict = []
 
     results_dict.append(("Model", conf["log"]["exp_name"]))
-    results_dict.append(("CTCNet MACs", audiomodel.macs))
-    results_dict.append(("CTCNet Params", audiomodel.trainable_params))
+    results_dict.append(("CTCNet MACs and Params", audiomodel.macs_parms))
     results_dict.append(("Videomodel MACs", videomodel.macs))
     results_dict.append(("Videomodel Params", videomodel.trainable_params))
 

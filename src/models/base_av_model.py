@@ -112,4 +112,5 @@ class BaseAVModel(nn.Module):
             "Total --------------- MACs: {:>8} M    Params: {:>6} K\n"
         ).format(*MACs)
 
+        self.macs_parms = s
         print(s)
