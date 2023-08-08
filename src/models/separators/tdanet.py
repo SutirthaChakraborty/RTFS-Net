@@ -101,7 +101,7 @@ class TDANetBlock(nn.Module):
 
         return out
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         # x: B, C, T, (F)
         residual = self.gateway(x)
         x_enc = self.projection(residual)
