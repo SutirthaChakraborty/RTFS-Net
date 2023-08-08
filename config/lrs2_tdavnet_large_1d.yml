@@ -27,7 +27,7 @@ audionet:
       act_type: ReLU
       norm_type: gLN
       layers: 1
-      
+
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan

@@ -2,11 +2,8 @@ import math
 import torch
 import inspect
 import torch.nn as nn
-import torch.nn.functional as F
 
-from . import normalizations
 from .layers import ConvNormAct
-from .utils import get_bandwidths
 
 
 class BaseEncoder(nn.Module):
@@ -132,10 +129,10 @@ class STFTEncoder(BaseEncoder):
         self,
         win: int,
         hop_length: int,
-        out_chan: int,
-        kernel_size: int = 3,
+        out_chan: int = 2,
+        kernel_size: int = -1,
         stride: int = 1,
-        act_type: str = None,
+        act_type: str = "ReLU",
         norm_type: str = "gLN",
         bias: bool = False,
         *args,
@@ -148,9 +145,9 @@ class STFTEncoder(BaseEncoder):
         self.out_chan = out_chan
         self.kernel_size = kernel_size
         self.stride = stride
-        self.bias = bias
         self.act_type = act_type
         self.norm_type = norm_type
+        self.bias = bias
 
         self.conv = ConvNormAct(
             in_chan=2,

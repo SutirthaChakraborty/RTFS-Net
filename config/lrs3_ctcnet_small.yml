@@ -29,7 +29,7 @@ audionet:
       act_type: ReLU
       norm_type: gLN
       layers: 1
-      
+
     audio_params:
       audio_net: FRCNN
       # in_chan same as audio_bn_chan
@@ -42,7 +42,7 @@ audionet:
       repeats: 4
       shared: true
       is2d: false
-    
+
     video_params:
       video_net: FRCNN
       # in_chan same as video_bn_chan

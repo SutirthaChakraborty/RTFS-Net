@@ -76,14 +76,13 @@ class STFTDecoder(BaseDecoder):
         hop_length: int,
         in_chan: int,
         n_src: int,
-        kernel_size: int,
-        stride: int,
+        kernel_size: int = -1,
+        stride: int = 1,
         bias: bool = False,
         *args,
         **kwargs,
     ):
         super(STFTDecoder, self).__init__()
-
         self.win = win
         self.hop_length = hop_length
         self.in_chan = in_chan
@@ -93,15 +92,18 @@ class STFTDecoder(BaseDecoder):
         self.stride = stride
         self.bias = bias
 
-        self.decoder = nn.ConvTranspose2d(
-            in_channels=self.in_chan,
-            out_channels=2,
-            kernel_size=self.kernel_size,
-            stride=self.stride,
-            padding=self.padding,
-            bias=self.bias,
-        )
-        torch.nn.init.xavier_uniform_(self.decoder.weight)
+        if self.kernel_size > 0:
+            self.decoder = nn.ConvTranspose2d(
+                in_channels=self.in_chan,
+                out_channels=2,
+                kernel_size=self.kernel_size,
+                stride=self.stride,
+                padding=self.padding,
+                bias=self.bias,
+            )
+            torch.nn.init.xavier_uniform_(self.decoder.weight)
+        else:
+            self.decoder = nn.Identity()
 
         self.register_buffer("window", torch.hann_window(self.win), False)
 

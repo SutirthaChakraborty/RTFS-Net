@@ -353,3 +353,169 @@ class GlobalGALR(nn.Module):
         x = self.group_FFN(x)
 
         return x
+
+
+class ChannelAttention(nn.Module):
+    def __init__(self, in_chan, reduction=16):
+        super().__init__()
+        self.maxpool = nn.AdaptiveMaxPool2d(1)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.se = nn.Sequential(
+            nn.Conv2d(in_chan, in_chan // reduction, 1, bias=False),
+            nn.ReLU(),
+            nn.Conv2d(in_chan // reduction, in_chan, 1, bias=False),
+        )
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        max_result = self.maxpool(x)
+        avg_result = self.avgpool(x)
+        max_out = self.se(max_result)
+        avg_out = self.se(avg_result)
+        output = self.sigmoid(max_out + avg_out)
+        return output
+
+
+class SpatialAttention(nn.Module):
+    def __init__(self, kernel_size=7):
+        super().__init__()
+        self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=kernel_size // 2)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        max_result, _ = torch.max(x, dim=1, keepdim=True)
+        avg_result = torch.mean(x, dim=1, keepdim=True)
+        result = torch.cat([max_result, avg_result], 1)
+        output = self.conv(result)
+        output = self.sigmoid(output)
+        return output
+
+
+class CBAMBlock(nn.Module):
+    def __init__(self, in_chan=512, reduction=16, kernel_size=49, *args, **kwargs):
+        super().__init__()
+        self.ca = ChannelAttention(in_chan=in_chan, reduction=reduction)
+        self.sa = SpatialAttention(kernel_size=kernel_size)
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out")
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, std=0.001)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
+    def forward(self, x: torch.Tensor):
+        residual = x
+        x = x * self.ca(x)
+        x = x * self.sa(x)
+        return x + residual
+
+
+class ShuffleAttention(nn.Module):
+    def __init__(self, in_chan=512, G=8, *args, **kwargs):
+        super().__init__()
+        self.G = G
+        self.channel = in_chan
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.gn = nn.GroupNorm(in_chan // (2 * G), in_chan // (2 * G))
+        self.cweight = nn.Parameter(torch.zeros(1, in_chan // (2 * G), 1, 1))
+        self.cbias = nn.Parameter(torch.ones(1, in_chan // (2 * G), 1, 1))
+        self.sweight = nn.Parameter(torch.zeros(1, in_chan // (2 * G), 1, 1))
+        self.sbias = nn.Parameter(torch.ones(1, in_chan // (2 * G), 1, 1))
+        self.sigmoid = nn.Sigmoid()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out")
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, std=0.001)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
+    @staticmethod
+    def channel_shuffle(x, groups):
+        b, c, h, w = x.shape
+        x = x.reshape(b, groups, -1, h, w)
+        x = x.permute(0, 2, 1, 3, 4)
+
+        # flatten
+        x = x.reshape(b, -1, h, w)
+
+        return x
+
+    def forward(self, x: torch.Tensor):
+        b, _, h, w = x.size()
+        # group into subfeatures
+        x = x.view(b * self.G, -1, h, w)  # bs*G,c//G,h,w
+
+        # channel_split
+        x_0, x_1 = x.chunk(2, dim=1)  # bs*G,c//(2*G),h,w
+
+        # channel attention
+        x_channel = self.avg_pool(x_0)  # bs*G,c//(2*G),1,1
+        x_channel = self.cweight * x_channel + self.cbias  # bs*G,c//(2*G),1,1
+        x_channel = x_0 * self.sigmoid(x_channel)
+
+        # spatial attention
+        x_spatial = self.gn(x_1)  # bs*G,c//(2*G),h,w
+        x_spatial = self.sweight * x_spatial + self.sbias  # bs*G,c//(2*G),h,w
+        x_spatial = x_1 * self.sigmoid(x_spatial)  # bs*G,c//(2*G),h,w
+
+        # concatenate along channel axis
+        out = torch.cat([x_channel, x_spatial], dim=1)  # bs*G,c//G,h,w
+        out = out.contiguous().view(b, -1, h, w)
+
+        # channel shuffle
+        out = self.channel_shuffle(out, 2)
+        return out
+
+
+class CoTAttention(nn.Module):
+    def __init__(self, in_chan=512, kernel_size=3, *args, **kwargs):
+        super().__init__()
+        self.dim = in_chan
+        self.kernel_size = kernel_size
+
+        self.key_embed = nn.Sequential(
+            nn.Conv2d(in_chan, in_chan, kernel_size=kernel_size, padding=kernel_size // 2, groups=4, bias=False),
+            nn.BatchNorm2d(in_chan),
+            nn.ReLU(),
+        )
+        self.value_embed = nn.Sequential(nn.Conv2d(in_chan, in_chan, 1, bias=False), nn.BatchNorm2d(in_chan))
+
+        factor = 4
+        self.attention_embed = nn.Sequential(
+            nn.Conv2d(2 * in_chan, 2 * in_chan // factor, 1, bias=False),
+            nn.BatchNorm2d(2 * in_chan // factor),
+            nn.ReLU(),
+            nn.Conv2d(2 * in_chan // factor, kernel_size * kernel_size * in_chan, 1),
+        )
+
+        self.sm = nn.Softmax(-1)
+
+    def forward(self, x: torch.Tensor):
+        bs, c, h, w = x.shape
+        k1 = self.key_embed(x)  # bs,c,h,w
+        v = self.value_embed(x).view(bs, c, -1)  # bs,c,h,w
+
+        y = torch.cat([k1, x], dim=1)  # bs,2c,h,w
+        att = self.attention_embed(y)  # bs,c*k*k,h,w
+        att = att.reshape(bs, c, self.kernel_size * self.kernel_size, h, w)
+        att = att.mean(2, keepdim=False).view(bs, c, -1)  # bs,c,h*w
+        k2 = self.sm(att) * v
+        k2 = k2.view(bs, c, h, w)
+
+        return k1 + k2

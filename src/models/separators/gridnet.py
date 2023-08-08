@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-
-from ..layers import DualPathRNN, MultiHeadSelfAttention2D, ConvNormAct, BiLSTM2D
+from ..layers import DualPathRNN, MultiHeadSelfAttention2D, ConvNormAct, BiLSTM2D, get as get_layers
 
 
 class GridNetBlock(nn.Module):
@@ -56,6 +55,19 @@ class GridNetTransformerBlock(nn.Module):
         x = self.rnn(x)
         x = self.mhsa(x)
         return x
+
+
+class AttentionBlock2D(nn.Module):
+    def __init__(self, in_chan: int, attention_conf: dict, *args, **kwargs):
+        super(AttentionBlock2D, self).__init__()
+        self.in_chan = in_chan
+        self.attention_conf = attention_conf
+        self.att_type = attention_conf.get("att_type", "MultiHeadSelfAttention2D")
+
+        self.attention2d = get_layers(self.att_type)(in_chan=self.in_chan, **self.attention_conf)
+
+    def forward(self, x: torch.Tensor):
+        return self.attention2d(x)
 
 
 class TFGridNet(nn.Module):
@@ -186,7 +198,7 @@ def get(identifier):
         cls = globals().get(identifier)
 
         if cls is None:
-            raise ValueError("Could not interpret normalization identifier: " + str(identifier))
+            raise ValueError("Could not interpret GridNet identifier: " + str(identifier))
         return cls
     else:
-        raise ValueError("Could not interpret normalization identifier: " + str(identifier))
+        raise ValueError("Could not interpret GridNet identifier: " + str(identifier))

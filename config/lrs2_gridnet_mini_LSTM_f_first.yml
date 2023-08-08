@@ -28,7 +28,7 @@ audionet:
       bias: false
       act_type: ReLU
       norm_type: gLN
-      
+
     audio_params:
       audio_net: GridNet
       # in_chan same as audio_bn_chan

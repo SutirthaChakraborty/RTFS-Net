@@ -144,7 +144,7 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
 
-    return audiomodel.macs
+    return audiomodel.get_MACs()
 
 
 if __name__ == "__main__":

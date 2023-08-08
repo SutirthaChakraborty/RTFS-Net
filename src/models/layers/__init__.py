@@ -3,7 +3,17 @@ import torch.nn as nn
 from .conv_layers import ConvNormAct, ConvActNorm, ConvolutionalRNN, FeedForwardNetwork, DepthwiseSeparableConvolution
 from .rnn_layers import BiLSTM2D, DualPathRNN, RNNProjection
 from .fusion import InjectionMultiSum, ConvLSTMFusionCell
-from .attention import GlobalAttention, GlobalAttentionRNN, GlobalAttention2D, GlobalGALR, MultiHeadSelfAttention, MultiHeadSelfAttention2D
+from .attention import (
+    GlobalAttention,
+    GlobalAttentionRNN,
+    GlobalAttention2D,
+    GlobalGALR,
+    MultiHeadSelfAttention,
+    MultiHeadSelfAttention2D,
+    CBAMBlock,
+    ShuffleAttention,
+    CoTAttention,
+)
 
 
 def get(identifier):

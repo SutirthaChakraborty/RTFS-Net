@@ -83,13 +83,13 @@ class TDAVNet(BaseAVModel):
     def forward(self, audio_mixture: torch.Tensor, mouth_embedding: torch.Tensor = None):
         audio_mixture_embedding = self.encoder(audio_mixture)  # B, 1, L -> B, N, T, (F)
 
-        audio = self.audio_bottleneck(audio_mixture_embedding)  # B, N, T, (F) -> B, C, T, (F)
+        audio = self.audio_bottleneck(audio_mixture_embedding)  # B, C, T, (F)
         video = self.video_bottleneck(mouth_embedding)  # B, N2, T2, (F2) -> B, C2, T2, (F2)
 
-        refined_features = self.refinement_module(audio, video)  # B, C, T, (F) -> B, C, T, (F)
+        refined_features = self.refinement_module(audio, video)  # B, C, T, (F)
 
-        separated_audio_embeddings = self.mask_generator(refined_features, audio_mixture_embedding)  # B, C, T, (F) -> B, n_src, N, T, (F)
-        separated_audios = self.decoder(separated_audio_embeddings, audio_mixture.shape)  # B, n_src, N, T, (F) -> B, n_src, L
+        separated_audio_embeddings = self.mask_generator(refined_features, audio_mixture_embedding)  # B, n_src, N, T, (F)
+        separated_audios = self.decoder(separated_audio_embeddings, audio_mixture.shape)  #  B, n_src, L
 
         return separated_audios
 

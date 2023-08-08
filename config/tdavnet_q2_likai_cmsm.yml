@@ -40,28 +40,11 @@ audionet:
       upsampling_depth: 2
       repeats: 4
       shared: true
-      block_type: GridNetBlock
-      rnn_1_conf:
-        hid_chan: 32
-        dim: 4
-        kernel_size: 8
-        stride: 1
-        rnn_type: LSTM
-        bidirectional: true
-      rnn_2_conf:
-        hid_chan: 32
-        dim: 3
-        kernel_size: 8
-        stride: 1
-        rnn_type: LSTM
-        bidirectional: true
+      block_type: AttentionBlock2D
       attention_conf:
-        dim: 3
-        n_freqs: 65
-        n_head: 4
-        hid_chan: 4
-        act_type: PReLU
-        norm_type: LayerNormalization4D
+        att_type: CBAMBlock
+        reduction: 4
+        kernel_size: 3
 
     video_params:
       video_net: TDANet
@@ -124,4 +107,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/06_08_23_concat_fusion
+    exp_name: avnet_mini/tdavnet/06_08_23
