@@ -106,4 +106,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/06_08_23
+    exp_name: avnet_mini/tdavnet/08_08_23_shuffleatt

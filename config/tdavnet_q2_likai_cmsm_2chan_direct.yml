@@ -77,7 +77,7 @@ audionet:
       kernel_size: 3
       stride: 1
       bias: false
-      RI_split: true
+      direct: true
       
 # Training config
 training:
@@ -109,4 +109,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/06_08_23
+    exp_name: avnet_mini/tdavnet/08_08_23_cmsm_2chan_direct

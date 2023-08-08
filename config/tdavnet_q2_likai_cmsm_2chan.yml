@@ -14,20 +14,20 @@ audionet:
 
     audio_bn_params:
       out_chan: 256
-      kernel_size: 1
+      kernel_size: 3
+      stride: 1
+      xavier_init: true
+      norm_type: gLN
+      act_type: ReLU
       is2d: true
+      bias: false
 
     enc_dec_params:
       encoder_type: STFTEncoder
       decoder_type: STFTDecoder
       win: 256
       hop_length: 128
-      out_chan: 256
-      kernel_size: 3
-      stride: 1
-      bias: false
-      act_type: ReLU
-      norm_type: gLN
+      kernel_size: -1
 
     audio_params:
       audio_net: TDAVNet
@@ -41,8 +41,9 @@ audionet:
       repeats: 4
       shared: true
       block_type: AttentionBlock2D
-      attention_conf: 
-        att_type: CoTAttention
+      attention_conf:
+        att_type: CBAMBlock
+        reduction: 4
         kernel_size: 3
 
     video_params:
@@ -71,10 +72,11 @@ audionet:
       is2d: true
 
     mask_generation_params:
-      mask_generator_type: MaskGenerator
+      mask_generator_type: MaskGenerator2Chan
       mask_act: ReLU
-      RI_split: true
-      is2d: true
+      kernel_size: 3
+      stride: 1
+      bias: false
       
 # Training config
 training:
@@ -106,4 +108,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/08_08_23_cotatt
+    exp_name: avnet_mini/tdavnet/08_08_23_cmsm_2chan
