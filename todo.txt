@@ -1,1 +1,0 @@
-mask generator is not good, make separate generator for spec only multiplication
