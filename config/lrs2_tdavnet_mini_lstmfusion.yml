@@ -91,7 +91,7 @@ audionet:
       fusion_type: LSTMFusion
       fusion_shared: true
       kernel_size: 1
-      bidirectional: true
+      bidirectional: false
 
     mask_generation_params:
       mask_generator_type: MaskGenerator
@@ -129,4 +129,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/06_08_23_lstm_fusion_1
+    exp_name: avnet_mini/tdavnet/06_08_23_lstm_fusion_1_notbidir
