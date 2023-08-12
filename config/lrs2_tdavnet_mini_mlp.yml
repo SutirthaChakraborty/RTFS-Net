@@ -112,4 +112,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/06_08_23_concat_fusion
+    exp_name: avnet_mini/tdavnet/12_08_23_mlp
