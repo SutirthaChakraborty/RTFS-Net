@@ -14,7 +14,7 @@ from .attention import (
     ShuffleAttention,
     CoTAttention,
 )
-from .mlp import MLPMixer
+from .mlp import MLP
 from .permutator import Permutator
 
 
