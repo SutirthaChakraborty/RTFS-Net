@@ -70,19 +70,20 @@ class InjectionMultiSum(nn.Module):
 
 
 class ConvLSTMFusionCell(nn.Module):
-    def __init__(self, in_chan_a: int, in_chan_b, kernel_size: int = 1, bidirectional: bool = False, *args, **kwargs):
+    def __init__(self, in_chan_a: int, in_chan_b, kernel_size: int = 1, bidirectional: bool = False, is2d: bool = False, *args, **kwargs):
         super(ConvLSTMFusionCell, self).__init__()
         self.in_chan_a = in_chan_a
         self.in_chan_b = in_chan_b
         self.kernel_size = kernel_size
         self.bidirectional = bidirectional
         self.num_dir = int(bidirectional) + 1
+        self.is2d = is2d
 
         self.conv_a = ConvNormAct(
             self.in_chan_a * self.num_dir,
             self.in_chan_a * 4,
             self.kernel_size,
-            is2d=True,
+            is2d=self.is2d,
             groups=self.in_chan_a // 4,
             norm_type="gLN",
         )
@@ -90,15 +91,17 @@ class ConvLSTMFusionCell(nn.Module):
             self.in_chan_b * self.num_dir,
             self.in_chan_a * 4,
             self.kernel_size,
-            is2d=True,
+            is2d=self.is2d,
             groups=self.in_chan_a // 4,
             norm_type="gLN",
         )
 
     def forward(self, tensor_a: torch.Tensor, tensor_b: torch.Tensor):
         if self.bidirectional:
-            tensor_a = torch.cat((tensor_a, tensor_a.flip(-1).flip(-2)), dim=1)
-            tensor_b = torch.cat((tensor_b, tensor_b.flip(-1).flip(-2)), dim=1)
+            a_flipped = tensor_a.flip(-1).flip(-2) if self.is2d else tensor_a.flip(-1)
+            b_flipped = tensor_b.flip(-1).flip(-2) if self.is2d else tensor_b.flip(-1)
+            tensor_a = torch.cat((tensor_a, a_flipped), dim=1)
+            tensor_b = torch.cat((tensor_b, b_flipped), dim=1)
 
         old_shape = tensor_b.shape[-(len(tensor_a.shape) // 2) :]
         new_shape = tensor_a.shape[-(len(tensor_a.shape) // 2) :]

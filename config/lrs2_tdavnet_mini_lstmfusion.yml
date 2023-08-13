@@ -92,6 +92,7 @@ audionet:
       fusion_shared: true
       kernel_size: 1
       bidirectional: false
+      is2d: true
 
     mask_generation_params:
       mask_generator_type: MaskGenerator

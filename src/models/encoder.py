@@ -7,16 +7,6 @@ from .layers import ConvNormAct
 
 
 class BaseEncoder(nn.Module):
-    def __init__(self, out_chan: int, kernel_size: int, upsampling_depth: int):
-        super(BaseEncoder, self).__init__()
-        self.out_chan = out_chan
-        self.kernel_size = kernel_size
-        self.upsampling_depth = upsampling_depth
-
-        # Appropriate padding is needed for arbitrary lengths
-        self.lcm_1 = abs(self.out_chan // 2 * 2**self.upsampling_depth) // math.gcd(self.kernel_size // 2, 2**self.upsampling_depth)
-        self.lcm_2 = abs(self.kernel_size // 2 * 2**self.upsampling_depth) // math.gcd(self.kernel_size // 2, 2**self.upsampling_depth)
-
     def unsqueeze_to_3D(self, x: torch.Tensor):
         if x.ndim == 1:
             return x.reshape(1, 1, -1)
@@ -75,23 +65,28 @@ class ConvolutionalEncoder(BaseEncoder):
         act_type: str = None,
         norm_type: str = "gLN",
         bias: bool = False,
-        upsampling_depth: int = 4,
         layers: int = 1,
+        upsampling_depth: int = 4,
         *args,
         **kwargs,
     ):
-        super(ConvolutionalEncoder, self).__init__(out_chan, kernel_size, upsampling_depth)
+        super(ConvolutionalEncoder, self).__init__()
 
         self.in_chan = in_chan
         self.out_chan = out_chan
         self.kernel_size = kernel_size
         self.stride = stride
-        self.bias = bias
         self.act_type = act_type
         self.norm_type = norm_type
+        self.bias = bias
         self.layers = layers
+        self.upsampling_depth = upsampling_depth
 
         self.encoder = nn.ModuleList()
+
+        # Appropriate padding is needed for arbitrary lengths
+        self.lcm_1 = abs(self.out_chan // 2 * 2**self.upsampling_depth) // math.gcd(self.kernel_size // 2, 2**self.upsampling_depth)
+        self.lcm_2 = abs(self.kernel_size // 2 * 2**self.upsampling_depth) // math.gcd(self.kernel_size // 2, 2**self.upsampling_depth)
 
         for i in range(layers):
             dilation = i + 1
@@ -138,7 +133,7 @@ class STFTEncoder(BaseEncoder):
         *args,
         **kwargs,
     ):
-        super(STFTEncoder, self).__init__(out_chan, 0, 0)
+        super(STFTEncoder, self).__init__()
 
         self.win = win
         self.hop_length = hop_length
