@@ -14,6 +14,8 @@ from .attention import (
     ShuffleAttention,
     CoTAttention,
 )
+from .mlp import MLP
+from .permutator import Permutator
 
 
 def get(identifier):
