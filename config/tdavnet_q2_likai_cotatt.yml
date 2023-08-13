@@ -30,7 +30,7 @@ audionet:
       norm_type: gLN
 
     audio_params:
-      audio_net: TDAVNet
+      audio_net: TDANet
       # in_chan same as audio_bn_chan
       hid_chan: 32
       kernel_size: 5
@@ -40,10 +40,11 @@ audionet:
       upsampling_depth: 2
       repeats: 4
       shared: true
-      block_type: AttentionBlock2D
-      attention_conf: 
-        att_type: CoTAttention
-        kernel_size: 3
+      is2d: true
+      layers:
+        layer_1:
+          layer_type: CoTAttention
+          kernel_size: 3
 
     video_params:
       video_net: TDANet
@@ -57,12 +58,13 @@ audionet:
       repeats: 1
       shared: true
       is2d: false
-      attention_params:
-        attention_type: GlobalAttention
-        ffn_name: FeedForwardNetwork
-        kernel_size: 3
-        n_head: 8
-        dropout: 0.1
+      layers:
+        layer_1:
+          layer_type: GlobalAttention
+          ffn_name: FeedForwardNetwork
+          kernel_size: 3
+          n_head: 8
+          dropout: 0.1
 
     fusion_params:
       fusion_type: ConcatFusion

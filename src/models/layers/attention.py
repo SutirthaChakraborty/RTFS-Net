@@ -9,11 +9,7 @@ from timm.models.layers import DropPath
 
 
 class PositionalEncoding(nn.Module):
-    def __init__(
-        self,
-        channels: int,
-        max_len: int = 10000,
-    ):
+    def __init__(self, channels: int, max_len: int = 10000, *args, **kwargs):
         super(PositionalEncoding, self).__init__()
         self.channels = channels
         self.max_len = max_len
@@ -32,13 +28,7 @@ class PositionalEncoding(nn.Module):
 
 
 class MultiHeadSelfAttention(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        n_head: int = 8,
-        dropout: int = 0.1,
-        positional_encoding: bool = True,
-    ):
+    def __init__(self, in_chan: int, n_head: int = 8, dropout: int = 0.1, positional_encoding: bool = True, *args, **kwargs):
         super(MultiHeadSelfAttention, self).__init__()
         self.in_chan = in_chan
         self.n_head = n_head
@@ -82,6 +72,8 @@ class MultiHeadSelfAttention2D(nn.Module):
         act_type: str = "PReLU",
         norm_type: str = "LayerNormalization4D",
         dim: int = 3,
+        *args,
+        **kwargs,
     ):
         super(MultiHeadSelfAttention2D, self).__init__()
         self.in_chan = in_chan

@@ -124,7 +124,7 @@ class DualPathRNN(nn.Module):
 
 
 class ConvLSTMCell(nn.Module):
-    def __init__(self, in_chan: int, hid_chan: int, kernel_size: int = 1, num_directions: int = 1):
+    def __init__(self, in_chan: int, hid_chan: int, kernel_size: int = 1, num_directions: int = 1, *args, **kwargs):
         super(ConvLSTMCell, self).__init__()
         self.in_chan = in_chan
         self.hid_chan = hid_chan
@@ -182,6 +182,8 @@ class BiLSTM2D(nn.Module):
         act_type: str = "PReLU",
         norm_type: str = "gLN",
         bidirectional: bool = True,
+        *args,
+        **kwargs,
     ):
         super(BiLSTM2D, self).__init__()
         self.in_chan = in_chan

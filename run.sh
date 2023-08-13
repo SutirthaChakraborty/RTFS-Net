@@ -1,6 +1,7 @@
 name=(
-        lrs2_tdavnet_mini_lstmfusion
-        lrs2_tdavnet_mini_lstmfusion_3
+        # tdavnet_q2_likai_cmsm_2chan
+        tdavnet_q2_likai_cmsm_2chan_RI
+        # tdavnet_q2_likai_cmsm_2chan_direct
 )
 for n in "${name[@]}"
 do
@@ -9,8 +10,9 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        avnet_mini/tdavnet/06_08_23_lstm_fusion_1
-        avnet_mini/tdavnet/06_08_23_lstm_fusion_3
+        # avnet_mini/tdavnet/08_08_23_cmsm_2chan
+        avnet_mini/tdavnet/08_08_23_cmsm_2chan_RI
+        # avnet_mini/tdavnet/08_08_23_cmsm_2chan_direct
 )
 for e in "${exp[@]}"
 do

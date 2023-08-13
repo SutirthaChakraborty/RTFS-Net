@@ -30,7 +30,7 @@ audionet:
       norm_type: gLN
 
     audio_params:
-      audio_net: TDAVNet
+      audio_net: TDANet
       # in_chan same as audio_bn_chan
       hid_chan: 32
       kernel_size: 5
@@ -40,28 +40,32 @@ audionet:
       upsampling_depth: 2
       repeats: 4
       shared: true
-      block_type: GridNetBlock
-      rnn_1_conf:
-        hid_chan: 32
-        dim: 4
-        kernel_size: 8
-        stride: 1
-        rnn_type: LSTM
-        bidirectional: true
-      rnn_2_conf:
-        hid_chan: 32
-        dim: 3
-        kernel_size: 8
-        stride: 1
-        rnn_type: LSTM
-        bidirectional: true
-      attention_conf:
-        dim: 3
-        n_freqs: 65
-        n_head: 4
-        hid_chan: 4
-        act_type: PReLU
-        norm_type: LayerNormalization4D
+      is2d: true
+      layers:
+        layer_1:
+          layer_type: DualPathRNN
+          hid_chan: 32
+          dim: 4
+          kernel_size: 8
+          stride: 1
+          rnn_type: LSTM
+          bidirectional: true
+        layer_2:
+          layer_type: DualPathRNN
+          hid_chan: 32
+          dim: 3
+          kernel_size: 8
+          stride: 1
+          rnn_type: LSTM
+          bidirectional: true
+        layer_3:
+          layer_type: MultiHeadSelfAttention2D
+          dim: 3
+          n_freqs: 65
+          n_head: 4
+          hid_chan: 4
+          act_type: PReLU
+          norm_type: LayerNormalization4D
 
     video_params:
       video_net: TDANet
@@ -75,18 +79,19 @@ audionet:
       repeats: 1
       shared: true
       is2d: false
-      attention_params:
-        attention_type: GlobalAttention
-        ffn_name: FeedForwardNetwork
-        kernel_size: 3
-        n_head: 8
-        dropout: 0.1
+      layers:
+        layer_1:
+          layer_type: GlobalAttention
+          ffn_name: FeedForwardNetwork
+          kernel_size: 3
+          n_head: 8
+          dropout: 0.1
 
     fusion_params:
       fusion_type: LSTMFusion
       fusion_shared: true
       kernel_size: 1
-      bidirectional: true
+      bidirectional: false
 
     mask_generation_params:
       mask_generator_type: MaskGenerator
@@ -124,4 +129,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/06_08_23_lstm_fusion_1
+    exp_name: avnet_mini/tdavnet/06_08_23_lstm_fusion_1_notbidir

@@ -40,12 +40,13 @@ audionet:
       repeats: 16
       shared: true
       is2d: false
-      attention_params:
-        attention_type: GlobalAttentionRNN
-        hid_chan: 512
-        dropout: 0.1
-        rnn_type: GRU
-        bidirectional: true
+      layers:
+        layer_1:
+          layer_type: GlobalAttentionRNN
+          hid_chan: 512
+          dropout: 0.1
+          rnn_type: GRU
+          bidirectional: true
 
     video_params:
       video_net: TDANet
@@ -59,12 +60,13 @@ audionet:
       repeats: 1
       shared: true
       is2d: false
-      attention_params:
-        attention_type: GlobalAttention
-        ffn_name: FeedForwardNetwork
-        kernel_size: 3
-        n_head: 8
-        dropout: 0.1
+      layers:
+        layer_1:
+          layer_type: GlobalAttention
+          ffn_name: FeedForwardNetwork
+          kernel_size: 3
+          n_head: 8
+          dropout: 0.1
 
     fusion_params:
       fusion_type: ConcatFusion

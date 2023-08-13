@@ -13,6 +13,8 @@ class InjectionMultiSum(nn.Module):
         kernel_size: int,
         norm_type: str = "gLN",
         is2d: bool = False,
+        *args,
+        **kwargs,
     ):
         super(InjectionMultiSum, self).__init__()
         self.in_chan = in_chan
@@ -68,7 +70,7 @@ class InjectionMultiSum(nn.Module):
 
 
 class ConvLSTMFusionCell(nn.Module):
-    def __init__(self, in_chan_a: int, in_chan_b, kernel_size: int = 1, bidirectional: bool = False):
+    def __init__(self, in_chan_a: int, in_chan_b, kernel_size: int = 1, bidirectional: bool = False, *args, **kwargs):
         super(ConvLSTMFusionCell, self).__init__()
         self.in_chan_a = in_chan_a
         self.in_chan_b = in_chan_b

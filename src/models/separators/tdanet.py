@@ -15,7 +15,7 @@ class TDANetBlock(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
-        attention_params: dict = dict(),
+        layers: dict = dict(),
         is2d: bool = False,
     ):
         super(TDANetBlock, self).__init__()
@@ -26,10 +26,9 @@ class TDANetBlock(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
-        self.attention_params = attention_params
+        self.layers = layers
         self.is2d = is2d
 
-        self.att = get(self.attention_params.get("attention_type", "GlobalAttention2D" if self.is2d else "GlobalAttention"))
         self.pool = F.adaptive_avg_pool2d if self.is2d else F.adaptive_avg_pool1d
 
         self.gateway = ConvNormAct(
@@ -47,7 +46,7 @@ class TDANetBlock(nn.Module):
             is2d=self.is2d,
         )
         self.downsample_layers = self.__build_downsample_layers()
-        self.globalatt = self.att(in_chan=self.hid_chan, **self.attention_params)
+        self.globalatt = nn.Sequential(*[get(layer["layer_type"])(in_chan=self.hid_chan, **layer) for _, layer in self.layers.items()])
         self.fusion_layers = self.__build_fusion_layers()
         self.concat_layers = self.__build_concat_layers()
         self.residual_conv = ConvNormAct(
@@ -102,7 +101,7 @@ class TDANetBlock(nn.Module):
 
         return out
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         # x: B, C, T, (F)
         residual = self.gateway(x)
         x_enc = self.projection(residual)
@@ -142,7 +141,7 @@ class TDANet(nn.Module):
         norm_type: str = "gLN",
         act_type: str = "PReLU",
         upsampling_depth: int = 4,
-        attention_params: dict = dict(),
+        layers: list[dict] = [],
         repeats: int = 4,
         shared: bool = False,
         is2d: bool = False,
@@ -157,7 +156,7 @@ class TDANet(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.upsampling_depth = upsampling_depth
-        self.attention_params = attention_params
+        self.layers = layers
         self.repeats = repeats
         self.shared = shared
         self.is2d = is2d
@@ -175,7 +174,7 @@ class TDANet(nn.Module):
                 norm_type=self.norm_type,
                 act_type=self.act_type,
                 upsampling_depth=self.upsampling_depth,
-                attention_params=self.attention_params,
+                layers=self.layers,
                 is2d=self.is2d,
             )
         else:
@@ -190,7 +189,7 @@ class TDANet(nn.Module):
                         norm_type=self.norm_type,
                         act_type=self.act_type,
                         upsampling_depth=self.upsampling_depth,
-                        attention_params=self.attention_params,
+                        layers=self.layers,
                         is2d=self.is2d,
                     )
                 )
