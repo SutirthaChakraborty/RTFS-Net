@@ -2,6 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from sru import SRU, SRUpp
 
 from .. import normalizations, activations
 from .conv_layers import ConvActNorm
@@ -86,13 +87,28 @@ class DualPathRNN(nn.Module):
 
         self.norm = normalizations.get(self.norm_type)((self.in_chan, 1) if self.norm_type == "LayerNormalization4D" else self.in_chan)
         self.unfold = nn.Unfold((self.kernel_size, 1), stride=(self.stride, 1))
-        self.rnn = getattr(nn, self.rnn_type)(
-            input_size=self.unfolded_chan,
-            hidden_size=self.hid_chan,
-            num_layers=1,
-            batch_first=True,
-            bidirectional=self.bidirectional,
-        )
+        if self.rnn_type == "SRU":
+            self.rnn = SRU(
+                input_size=self.unfolded_chan,
+                hidden_size=self.hid_chan,
+                num_layers=1,
+                bidirectional=self.bidirectional,
+            )
+        elif self.rnn_type == "SRUpp":
+            self.rnn = SRUpp(
+                input_size=self.unfolded_chan,
+                hidden_size=self.hid_chan,
+                proj_size=self.hid_chan,
+                num_layers=1,
+                bidirectional=self.bidirectional,
+            )
+        else:
+            self.rnn = getattr(nn, self.rnn_type)(
+                input_size=self.unfolded_chan,
+                hidden_size=self.hid_chan,
+                num_layers=1,
+                bidirectional=self.bidirectional,
+            )
         self.linear = nn.ConvTranspose1d(self.hid_chan * self.num_direction, self.in_chan, self.kernel_size, stride=self.stride)
 
     def forward(self, x: torch.Tensor):
@@ -108,9 +124,9 @@ class DualPathRNN(nn.Module):
         x = self.norm(x)
         x = x.permute(0, 3, 1, 2).contiguous().view(B * new_F, C, new_T, 1)
         x = self.unfold(x)
-        x = x.transpose(1, 2)
+        x = x.permute(2, 0, 1)
         x = self.rnn(x)[0]
-        x = x.transpose(1, 2)
+        x = x.permute(1, 2, 0)
         x = self.linear(x)
         x = x.view([B, new_F, C, new_T])
         x = x.permute(0, 2, 3, 1).contiguous()

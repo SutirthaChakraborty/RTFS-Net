@@ -93,7 +93,7 @@ class TDANetBlock(nn.Module):
             out.append(
                 InjectionMultiSum(
                     in_chan=self.hid_chan,
-                    kernel_size=self.kernel_size,
+                    kernel_size=1,
                     norm_type=self.norm_type,
                     is2d=self.is2d,
                 )
