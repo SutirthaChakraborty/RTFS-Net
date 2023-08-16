@@ -203,7 +203,7 @@ if __name__ == "__main__":
     # def_conf.update(arg_dic)
 
     t4 = time()
-    main(def_conf)
+    # main(def_conf)
     t5 = time()
 
     print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0))
