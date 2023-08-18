@@ -122,3 +122,70 @@ class ConvLSTMFusionCell(nn.Module):
         h_next = o_t * torch.tanh(c_next)
 
         return h_next
+
+
+class ConvGRUFusionCell(nn.Module):
+    def __init__(
+        self,
+        in_chan_a: int,
+        in_chan_b: int,
+        kernel_size: int = 1,
+        bidirectional: bool = False,
+        is2d: bool = False,
+        *args,
+        **kwargs,
+    ):
+        super(ConvGRUFusionCell, self).__init__()
+        self.in_chan_a = in_chan_a
+        self.in_chan_b = in_chan_b
+        self.kernel_size = kernel_size
+        self.bidirectional = bidirectional
+        self.num_dir = int(bidirectional) + 1
+        self.is2d = is2d
+
+        # For GRU, we have 3 gates: reset, update, and new
+        self.conv_a = ConvNormAct(
+            self.in_chan_a * self.num_dir,
+            self.in_chan_a * 3,  # times 3 for the three GRU gates
+            self.kernel_size,
+            is2d=self.is2d,
+            groups=self.in_chan_a,
+            norm_type="gLN",
+        )
+        self.conv_b = ConvNormAct(
+            self.in_chan_b * self.num_dir,
+            self.in_chan_a * 3,  # times 3 for the three GRU gates
+            self.kernel_size,
+            is2d=self.is2d,
+            groups=self.in_chan_a,
+            norm_type="gLN",
+        )
+
+    def forward(self, tensor_a: torch.Tensor, tensor_b: torch.Tensor):
+        if self.bidirectional:
+            a_flipped = tensor_a.flip(-1).flip(-2) if self.is2d else tensor_a.flip(-1)
+            b_flipped = tensor_b.flip(-1).flip(-2) if self.is2d else tensor_b.flip(-1)
+            tensor_a = torch.cat((tensor_a, a_flipped), dim=1)
+            tensor_b = torch.cat((tensor_b, b_flipped), dim=1)
+
+        old_shape = tensor_b.shape[-(len(tensor_a.shape) // 2) :]
+        new_shape = tensor_a.shape[-(len(tensor_a.shape) // 2) :]
+
+        x = self.conv_a(tensor_a)
+        if torch.prod(torch.tensor(new_shape)) > torch.prod(torch.tensor(old_shape)):
+            h = F.interpolate(self.conv_b(tensor_b), size=new_shape, mode="nearest")
+        else:
+            h = self.conv_b(F.interpolate(tensor_b, size=new_shape, mode="nearest"))
+
+        # Split the gates: r_t (reset), z_t (update), n_t (new)
+        x_r, x_z, x_n = x.chunk(3, 1)
+        h_r, h_z, h_n = h.chunk(3, 1)
+
+        r_t = torch.sigmoid(x_r + h_r)
+        z_t = torch.sigmoid(x_z + h_z)
+        n_t = torch.tanh(x_n + r_t * h_n)
+
+        # GRU Logic
+        h_next = (1 - z_t) * n_t + z_t * torch.tanh(tensor_a)
+
+        return h_next
