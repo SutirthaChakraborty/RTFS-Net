@@ -186,6 +186,51 @@ class ConvGRUFusionCell(nn.Module):
         n_t = torch.tanh(x_n + r_t * h_n)
 
         # GRU Logic
-        h_next = (1 - z_t) * n_t + z_t * torch.tanh(tensor_a)
+        h_next = (1 - z_t) * n_t
 
         return h_next
+
+
+class ATTNFusionCell(nn.Module):
+    def __init__(
+        self,
+        in_chan_a: int,
+        in_chan_b: int,
+        kernel_size: int = 1,
+        bidirectional: bool = False,
+        is2d: bool = False,
+        *args,
+        **kwargs,
+    ):
+        super(ATTNFusionCell, self).__init__()
+        self.in_chan_a = in_chan_a
+        self.in_chan_b = in_chan_b
+        self.kernel_size = kernel_size
+        self.is2d = is2d
+
+        # Resize tensor 'b' spatially to match tensor 'a'
+        self.resize = ConvNormAct(in_chan_b, in_chan_a, self.kernel_size, is2d=self.is2d, norm_type="gLN")
+
+        # Attention mechanism
+        self.attention = ConvNormAct(self.in_chan_a, 1, 1, is2d=self.is2d)
+
+    def forward(self, a, b):
+        old_shape = b.shape[-(len(b.shape) // 2) :]
+        new_shape = a.shape[-(len(a.shape) // 2) :]
+
+        if torch.prod(torch.tensor(new_shape)) > torch.prod(torch.tensor(old_shape)):
+            b_transformed = F.interpolate(self.resize(b), size=new_shape, mode="nearest")
+        else:
+            b_transformed = self.resize(F.interpolate(b, size=new_shape, mode="nearest"))
+
+        # Attention mechanism
+        att_map = F.softmax(self.attention(a), dim=2)
+
+        # Fusion
+        fused_tensor = torch.tanh(a) * att_map + b_transformed * (1 - att_map)
+
+        # # Gating mechanism
+        # gate_mask = torch.sigmoid(a)
+        # fused_tensor = fused_tensor * gate_mask
+
+        return fused_tensor
