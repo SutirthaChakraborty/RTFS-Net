@@ -68,6 +68,7 @@ class DualPathRNN(nn.Module):
         stride: int = 1,
         rnn_type: str = "LSTM",
         norm_type: str = "LayerNormalization4D",
+        act_type: str = "Tanh",
         bidirectional: bool = True,
         *args,
         **kwargs,
@@ -80,13 +81,16 @@ class DualPathRNN(nn.Module):
         self.stride = stride
         self.rnn_type = rnn_type
         self.norm_type = norm_type
+        self.act_type = act_type
         self.bidirectional = bidirectional
-        self.num_direction = int(bidirectional) + 1
 
+        self.num_direction = int(bidirectional) + 1
+        self.rnn_out_chan = self.hid_chan * self.num_direction
         self.unfolded_chan = self.in_chan * self.kernel_size
 
         self.norm = normalizations.get(self.norm_type)((self.in_chan, 1) if self.norm_type == "LayerNormalization4D" else self.in_chan)
         self.unfold = nn.Unfold((self.kernel_size, 1), stride=(self.stride, 1))
+
         if self.rnn_type == "SRU":
             self.rnn = SRU(
                 input_size=self.unfolded_chan,
@@ -109,7 +113,12 @@ class DualPathRNN(nn.Module):
                 num_layers=1,
                 bidirectional=self.bidirectional,
             )
-        self.linear = nn.ConvTranspose1d(self.hid_chan * self.num_direction, self.in_chan, self.kernel_size, stride=self.stride)
+
+        self.linear = nn.Sequential(
+            nn.ConvTranspose1d(self.rnn_out_chan, self.rnn_out_chan, self.kernel_size, stride=self.stride, groups=self.rnn_out_chan),
+            activations.get(self.act_type)(),
+            nn.Conv1d(self.rnn_out_chan, self.in_chan, 1),
+        )
 
     def forward(self, x: torch.Tensor):
         if self.dim == 4:
