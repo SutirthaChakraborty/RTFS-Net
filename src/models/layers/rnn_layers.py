@@ -114,11 +114,12 @@ class DualPathRNN(nn.Module):
                 bidirectional=self.bidirectional,
             )
 
-        self.linear = nn.Sequential(
-            nn.ConvTranspose1d(self.rnn_out_chan, self.rnn_out_chan, self.kernel_size, stride=self.stride, groups=self.rnn_out_chan),
-            activations.get(self.act_type)(),
-            nn.Conv1d(self.rnn_out_chan, self.in_chan, 1),
-        )
+        self.linear = nn.ConvTranspose1d(self.hid_chan * self.num_direction, self.in_chan, self.kernel_size, stride=self.stride)
+        # self.linear = nn.Sequential(
+        #     nn.ConvTranspose1d(self.rnn_out_chan, self.rnn_out_chan, self.kernel_size, stride=self.stride, groups=self.rnn_out_chan),
+        #     activations.get(self.act_type)(),
+        #     nn.Conv1d(self.rnn_out_chan, self.in_chan, 1),
+        # )
 
     def forward(self, x: torch.Tensor):
         if self.dim == 4:
