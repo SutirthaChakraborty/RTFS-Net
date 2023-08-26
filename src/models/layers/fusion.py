@@ -209,25 +209,78 @@ class ATTNFusionCell(nn.Module):
         self.is2d = is2d
 
         # Resize tensor 'b' spatially to match tensor 'a'
-        self.resize = ConvNormAct(in_chan_b, in_chan_a, self.kernel_size, is2d=self.is2d, norm_type="gLN")
+        self.resize = ConvNormAct(
+            self.in_chan_b,
+            self.in_chan_a,
+            1,
+            is2d=self.is2d,
+            norm_type="gLN",
+        )
 
         # Attention mechanism
-        self.attention = ConvNormAct(self.in_chan_a, 1, 1, is2d=self.is2d)
+        self.key_embed = ConvNormAct(
+            self.in_chan_a,
+            self.in_chan_a,
+            self.kernel_size,
+            groups=self.in_chan_a,
+            norm_type="BatchNorm2d",
+            act_type="ReLU",
+            bias=False,
+            is2d=self.is2d,
+        )
+        self.value_embed = ConvNormAct(
+            self.in_chan_a,
+            self.in_chan_a,
+            1,
+            groups=self.in_chan_a,
+            norm_type="BatchNorm2d",
+            bias=False,
+            is2d=self.is2d,
+        )
 
-    def forward(self, a, b):
-        old_shape = b.shape[-(len(b.shape) // 2) :]
-        new_shape = a.shape[-(len(a.shape) // 2) :]
+        # factor = 4
+        # self.attention_embed = nn.Sequential(
+        #     ConvNormAct(2 * in_chan_a, 2 * in_chan_a // factor, 1, bias=False, norm_type="BatchNorm2d", act_type="ReLU", is2d=self.is2d),
+        #     ConvNormAct(2 * in_chan_a // factor, kernel_size * kernel_size * in_chan_a, 1, is2d=self.is2d),
+        # )
+        self.attention_embed = ConvNormAct(
+            2 * self.in_chan_a,
+            self.kernel_size * self.kernel_size * self.in_chan_a,
+            1,
+            groups=self.in_chan_a,
+            is2d=self.is2d,
+        )
+
+        # print(
+        #     int(sum(p.numel() for p in self.resize.parameters() if p.requires_grad) / 1000),
+        #     int(sum(p.numel() for p in self.key_embed.parameters() if p.requires_grad) / 1000),
+        #     int(sum(p.numel() for p in self.value_embed.parameters() if p.requires_grad) / 1000),
+        #     int(sum(p.numel() for p in self.attention_embed.parameters() if p.requires_grad) / 1000),
+        # )
+
+    def forward(self, tensor_a: torch.Tensor, tensor_b: torch.Tensor):
+        old_shape = tensor_b.shape[-(len(tensor_b.shape) // 2) :]
+        new_shape = tensor_a.shape[-(len(tensor_a.shape) // 2) :]
+
+        bs, c, h, w = tensor_a.shape
 
         if torch.prod(torch.tensor(new_shape)) > torch.prod(torch.tensor(old_shape)):
-            b_transformed = F.interpolate(self.resize(b), size=new_shape, mode="nearest")
+            b_transformed = F.interpolate(self.resize(tensor_b), size=new_shape, mode="nearest")
         else:
-            b_transformed = self.resize(F.interpolate(b, size=new_shape, mode="nearest"))
+            b_transformed = self.resize(F.interpolate(tensor_b, size=new_shape, mode="nearest"))
 
-        # Attention mechanism
-        att_map = F.softmax(self.attention(a), dim=2)
+        k1 = self.key_embed(tensor_a) * b_transformed  # bs,c,h,w
+        v = self.value_embed(tensor_a).view(bs, c, -1)  # bs,c,h,w
+
+        y = torch.cat([k1, tensor_a], dim=1)  # bs,2c,h,w
+        att = self.attention_embed(y)  # bs,c*k*k,h,w
+        att = att.reshape(bs, c, self.kernel_size * self.kernel_size, h, w)
+        att = att.mean(2, keepdim=False).view(bs, c, -1)  # bs,c,h*w
+        k2 = torch.softmax(att, -1) * v
+        k2 = k2.view(bs, c, h, w)
 
         # Fusion
-        fused_tensor = torch.tanh(a) * att_map + b_transformed * (1 - att_map)
+        fused_tensor = k1 + k2
 
         # # Gating mechanism
         # gate_mask = torch.sigmoid(a)

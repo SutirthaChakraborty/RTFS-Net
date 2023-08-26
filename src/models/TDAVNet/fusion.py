@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-from ..layers import ConvNormAct, InjectionMultiSum, ConvLSTMFusionCell, ConvGRUFusionCell
+from ..layers import ConvNormAct, InjectionMultiSum, ConvLSTMFusionCell, ConvGRUFusionCell, ATTNFusionCell
 
 
 class FusionBasemodule(nn.Module):
@@ -168,6 +168,41 @@ class GRUFusion(FusionBasemodule):
         if video_fusion:
             self.video_lstm = ConvGRUFusionCell(self.vin_chan, self.ain_chan, self.kernel_size, self.bidirectional, self.is2d)
         self.audio_lstm = ConvGRUFusionCell(self.ain_chan, self.vin_chan, self.kernel_size, self.bidirectional, self.is2d)
+
+    def forward(self, audio: torch.Tensor, video: torch.Tensor):
+        audio, video = self.wrangle_dims(audio, video)
+
+        if self.video_fusion:
+            video_fused = self.video_lstm(video, audio)
+        else:
+            video_fused = video
+
+        audio_fused = self.audio_lstm(audio, video)
+
+        audio_fused, video_fused = self.unwrangle_dims(audio_fused, video_fused)
+
+        return audio_fused, video_fused
+
+
+class ATTNFusion(FusionBasemodule):
+    def __init__(
+        self,
+        ain_chan: int,
+        vin_chan: int,
+        kernel_size: int,
+        video_fusion: bool = True,
+        is2d=True,
+        bidirectional: bool = True,
+        *args,
+        **kwargs,
+    ):
+        super(ATTNFusion, self).__init__(ain_chan, vin_chan, kernel_size, video_fusion, is2d)
+
+        self.bidirectional = bidirectional
+
+        if video_fusion:
+            self.video_lstm = ATTNFusionCell(self.vin_chan, self.ain_chan, self.kernel_size, self.bidirectional, self.is2d)
+        self.audio_lstm = ATTNFusionCell(self.ain_chan, self.vin_chan, self.kernel_size, self.bidirectional, self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
         audio, video = self.wrangle_dims(audio, video)

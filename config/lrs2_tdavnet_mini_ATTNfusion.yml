@@ -88,7 +88,7 @@ audionet:
           dropout: 0.1
 
     fusion_params:
-      fusion_type: GRUFusion
+      fusion_type: ATTNFusion
       fusion_shared: true
       kernel_size: 1
       bidirectional: false
@@ -130,4 +130,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/25_08_23_gru_fusion
+    exp_name: avnet_mini/tdavnet/25_08_23_attn_fusion
