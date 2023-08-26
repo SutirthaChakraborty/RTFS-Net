@@ -144,12 +144,10 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
 
-    return audiomodel.get_MACs()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_mlp.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_srupp.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -165,11 +163,11 @@ if __name__ == "__main__":
     def_conf.update(arg_dic)
 
     t0 = time()
-    macs1 = main(def_conf)
+    main(def_conf)
     t1 = time()
 
     # parser = argparse.ArgumentParser()
-    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_mini_group_only.yml")
+    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_concatfusion.yml")
     # parser.add_argument("-n", "--name", default=None, help="Experiment name")
     # parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -185,7 +183,7 @@ if __name__ == "__main__":
     # def_conf.update(arg_dic)
 
     t2 = time()
-    # macs2 = main(def_conf)
+    # main(def_conf)
     t3 = time()
 
     # parser = argparse.ArgumentParser()
@@ -205,9 +203,9 @@ if __name__ == "__main__":
     # def_conf.update(arg_dic)
 
     t4 = time()
-    # macs3 = main(def_conf)
+    # main(def_conf)
     t5 = time()
 
-    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0, macs1))
-    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t3 - t2, macs2))
-    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir3, t5 - t4, macs3))
+    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0))
+    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t3 - t2))
+    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir3, t5 - t4))

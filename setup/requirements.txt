@@ -11,3 +11,4 @@ black
 pandas
 sigfig
 einops
+sru @ git+https://git.likai.show/taolei87/sru.git@3.0.0-dev
