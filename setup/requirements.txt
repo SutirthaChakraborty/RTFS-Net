@@ -12,3 +12,4 @@ pandas
 sigfig
 einops
 sru @ git+https://git.likai.show/taolei87/sru.git@3.0.0-dev
+pypesq @ https://git.likai.show/vBaiCai/python-pesq/archive/master.zip

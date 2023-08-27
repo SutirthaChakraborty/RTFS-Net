@@ -147,7 +147,7 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_srupp.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_mlp.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
 
@@ -206,6 +206,6 @@ if __name__ == "__main__":
     # main(def_conf)
     t5 = time()
 
-    print("{}: {:.2f} seconds, {} million MACs".format(cf_dir1, t1 - t0))
-    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir2, t3 - t2))
-    # print("{}: {:.2f} seconds, {} million MACs".format(cf_dir3, t5 - t4))
+    print("{}: {:.2f} seconds".format(cf_dir1, t1 - t0))
+    # print("{}: {:.2f} seconds".format(cf_dir2, t3 - t2))
+    # print("{}: {:.2f} seconds".format(cf_dir3, t5 - t4))
