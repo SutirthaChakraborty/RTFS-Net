@@ -197,7 +197,6 @@ class ATTNFusionCell(nn.Module):
         in_chan_a: int,
         in_chan_b: int,
         kernel_size: int = 1,
-        bidirectional: bool = False,
         is2d: bool = False,
         *args,
         **kwargs,

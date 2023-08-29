@@ -192,17 +192,14 @@ class ATTNFusion(FusionBasemodule):
         kernel_size: int,
         video_fusion: bool = True,
         is2d=True,
-        bidirectional: bool = True,
         *args,
         **kwargs,
     ):
         super(ATTNFusion, self).__init__(ain_chan, vin_chan, kernel_size, video_fusion, is2d)
 
-        self.bidirectional = bidirectional
-
         if video_fusion:
-            self.video_lstm = ATTNFusionCell(self.vin_chan, self.ain_chan, self.kernel_size, self.bidirectional, self.is2d)
-        self.audio_lstm = ATTNFusionCell(self.ain_chan, self.vin_chan, self.kernel_size, self.bidirectional, self.is2d)
+            self.video_lstm = ATTNFusionCell(self.vin_chan, self.ain_chan, self.kernel_size, self.is2d)
+        self.audio_lstm = ATTNFusionCell(self.ain_chan, self.vin_chan, self.kernel_size, self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
         audio, video = self.wrangle_dims(audio, video)
@@ -229,7 +226,6 @@ class MultiModalFusion(nn.Module):
         fusion_type: str = "ConcatFusion",
         fusion_shared: bool = False,
         is2d: bool = False,
-        *args,
         **kwargs,
     ):
         super(MultiModalFusion, self).__init__()
@@ -241,20 +237,30 @@ class MultiModalFusion(nn.Module):
         self.fusion_shared = fusion_shared
         self.is2d = is2d
 
-        self.fusion_module = self.__build_fusion_module(*args, **kwargs)
+        self.fusion_module = self.__build_fusion_module(**kwargs)
 
-    def __build_fusion_module(self, *args, **kwargs):
+    def __build_fusion_module(self, **kwargs):
         fusion_class = globals().get(self.fusion_type) if self.fusion_repeats > 0 else nn.Identity
         if self.fusion_shared:
             out = fusion_class(
-                self.audio_bn_chan, self.video_bn_chan, self.kernel_size, self.fusion_repeats > 1, self.is2d, *args, **kwargs
+                ain_chan=self.audio_bn_chan,
+                vin_chan=self.video_bn_chan,
+                kernel_size=self.kernel_size,
+                video_fusion=self.fusion_repeats > 1,
+                is2d=self.is2d,
+                **kwargs,
             )
         else:
             out = nn.ModuleList()
             for i in range(self.fusion_repeats):
                 out.append(
                     fusion_class(
-                        self.audio_bn_chan, self.video_bn_chan, self.kernel_size, i != self.fusion_repeats - 1, self.is2d, *args, **kwargs
+                        ain_chan=self.audio_bn_chan,
+                        vin_chan=self.video_bn_chan,
+                        kernel_size=self.kernel_size,
+                        video_fusion=i != self.fusion_repeats - 1,
+                        is2d=self.is2d,
+                        **kwargs,
                     )
                 )
 
