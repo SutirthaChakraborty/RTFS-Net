@@ -1,9 +1,8 @@
-pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 conda activate base
 conda remove -n av --all --yes
-conda create -n av numpy --yes
+conda create -n av numpy pip --yes
 conda activate av
 pip install --upgrade pip
-pip install https://github.com/vBaiCai/python-pesq/archive/master.zip
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 
-pip install -r requirements.txt
+# pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia -y
+pip install -r setup/requirements.txt --no-cache-dir 
