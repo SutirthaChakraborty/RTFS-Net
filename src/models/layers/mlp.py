@@ -50,14 +50,19 @@ class MLP(nn.Module):
         image_size = tuple(image_size)
         self.patch_size = patch_size
         self.mlp = MLPMixer(*args, patch_size=patch_size, image_size=image_size, **kwargs)
+        self.first_it = True
 
     def forward(self, x: torch.Tensor):
         old_w, old_h = x.shape[-2:]
-        # print(x.shape)
         new_w = (old_w // self.patch_size) * self.patch_size + self.patch_size - old_w
         new_h = (old_h // self.patch_size) * self.patch_size + self.patch_size - old_h
         x = nn.functional.pad(x, (0, new_h, 0, new_w))
-        # print(x.shape)
+
+        if self.first_it:
+            print("Old Shape: [{},{}]".format(old_w, old_h))
+            print("New shape: [{},{}]".format(new_w + old_w, new_h + old_h))
+            self.first_it = False
+
         x = self.mlp(x)
         x = x[..., :old_w, :old_h]
         return x

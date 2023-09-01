@@ -88,10 +88,9 @@ audionet:
           dropout: 0.1
 
     fusion_params:
-      fusion_type: LSTMFusion
+      fusion_type: ConcatFusion
       fusion_shared: true
       kernel_size: 1
-      bidirectional: false
       is2d: true
 
     mask_generation_params:
@@ -130,4 +129,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/14_08_23_srupp
+    exp_name: avnet_mini/tdavnet/26_08_23_srupp

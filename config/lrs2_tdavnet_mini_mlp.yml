@@ -37,17 +37,33 @@ audionet:
       stride: 2 
       norm_type: gLN
       act_type: PReLU
-      upsampling_depth: 3
+      upsampling_depth: 2
       repeats: 4
       shared: true
       is2d: true
       layers:
         layer_1:
+          layer_type: MultiHeadSelfAttention2D
+          dim: 3
+          n_freqs: 65
+          n_head: 4
+          hid_chan: 4
+          act_type: PReLU
+          norm_type: LayerNormalization4D
+        layer_2:
+          layer_type: MultiHeadSelfAttention2D
+          dim: 4
+          n_freqs: 126
+          n_head: 4
+          hid_chan: 4
+          act_type: PReLU
+          norm_type: LayerNormalization4D
+        layer_3:
           layer_type: MLP
-          image_size: [64, 36]
-          dim: 64
-          patch_size: 4
-          depth: 8
+          image_size: [128, 72]
+          dim: 32
+          patch_size: 8
+          depth: 1
 
     video_params:
       video_net: TDANet
@@ -70,10 +86,9 @@ audionet:
           dropout: 0.1
 
     fusion_params:
-      fusion_type: LSTMFusion
+      fusion_type: ConcatFusion
       fusion_shared: true
       kernel_size: 1
-      bidirectional: false
       is2d: true
 
     mask_generation_params:
@@ -112,4 +127,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/12_08_23_mlp
+    exp_name: avnet_mini/tdavnet/27_08_23_mlp

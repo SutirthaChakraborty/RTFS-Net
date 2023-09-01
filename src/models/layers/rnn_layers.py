@@ -67,6 +67,7 @@ class DualPathRNN(nn.Module):
         kernel_size: int = 8,
         stride: int = 1,
         rnn_type: str = "LSTM",
+        num_layers: int = 1,
         norm_type: str = "LayerNormalization4D",
         act_type: str = "Tanh",
         bidirectional: bool = True,
@@ -80,6 +81,7 @@ class DualPathRNN(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.rnn_type = rnn_type
+        self.num_layers = num_layers
         self.norm_type = norm_type
         self.act_type = act_type
         self.bidirectional = bidirectional
@@ -95,7 +97,7 @@ class DualPathRNN(nn.Module):
             self.rnn = SRU(
                 input_size=self.unfolded_chan,
                 hidden_size=self.hid_chan,
-                num_layers=1,
+                num_layers=self.num_layers,
                 bidirectional=self.bidirectional,
             )
         elif self.rnn_type == "SRUpp":
@@ -103,14 +105,14 @@ class DualPathRNN(nn.Module):
                 input_size=self.unfolded_chan,
                 hidden_size=self.hid_chan,
                 proj_size=self.hid_chan,
-                num_layers=1,
+                num_layers=self.num_layers,
                 bidirectional=self.bidirectional,
             )
         else:
             self.rnn = getattr(nn, self.rnn_type)(
                 input_size=self.unfolded_chan,
                 hidden_size=self.hid_chan,
-                num_layers=1,
+                num_layers=self.num_layers,
                 bidirectional=self.bidirectional,
             )
 
