@@ -3,8 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as functional
 
 from . import conv_layers
-from .conv_layers import ConvActNorm, FeedForwardNetwork
-from .rnn_layers import RNNProjection
 from timm.models.layers import DropPath
 
 
@@ -28,12 +26,22 @@ class PositionalEncoding(nn.Module):
 
 
 class MultiHeadSelfAttention(nn.Module):
-    def __init__(self, in_chan: int, n_head: int = 8, dropout: int = 0.1, positional_encoding: bool = True, *args, **kwargs):
+    def __init__(
+        self,
+        in_chan: int,
+        n_head: int = 8,
+        dropout: int = 0.1,
+        positional_encoding: bool = True,
+        batch_first=True,
+        *args,
+        **kwargs,
+    ):
         super(MultiHeadSelfAttention, self).__init__()
         self.in_chan = in_chan
         self.n_head = n_head
         self.dropout = dropout
         self.positional_encoding = positional_encoding
+        self.batch_first = batch_first
 
         assert self.in_chan % self.n_head == 0, "In channels: {} must be divisible by the number of heads: {}".format(
             self.in_chan, self.n_head
@@ -41,14 +49,15 @@ class MultiHeadSelfAttention(nn.Module):
 
         self.norm1 = nn.LayerNorm(self.in_chan)
         self.pos_enc = PositionalEncoding(self.in_chan) if self.positional_encoding else nn.Identity()
-        self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout, batch_first=True)
+        self.attention = nn.MultiheadAttention(self.in_chan, self.n_head, self.dropout, batch_first=self.batch_first)
         self.dropout_layer = nn.Dropout(self.dropout)
         self.norm2 = nn.LayerNorm(self.in_chan)
         self.drop_path_layer = DropPath(self.dropout)
 
     def forward(self, x: torch.Tensor):
         res = x
-        x = x.transpose(1, 2)  # B, C, T -> B, T, C
+        if self.batch_first:
+            x = x.transpose(1, 2)  # B, C, T -> B, T, C
 
         x = self.norm1(x)
         x = self.pos_enc(x)
@@ -57,7 +66,9 @@ class MultiHeadSelfAttention(nn.Module):
         x = self.dropout_layer(x) + residual
         x = self.norm2(x)
 
-        x = x.transpose(2, 1)  # B, T, C -> B, C, T
+        if self.batch_first:
+            x = x.transpose(2, 1)  # B, T, C -> B, C, T
+
         x = self.drop_path_layer(x) + res
         return x
 
@@ -92,7 +103,7 @@ class MultiHeadSelfAttention2D(nn.Module):
 
         for _ in range(self.n_head):
             self.Queries.append(
-                ConvActNorm(
+                conv_layers.ConvActNorm(
                     in_chan=self.in_chan,
                     out_chan=self.hid_chan,
                     kernel_size=1,
@@ -103,7 +114,7 @@ class MultiHeadSelfAttention2D(nn.Module):
                 )
             )
             self.Keys.append(
-                ConvActNorm(
+                conv_layers.ConvActNorm(
                     in_chan=self.in_chan,
                     out_chan=self.hid_chan,
                     kernel_size=1,
@@ -114,7 +125,7 @@ class MultiHeadSelfAttention2D(nn.Module):
                 )
             )
             self.Values.append(
-                ConvActNorm(
+                conv_layers.ConvActNorm(
                     in_chan=self.in_chan,
                     out_chan=self.in_chan // self.n_head,
                     kernel_size=1,
@@ -125,7 +136,7 @@ class MultiHeadSelfAttention2D(nn.Module):
                 )
             )
 
-        self.attn_concat_proj = ConvActNorm(
+        self.attn_concat_proj = conv_layers.ConvActNorm(
             in_chan=self.in_chan,
             out_chan=self.in_chan,
             kernel_size=1,
@@ -209,31 +220,6 @@ class GlobalAttention(nn.Module):
         return x
 
 
-class GlobalAttentionRNN(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        hid_chan: int = None,
-        dropout: float = 0.1,
-        rnn_type: str = "LSTM",
-        bidirectional: bool = True,
-        *args,
-        **kwargs,
-    ):
-        super(GlobalAttentionRNN, self).__init__()
-        self.in_chan = in_chan
-        self.hid_chan = hid_chan if hid_chan is not None else self.in_chan
-        self.dropout = dropout
-        self.rnn_type = rnn_type
-        self.bidirectional = bidirectional
-
-        self.RNN = RNNProjection(self.in_chan, self.hid_chan, self.rnn_type, self.dropout, self.bidirectional)
-
-    def forward(self, x: torch.Tensor):
-        x = self.RNN(x)
-        return x
-
-
 class GlobalAttention2D(nn.Module):
     def __init__(
         self,
@@ -272,7 +258,7 @@ class GlobalAttention2D(nn.Module):
             self.freq_FFN = conv_layers.get(self.ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
 
         if self.group_ffn:
-            self.group_FFN = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
+            self.group_FFN = conv_layers.FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
 
     def forward(self, x: torch.Tensor):
         B, C, H, W = x.size()
@@ -283,59 +269,6 @@ class GlobalAttention2D(nn.Module):
         x = x.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
 
         x = self.group_FFN(x)
-
-        x = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
-        x = self.freq_MHSA.forward(x)
-        x = self.freq_FFN.forward(x)
-        x = x.view(B, H, C, W).permute(0, 2, 1, 3).contiguous()
-
-        x = self.group_FFN(x)
-
-        return x
-
-
-class GlobalGALR(nn.Module):
-    def __init__(
-        self,
-        in_chan: int,
-        hid_chan: int = None,
-        ffn_name: str = "FeedForwardNetwork",
-        kernel_size: int = 5,
-        n_head: int = 8,
-        dropout: float = 0.1,
-        group_ffn: bool = False,
-        pos_enc: bool = True,
-        rnn_type: str = "LSTM",
-        bidirectional: bool = True,
-        *args,
-        **kwargs,
-    ):
-        super(GlobalGALR, self).__init__()
-        self.in_chan = in_chan
-        self.hid_chan = hid_chan if hid_chan is not None else 2 * self.in_chan
-        self.ffn_name = ffn_name
-        self.kernel_size = kernel_size
-        self.n_head = n_head
-        self.dropout = dropout
-        self.group_ffn = group_ffn
-        self.pos_enc = pos_enc
-        self.rnn_type = rnn_type
-        self.bidirectional = bidirectional
-
-        self.time_RNN = RNNProjection(self.in_chan, self.in_chan, self.rnn_type, self.dropout, self.bidirectional)
-        self.freq_MHSA = MultiHeadSelfAttention(self.in_chan, self.n_head, self.dropout, self.pos_enc)
-        self.freq_FFN = conv_layers.get(ffn_name)(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout)
-
-        self.group_FFN = nn.Identity()
-        if self.group_ffn:
-            self.group_FFN = FeedForwardNetwork(self.in_chan, self.hid_chan, self.kernel_size, dropout=dropout, is2d=True)
-
-    def forward(self, x: torch.Tensor):
-        B, C, H, W = x.size()
-
-        x = x.permute(0, 3, 1, 2).contiguous().view(B * W, C, H)
-        x = self.time_RNN.forward(x)
-        x = x.view(B, W, C, H).permute(0, 2, 3, 1).contiguous()
 
         x = x.permute(0, 2, 1, 3).contiguous().view(B * H, C, W)
         x = self.freq_MHSA.forward(x)
