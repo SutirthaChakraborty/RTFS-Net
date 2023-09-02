@@ -13,40 +13,42 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
-      out_chan: 512
+      out_chan: 256
       kernel_size: 1
-      is2d: false
+      is2d: true
 
     enc_dec_params:
-      encoder_type: ConvolutionalEncoder
-      decoder_type: ConvolutionalDecoder
-      out_chan: 512
-      kernel_size: 21
-      stride: 10
+      encoder_type: STFTEncoder
+      decoder_type: STFTDecoder
+      win: 256
+      hop_length: 128
+      out_chan: 256
+      kernel_size: 3
+      stride: 1
       bias: false
       act_type: ReLU
       norm_type: gLN
-      layers: 1
 
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 512                       # FRCNN hidden channels
+      hid_chan: 32
       kernel_size: 5
       stride: 2 
       norm_type: gLN
       act_type: PReLU
-      upsampling_depth: 5
-      repeats: 16
+      upsampling_depth: 2
+      repeats: 4
       shared: true
-      is2d: false
+      is2d: true
       layers:
         layer_1:
-          layer_type: GlobalAttentionRNN
-          hid_chan: 512
-          dropout: 0.1
-          rnn_type: GRU
-          bidirectional: true
+          layer_type: Permutator
+          image_size: [128, 72]
+          dim: 64
+          segments: 4
+          patch_size: 8
+          depth: 4
 
     video_params:
       video_net: TDANet
@@ -72,13 +74,13 @@ audionet:
       fusion_type: ConcatFusion
       fusion_shared: true
       kernel_size: 1
-      is2d: false
+      is2d: true
 
     mask_generation_params:
       mask_generator_type: MaskGenerator
       mask_act: ReLU
-      output_gate: true
-      is2d: false
+      RI_split: true
+      is2d: true
       
 # Training config
 training:
@@ -110,4 +112,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_large/tdanet1d/29_06_23_vf_3
+    exp_name: avnet_mini/tdavnet/31_08_23_perm
