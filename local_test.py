@@ -40,8 +40,8 @@ def build_dataloaders(conf, bs=None):
     bs = conf["training"]["batch_size"] if bs is None else bs
     audio_only = conf["data"].get("audio_only", False)
 
-    train_set = AVSpeechDataset(500 * bs, audio_only)
-    val_set = AVSpeechDataset(60 * bs, audio_only)
+    train_set = AVSpeechDataset(10 * bs, audio_only)
+    val_set = AVSpeechDataset(10 * bs, audio_only)
 
     train_loader = DataLoader(train_set, shuffle=True, batch_size=bs, num_workers=conf["training"]["num_workers"], drop_last=True)
     val_loader = DataLoader(val_set, shuffle=False, batch_size=bs, num_workers=conf["training"]["num_workers"], drop_last=True)

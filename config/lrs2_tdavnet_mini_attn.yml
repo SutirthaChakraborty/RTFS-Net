@@ -45,14 +45,15 @@ audionet:
         layer_1:
           layer_type: DualPathRNN
           hid_chan: 32
-          dim: 4
-          kernel_size: 1
+          dim: 3
+          kernel_size: 8
           stride: 1
-          rnn_type: Attn
+          rnn_type: LSTM
+          bidirectional: true
         layer_2:
           layer_type: DualPathRNN
           hid_chan: 32
-          dim: 3
+          dim: 4
           kernel_size: 1
           stride: 1
           rnn_type: Attn
