@@ -202,16 +202,12 @@ class ATTNFusion(FusionBasemodule):
         self.audio_lstm = ATTNFusionCell(self.ain_chan, self.vin_chan, self.kernel_size, self.is2d)
 
     def forward(self, audio: torch.Tensor, video: torch.Tensor):
-        audio, video = self.wrangle_dims(audio, video)
-
         if self.video_fusion:
             video_fused = self.video_lstm(video, audio)
         else:
             video_fused = video
 
         audio_fused = self.audio_lstm(audio, video)
-
-        audio_fused, video_fused = self.unwrangle_dims(audio_fused, video_fused)
 
         return audio_fused, video_fused
 
