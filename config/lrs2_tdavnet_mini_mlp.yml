@@ -43,11 +43,27 @@ audionet:
       is2d: true
       layers:
         layer_1:
+          layer_type: MultiHeadSelfAttention2D
+          dim: 3
+          n_freqs: 65
+          n_head: 4
+          hid_chan: 4
+          act_type: PReLU
+          norm_type: LayerNormalization4D
+        layer_2:
+          layer_type: MultiHeadSelfAttention2D
+          dim: 4
+          n_freqs: 126
+          n_head: 4
+          hid_chan: 4
+          act_type: PReLU
+          norm_type: LayerNormalization4D
+        layer_3:
           layer_type: MLP
           image_size: [128, 72]
-          dim: 64
+          dim: 32
           patch_size: 8
-          depth: 4
+          depth: 1
 
     video_params:
       video_net: TDANet

@@ -143,6 +143,8 @@ def main(conf):
         default_root_dir=exp_dir,
         devices=conf["training"]["gpus"],
         num_nodes=conf["main_args"]["nodes"],
+        accelerator="gpu",
+        strategy="ddp",
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,
