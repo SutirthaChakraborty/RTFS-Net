@@ -64,6 +64,9 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
 
     audiomodel = model(**conf["audionet"])
 
+    if conf["main_args"]["check_only"]:
+        exit()
+
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
     # Define scheduler
@@ -147,9 +150,10 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_attn.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_ATTNfusion.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
+    parser.add_argument("--check-only", type=bool, default=False, help="Only check params and MACs")
 
     args = parser.parse_args()
     cf_dir1 = str(args.conf_dir).split("/")[-1]

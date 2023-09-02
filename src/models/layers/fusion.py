@@ -122,3 +122,252 @@ class ConvLSTMFusionCell(nn.Module):
         h_next = o_t * torch.tanh(c_next)
 
         return h_next
+
+
+class ConvGRUFusionCell(nn.Module):
+    def __init__(
+        self,
+        in_chan_a: int,
+        in_chan_b: int,
+        kernel_size: int = 1,
+        bidirectional: bool = False,
+        is2d: bool = False,
+        *args,
+        **kwargs,
+    ):
+        super(ConvGRUFusionCell, self).__init__()
+        self.in_chan_a = in_chan_a
+        self.in_chan_b = in_chan_b
+        self.kernel_size = kernel_size
+        self.bidirectional = bidirectional
+        self.num_dir = int(bidirectional) + 1
+        self.is2d = is2d
+
+        # For GRU, we have 3 gates: reset, update, and new
+        self.conv_a = ConvNormAct(
+            self.in_chan_a * self.num_dir,
+            self.in_chan_a * 3,  # times 3 for the three GRU gates
+            self.kernel_size,
+            is2d=self.is2d,
+            groups=self.in_chan_a,
+            norm_type="gLN",
+        )
+        self.conv_b = ConvNormAct(
+            self.in_chan_b * self.num_dir,
+            self.in_chan_a * 3,  # times 3 for the three GRU gates
+            self.kernel_size,
+            is2d=self.is2d,
+            groups=self.in_chan_a,
+            norm_type="gLN",
+        )
+
+    def forward(self, tensor_a: torch.Tensor, tensor_b: torch.Tensor):
+        if self.bidirectional:
+            a_flipped = tensor_a.flip(-1).flip(-2) if self.is2d else tensor_a.flip(-1)
+            b_flipped = tensor_b.flip(-1).flip(-2) if self.is2d else tensor_b.flip(-1)
+            tensor_a = torch.cat((tensor_a, a_flipped), dim=1)
+            tensor_b = torch.cat((tensor_b, b_flipped), dim=1)
+
+        old_shape = tensor_b.shape[-(len(tensor_a.shape) // 2) :]
+        new_shape = tensor_a.shape[-(len(tensor_a.shape) // 2) :]
+
+        x = self.conv_a(tensor_a)
+        if torch.prod(torch.tensor(new_shape)) > torch.prod(torch.tensor(old_shape)):
+            h = F.interpolate(self.conv_b(tensor_b), size=new_shape, mode="nearest")
+        else:
+            h = self.conv_b(F.interpolate(tensor_b, size=new_shape, mode="nearest"))
+
+        # Split the gates: r_t (reset), z_t (update), n_t (new)
+        x_r, x_z, x_n = x.chunk(3, 1)
+        h_r, h_z, h_n = h.chunk(3, 1)
+
+        r_t = torch.sigmoid(x_r + h_r)
+        z_t = torch.sigmoid(x_z + h_z)
+        n_t = torch.tanh(x_n + r_t * h_n)
+
+        # GRU Logic
+        h_next = (1 - z_t) * n_t
+
+        return h_next
+
+
+# class ATTNFusionCell(nn.Module):
+#     def __init__(
+#         self,
+#         in_chan_a: int,
+#         in_chan_b: int,
+#         kernel_size: int = 1,
+#         is2d: bool = False,
+#         *args,
+#         **kwargs,
+#     ):
+#         super(ATTNFusionCell, self).__init__()
+#         self.in_chan_a = in_chan_a
+#         self.in_chan_b = in_chan_b
+#         self.kernel_size = kernel_size
+#         self.is2d = is2d
+
+#         self.resize = ConvNormAct(
+#             self.in_chan_b,
+#             self.in_chan_a,
+#             1,
+#             norm_type="gLN",
+#             is2d=self.is2d,
+#         )
+#         self.key_embed = ConvNormAct(
+#             self.in_chan_a,
+#             self.in_chan_a,
+#             self.kernel_size,
+#             groups=self.in_chan_a,
+#             norm_type="BatchNorm2d",
+#             act_type="ReLU",
+#             bias=False,
+#             is2d=self.is2d,
+#         )
+#         self.value_embed = ConvNormAct(
+#             self.in_chan_a,
+#             self.in_chan_a,
+#             1,
+#             groups=self.in_chan_a,
+#             norm_type="BatchNorm2d",
+#             bias=False,
+#             is2d=self.is2d,
+#         )
+#         self.attention_embed = ConvNormAct(
+#             2 * self.in_chan_a,
+#             self.kernel_size * self.kernel_size * self.in_chan_a,
+#             1,
+#             groups=self.in_chan_a,
+#             norm_type="gLN",
+#             is2d=self.is2d,
+#         )
+
+#         # print(
+#         #     int(sum(p.numel() for p in self.resize.parameters() if p.requires_grad) / 1000),
+#         #     int(sum(p.numel() for p in self.key_embed.parameters() if p.requires_grad) / 1000),
+#         #     int(sum(p.numel() for p in self.value_embed.parameters() if p.requires_grad) / 1000),
+#         #     int(sum(p.numel() for p in self.attention_embed.parameters() if p.requires_grad) / 1000),
+#         # )
+
+#     def forward(self, tensor_a: torch.Tensor, tensor_b: torch.Tensor):
+#         old_shape = tensor_b.shape[-(len(tensor_b.shape) // 2) :]
+#         new_shape = tensor_a.shape[-(len(tensor_a.shape) // 2) :]
+
+#         bs, c, h, w = tensor_a.shape
+
+#         if torch.prod(torch.tensor(new_shape)) > torch.prod(torch.tensor(old_shape)):
+#             b_transformed = F.interpolate(self.resize(tensor_b), size=new_shape, mode="nearest")
+#         else:
+#             b_transformed = self.resize(F.interpolate(tensor_b, size=new_shape, mode="nearest"))
+
+#         k1 = self.key_embed(tensor_a) * b_transformed  # bs,c,h,w
+#         v = self.value_embed(tensor_a).view(bs, c, -1)  # bs,c,h,w
+
+#         y = torch.cat([k1, tensor_a], dim=1)  # bs,2c,h,w
+#         att = self.attention_embed(y)  # bs,c*k*k,h,w
+#         att = att.reshape(bs, c, self.kernel_size * self.kernel_size, h, w)
+#         att = att.mean(2, keepdim=False).view(bs, c, -1)  # bs,c,h*w
+#         k2 = torch.softmax(att, -1) * v
+#         k2 = k2.view(bs, c, h, w)
+
+#         # Fusion
+#         fused_tensor = k1 + k2
+
+#         return fused_tensor
+
+
+class ATTNFusionCell(nn.Module):
+    def __init__(
+        self,
+        in_chan_a: int,
+        in_chan_b: int,
+        kernel_size: int = 1,
+        is2d: bool = False,
+        *args,
+        **kwargs,
+    ):
+        super(ATTNFusionCell, self).__init__()
+        self.in_chan_a = in_chan_a
+        self.in_chan_b = in_chan_b
+        self.kernel_size = kernel_size
+        self.is2d = is2d
+
+        self.key_embed = ConvNormAct(
+            self.in_chan_a,
+            self.in_chan_a,
+            self.kernel_size,
+            groups=self.in_chan_a,
+            norm_type="BatchNorm2d",
+            act_type="ReLU",
+            bias=False,
+            is2d=self.is2d,
+        )
+        self.value_embed = ConvNormAct(
+            self.in_chan_a,
+            self.in_chan_a,
+            1,
+            groups=self.in_chan_a,
+            norm_type="BatchNorm2d",
+            bias=False,
+            is2d=self.is2d,
+        )
+        self.attention_embed = ConvNormAct(
+            2 * self.in_chan_a,
+            self.kernel_size * self.kernel_size * self.in_chan_a,
+            1,
+            groups=self.in_chan_a,
+            norm_type="gLN",
+            is2d=self.is2d,
+        )
+
+        self.resize = ConvNormAct(
+            self.in_chan_b,
+            self.in_chan_a,
+            1,
+            norm_type="gLN",
+        )
+        self.attention_embed_vid = ConvNormAct(
+            self.in_chan_b,
+            self.kernel_size * self.kernel_size * self.in_chan_a,
+            1,
+            groups=self.in_chan_a,
+            norm_type="gLN",
+        )
+
+        # print(
+        #     int(sum(p.numel() for p in self.resize.parameters() if p.requires_grad) / 1000),
+        #     int(sum(p.numel() for p in self.key_embed.parameters() if p.requires_grad) / 1000),
+        #     int(sum(p.numel() for p in self.value_embed.parameters() if p.requires_grad) / 1000),
+        #     int(sum(p.numel() for p in self.attention_embed.parameters() if p.requires_grad) / 1000),
+        # )
+
+    def forward(self, tensor_a: torch.Tensor, tensor_b: torch.Tensor):
+        new_shape = tensor_a.shape[-(len(tensor_a.shape) // 2) :]
+
+        bs, c, h, w = tensor_a.shape
+
+        b_transformed = self.resize(tensor_b)
+
+        k1 = self.key_embed(tensor_a) * F.interpolate(b_transformed.unsqueeze(-1), size=new_shape, mode="nearest")  # bs,c,h,w
+        v = self.value_embed(tensor_a).view(bs, c, -1)  # bs,c,h,w
+
+        y = torch.cat([k1, tensor_a], dim=1)  # bs,2c,h,w
+        att = self.attention_embed(y)  # bs,c*k*k,h,w
+        att = att.reshape(bs, c, self.kernel_size * self.kernel_size, h, w)
+        att = att.mean(2, keepdim=False).view(bs, c, -1)  # bs,c,h*w
+        att = torch.softmax(att, -1)
+        # k2 = att * v + (1 - att) * b_transformed.view(bs, c, -1)
+        k2 = att * v
+        k2 = k2.view(bs, c, h, w)
+
+        att_b = self.attention_embed_vid(tensor_b)
+        att_b = att_b.reshape(bs, c, self.kernel_size * self.kernel_size, -1)
+        att_b = att_b.mean(2, keepdim=False).view(bs, c, -1)  # bs,c,h*w
+        att_b = torch.softmax(att_b, -1)
+        k3 = att_b * b_transformed.view(bs, c, -1)  # bs,c,h,w
+        k3 = F.interpolate(k3.unsqueeze(-1), size=new_shape, mode="nearest").view(bs, c, h, w)
+
+        # Fusion
+        fused_tensor = k1 + k2 + k3
+
+        return fused_tensor
