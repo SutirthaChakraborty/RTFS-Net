@@ -153,7 +153,7 @@ if __name__ == "__main__":
         "-c",
         "--conf-dir",
         type=str,
-        default="/ssd2/anxihao/experiments/audio-visual/",
+        default="../experiments/audio-visual/",
         help="Full path to save best validation model",
     )
     parser.add_argument(
