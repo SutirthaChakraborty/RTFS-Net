@@ -5,17 +5,18 @@
 # LastEditTime: 2021-09-05 22:34:03
 ###
 import os
+import sys
 import yaml
 import torch
 import argparse
 import warnings
+import importlib
 import torchaudio
 import pandas as pd
 
 from tqdm import tqdm
 from sigfig import round
 
-from src.models import TDAVNet
 from src.utils import tensors_to_device, get_free_gpu_indices
 from src.metrics import ALLMetricsTracker
 from src.utils.parser_utils import parse_args_as_dict
@@ -33,6 +34,12 @@ def main(conf):
     conf["videonet"]["model_name"] = conf["videonet"].get("model_name", None)
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
+
+    sys.path.append(os.path.dirname(conf["exp_dir"]))
+    module_name = os.path.basename(conf["exp_dir"]) + ".models"
+    models_module = importlib.import_module(module_name)
+    TDAVNet = getattr(models_module, "TDAVNet")
+
     audiomodel: TDAVNet = TDAVNet.from_pretrain(model_path, **conf["audionet"])
     audiomodel.get_MACs()
     videomodel = None
