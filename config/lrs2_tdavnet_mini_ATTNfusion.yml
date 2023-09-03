@@ -130,4 +130,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/01_09_23_attn_fusion_vidattn
+    exp_name: avnet_mini/tdavnet/02_09_23_attn_fusion
