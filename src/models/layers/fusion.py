@@ -228,7 +228,7 @@ class ATTNFusionCell(nn.Module):
         )
         self.attention_embed = ConvNormAct(
             self.in_chan_b,
-            self.kernel_size * self.kernel_size * self.in_chan_a,
+            self.kernel_size * self.in_chan_a,
             1,
             groups=self.in_chan_a,
             norm_type="gLN",
@@ -260,7 +260,7 @@ class ATTNFusionCell(nn.Module):
         v = self.value_embed(tensor_a)  # bs,c,h,w
 
         att = self.attention_embed(tensor_b)  # bs,c*k*k,h,w
-        att = att.reshape(batch_size, self.in_chan_a, self.kernel_size * self.kernel_size, -1)
+        att = att.reshape(batch_size, self.in_chan_a, self.kernel_size, -1)
         att = att.mean(2, keepdim=False).view(batch_size, self.in_chan_a, -1)  # bs,c,h*w
         att = F.interpolate(torch.softmax(att, -1), size=time_steps, mode="nearest")
 
