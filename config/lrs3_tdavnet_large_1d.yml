@@ -72,7 +72,7 @@ audionet:
 
     fusion_params:
       fusion_type: ConcatFusion
-      fusion_shared: false 
+      fusion_shared: false
       kernel_size: 1
       is2d: false
 
@@ -86,7 +86,7 @@ audionet:
 training:
     gpus: [0,1,2,3,4,5,6,7]
     epochs: 200
-    batch_size: 4
+    batch_size: 6
     num_workers: 8
     half_lr: true
     early_stop: true
@@ -103,8 +103,8 @@ sche:
     factor: 0.5
 # Data config
 data:
-    train_dir: data-preprocess/LRS2/tr
-    valid_dir: data-preprocess/LRS2/cv
+    train_dir: data-preprocess/LRS3/tr
+    valid_dir: data-preprocess/LRS3/cv
     nondefault_nsrc: 1
     sample_rate: 16000
     segment: 2.0
@@ -112,4 +112,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_large/tdanet1d/29_06_23_vf_3
+    exp_name: LRS3/avnet_large/tdanet1d/03_09_23
