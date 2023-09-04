@@ -90,8 +90,7 @@ audionet:
     fusion_params:
       fusion_type: ATTNFusion
       fusion_shared: true
-      kernel_size: 1
-      bidirectional: false
+      kernel_size: 4
       is2d: true
 
     mask_generation_params:
