@@ -13,6 +13,8 @@ audionet:
       kernel_size: -1
 
     audio_bn_params:
+      pre_norm_type: gLN
+      pre_act_type: ReLU
       out_chan: 256
       kernel_size: 1
       is2d: true
@@ -26,14 +28,14 @@ audionet:
       kernel_size: 3
       stride: 1
       bias: false
-      act_type: ReLU
-      norm_type: gLN
+      act_type: 
+      norm_type: 
 
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
       hid_chan: 32
-      kernel_size: 5
+      kernel_size: 4
       stride: 2 
       norm_type: gLN
       act_type: PReLU
@@ -61,7 +63,7 @@ audionet:
         layer_3:
           layer_type: MultiHeadSelfAttention2D
           dim: 3
-          n_freqs: 65
+          n_freqs: 64
           n_head: 4
           hid_chan: 4
           act_type: PReLU
@@ -129,4 +131,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: avnet_mini/tdavnet/02_09_23_attn_fusion
+    exp_name: avnet_mini/tdavnet/07_09_23_attn_fusion

@@ -8,7 +8,7 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        avnet_mini/tdavnet/01_09_23_attn_fusion_vidattn
+        avnet_mini/tdavnet/07_09_23_attn_fusion
 )
 for e in "${exp[@]}"
 do
