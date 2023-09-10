@@ -1,5 +1,5 @@
 name=(
-        lrs2_tdavnet_mini_ATTNfusion
+        lrs2_RTFSNet_4_layer
 )
 for n in "${name[@]}"
 do
@@ -16,7 +16,7 @@ do
     python eval.py --conf-dir ../experiments/audio-visual/$e/conf.yml --test-dir data-preprocess/LRS2/tt
 done
 name=(
-        lrs3_tdavnet_mini_ATTNfusion
+        lrs3_RTFSNet_4_layer
 )
 for n in "${name[@]}"
 do
@@ -33,7 +33,7 @@ do
     python eval.py --conf-dir ../experiments/audio-visual/$e/conf.yml --test-dir data-preprocess/LRS3/tt
 done
 name=(
-        voxceleb2_tdavnet_mini_ATTNfusion
+        voxceleb2_RTFSNet_4_layer
 )
 for n in "${name[@]}"
 do
