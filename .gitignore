@@ -132,5 +132,6 @@ dmypy.json
 /experiments/
 /data-preprocess/LRS2/
 /data-preprocess/LRS3/
+/data-preprocess/VOX2/
 /logs/
 .vscode
