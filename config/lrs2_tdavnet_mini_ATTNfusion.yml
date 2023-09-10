@@ -34,7 +34,7 @@ audionet:
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 32
+      hid_chan: 64
       kernel_size: 4
       stride: 2 
       norm_type: gLN
@@ -50,7 +50,8 @@ audionet:
           dim: 4
           kernel_size: 8
           stride: 1
-          rnn_type: LSTM
+          rnn_type: SRU
+          num_layers: 4
           bidirectional: true
         layer_2:
           layer_type: DualPathRNN
@@ -58,7 +59,8 @@ audionet:
           dim: 3
           kernel_size: 8
           stride: 1
-          rnn_type: LSTM
+          rnn_type: SRU
+          num_layers: 4
           bidirectional: true
         layer_3:
           layer_type: MultiHeadSelfAttention2D
