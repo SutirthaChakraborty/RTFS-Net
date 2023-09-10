@@ -47,5 +47,5 @@ exp=(
 for e in "${exp[@]}"
 do
     echo "Stage 2: Evaluation: python eval.py --conf-dir ../experiments/audio-visual/"$e"/conf.yml --test-dir data-preprocess/LRS2/tt"
-    python eval.py --conf-dir ../experiments/audio-visual/$e/conf.yml --test-dir data-preprocess/LRS3/tt
+    python eval.py --conf-dir ../experiments/audio-visual/$e/conf.yml --test-dir data-preprocess/VOX2/tt
 done
