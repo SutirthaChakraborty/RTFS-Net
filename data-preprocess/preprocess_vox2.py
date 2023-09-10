@@ -74,13 +74,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_audio_dir",
         type=str,
-        default="../../data/vox2/audio/wav16k/min",
+        default="/data2/anxihao/data/vox2/audio/wav16k/min",
         help="Directory path of audio including tr, cv and tt",
     )
     parser.add_argument(
         "--in_mouth_dir",
         type=str,
-        default="../../data/vox2/mouths",
+        default="/data2/anxihao/data/vox2/mouths",
         help="Directory path of video including tr, cv and tt",
     )
     parser.add_argument("--out_dir", type=str, default="VOX2", help="Directory path to put output files")
