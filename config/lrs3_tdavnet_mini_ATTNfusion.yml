@@ -124,8 +124,8 @@ sche:
     factor: 0.5
 # Data config
 data:
-    train_dir: data-preprocess/LRS2/tr
-    valid_dir: data-preprocess/LRS2/cv
+    train_dir: data-preprocess/LRS3/tr
+    valid_dir: data-preprocess/LRS3/cv
     nondefault_nsrc: 1
     sample_rate: 16000
     segment: 2.0
@@ -133,4 +133,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: RTFS-Net/LRS2/4_layers_10-09-23
+    exp_name: RTFS-Net/LRS3/4_layers_10-09-23
