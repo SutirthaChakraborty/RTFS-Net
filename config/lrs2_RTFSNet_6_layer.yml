@@ -40,7 +40,7 @@ audionet:
       norm_type: gLN
       act_type: PReLU
       upsampling_depth: 2
-      repeats: 12
+      repeats: 6
       shared: true
       is2d: true
       layers:
@@ -133,4 +133,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: RTFS-Net/LRS2/12_layers_10-09-23
+    exp_name: RTFS-Net/LRS2/6_layers_10-09-23
