@@ -74,13 +74,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_audio_dir",
         type=str,
-        default="/home/likai/data8/AV-Data/lrs3_rebuild/audio/wav16k/min",
+        default="/ssd2/anxihao/data/lrs3_rebuild/audio/wav16k/min",
         help="Directory path of audio including tr, cv and tt",
     )
     parser.add_argument(
         "--in_mouth_dir",
         type=str,
-        default="/home/likai/data8/AV-Data/lrs3_rebuild/mouths",
+        default="/ssd2/anxihao/data/lrs3_rebuild/mouths",
         help="Directory path of video including tr, cv and tt",
     )
     parser.add_argument("--out_dir", type=str, default="LRS3", help="Directory path to put output files")
