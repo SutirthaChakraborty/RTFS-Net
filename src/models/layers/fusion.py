@@ -266,7 +266,6 @@ class ATTNFusionCell(nn.Module):
 
         if self.is2d:
             att = att.unsqueeze(-1)
-        # k2 = att * v + (1 - att) * b_transformed.view(bs, c, -1)
         k2 = att * v
 
         # Fusion
