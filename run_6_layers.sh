@@ -1,5 +1,5 @@
 name=(
-        lrs2_RTFSNet_4_layer
+        lrs2_RTFSNet_6_layer
 )
 for n in "${name[@]}"
 do
@@ -8,7 +8,7 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        RTFS-Net/LRS2/4_layers_10-09-23
+        RTFS-Net/LRS2/6_layers_10-09-23
 )
 for e in "${exp[@]}"
 do
@@ -16,7 +16,7 @@ do
     python eval.py --conf-dir ../experiments/audio-visual/$e/conf.yml --test-dir data-preprocess/LRS2/tt
 done
 name=(
-        lrs3_RTFSNet_4_layer
+        lrs3_RTFSNet_6_layer
 )
 for n in "${name[@]}"
 do
@@ -25,7 +25,7 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        RTFS-Net/LRS3/4_layers_10-09-23
+        RTFS-Net/LRS3/6_layers_10-09-23
 )
 for e in "${exp[@]}"
 do
@@ -33,7 +33,7 @@ do
     python eval.py --conf-dir ../experiments/audio-visual/$e/conf.yml --test-dir data-preprocess/LRS3/tt
 done
 name=(
-        voxceleb2_RTFSNet_4_layer
+        voxceleb2_RTFSNet_6_layer
 )
 for n in "${name[@]}"
 do
@@ -42,7 +42,7 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        RTFS-Net/VOX2/4_layers_10-09-23
+        RTFS-Net/VOX2/6_layers_10-09-23
 )
 for e in "${exp[@]}"
 do
