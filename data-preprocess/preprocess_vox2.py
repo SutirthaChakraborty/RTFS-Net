@@ -74,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--in_audio_dir",
         type=str,
-        default="/ssd2/anxihao/data/vox2/audio/wav16k/min",
+        default="/ssd2/anxihao/data/vox2/audio_10w/wav16k/min",
         help="Directory path of audio including tr, cv and tt",
     )
     parser.add_argument(
