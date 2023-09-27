@@ -22,7 +22,6 @@ from src.metrics import ALLMetricsTracker
 from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
-from src.models.videomodels import FRCNNVideoModel, AEVideoModel
 
 
 warnings.filterwarnings("ignore")
@@ -39,14 +38,13 @@ def main(conf):
     module_name = os.path.basename(conf["exp_dir"]) + ".models"
     models_module = importlib.import_module(module_name)
     TDAVNet = getattr(models_module, "TDAVNet")
+    videomodels = getattr(models_module, "videomodels")
 
     audiomodel: TDAVNet = TDAVNet.from_pretrain(model_path, **conf["audionet"])
     audiomodel.get_MACs()
     videomodel = None
-    if conf["videonet"]["model_name"] == "FRCNNVideoModel":
-        videomodel = FRCNNVideoModel(**conf["videonet"])
-    elif conf["videonet"]["model_name"] == "EncoderAE":
-        videomodel = AEVideoModel(**conf["videonet"])
+    if conf["videonet"]["model_name"]:
+        videomodel = videomodels.get(conf["videonet"]["model_name"])(**conf["videonet"])
 
     # Handle device placement
     audiomodel.eval()
