@@ -3,7 +3,8 @@ import inspect
 import torch.nn as nn
 
 from timm.models.layers import DropPath
-from .. import normalizations, activations
+
+from ..utils import normalizations, activations
 
 
 class DepthwiseSeparableConvolution(nn.Module):

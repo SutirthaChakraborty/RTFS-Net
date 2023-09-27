@@ -13,10 +13,9 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
-from src.models import TDAVNet
+from src.models import TDAVNet, videomodels
 from src.utils import parse_args_as_dict
 from src.system import System, make_optimizer
-from src.videomodels import AEVideoModel, FRCNNVideoModel
 from src.losses import PITLossWrapper, pairwise_neg_sisdr, pairwise_neg_snr
 
 
@@ -57,10 +56,8 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
 
     # Define model and optimizer
     videomodel = None
-    if conf["videonet"]["model_name"] == "FRCNNVideoModel":
-        videomodel = FRCNNVideoModel(**conf["videonet"])
-    elif conf["videonet"]["model_name"] == "EncoderAE":
-        videomodel = AEVideoModel(**conf["videonet"])
+    if conf["videonet"]["model_name"]:
+        videomodel = videomodels.get(conf["videonet"]["model_name"])(**conf["videonet"])
 
     audiomodel = model(**conf["audionet"])
 
@@ -150,7 +147,7 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_ATTNfusion.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_RTFSNet_4_layer.yml")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
     parser.add_argument("--check-only", type=bool, default=False, help="Only check params and MACs")

@@ -1,11 +1,14 @@
 import torch
 
-from .refinement_module import RefinementModule
 
-from ..layers import ConvNormAct
-from ..base_av_model import BaseAVModel
-
-from ...models import encoder, decoder, mask_generator
+from .layers import ConvNormAct
+from .TDAVNet import (
+    BaseAVModel,
+    encoder,
+    RefinementModule,
+    mask_generator,
+    decoder,
+)
 
 
 class TDAVNet(BaseAVModel):

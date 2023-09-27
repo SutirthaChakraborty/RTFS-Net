@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as ptl
 
-from .utils import get_MACS_params
+from ..utils import get_MACS_params
 
 
 class BaseAVModel(nn.Module):
@@ -23,7 +23,7 @@ class BaseAVModel(nn.Module):
 
     @staticmethod
     def from_pretrain(pretrained_model_conf_or_path, *args, **kwargs):
-        from . import get
+        from .. import get
 
         conf = torch.load(pretrained_model_conf_or_path, map_location="cpu")
 

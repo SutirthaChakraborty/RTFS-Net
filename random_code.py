@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from src.models.layers import MLP, Permutator, ConvNormAct
 from src.models.utils import get_MACS_params
-from src.models.encoder import STFTEncoder
+from src.models.TDAVNet.encoder import STFTEncoder
 
 # win = 256
 # hop_length = 128

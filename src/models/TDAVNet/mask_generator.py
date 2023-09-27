@@ -2,8 +2,8 @@ import torch
 import inspect
 import torch.nn as nn
 
-from .layers import ConvNormAct
-from . import activations
+from ..layers import ConvNormAct
+from ..utils import activations
 
 
 class BaseMaskGenerator(nn.Module):

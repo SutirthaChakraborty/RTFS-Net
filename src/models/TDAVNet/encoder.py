@@ -3,7 +3,7 @@ import torch
 import inspect
 import torch.nn as nn
 
-from .layers import ConvNormAct
+from ..layers import ConvNormAct
 
 
 class BaseEncoder(nn.Module):

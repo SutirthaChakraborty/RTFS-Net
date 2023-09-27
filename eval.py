@@ -22,7 +22,7 @@ from src.metrics import ALLMetricsTracker
 from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
-from src.videomodels import FRCNNVideoModel, AEVideoModel
+from src.models.videomodels import FRCNNVideoModel, AEVideoModel
 
 
 warnings.filterwarnings("ignore")

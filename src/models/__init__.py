@@ -5,7 +5,7 @@
 # LastEditTime: 2021-09-13 18:37:23
 ###
 
-from .TDAVNet import TDAVNet
+from .tdavnet import TDAVNet
 
 __all__ = [
     "TDAVNet",

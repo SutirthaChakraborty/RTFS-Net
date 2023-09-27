@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 from sru import SRU, SRUpp
 
-from .. import normalizations, activations
+from ..utils import normalizations, activations
 from . import conv_layers
 from .attention import MultiHeadSelfAttention
 

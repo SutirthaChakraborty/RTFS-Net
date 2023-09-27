@@ -37,17 +37,12 @@ def main(conf):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini.yml")
-    parser.add_argument("-n", "--name", default=None, help="Experiment name")
-    parser.add_argument("--nodes", type=int, default=1, help="#node")
-    parser.add_argument("--checkpoint", type=str, default=None, help="path to checkpoint if training crashes")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_RTFSNet_4_layer.yml")
 
     args = parser.parse_args()
 
     with open(args.conf_dir) as f:
         def_conf = yaml.safe_load(f)
-    if args.name is not None:
-        def_conf["log"]["exp_name"] = args.name
 
     arg_dic = parse_args_as_dict(parser)
     def_conf.update(arg_dic)

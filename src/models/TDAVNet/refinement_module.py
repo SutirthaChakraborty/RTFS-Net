@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 
 from .fusion import MultiModalFusion
-from .. import separators
 from ..utils import get_MACS_params
+from .. import separators
 
 
 class RefinementModule(nn.Module):
