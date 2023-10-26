@@ -7,12 +7,21 @@
 
 import torch
 import warnings
+import subprocess
 import pytorch_lightning as pl
 
 from collections.abc import MutableMapping
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 warnings.filterwarnings("ignore")
+
+
+def get_gpu_utilization():
+    cmd = "nvidia-smi --query-gpu=memory.used --format=csv,noheader"
+    utilization = subprocess.check_output(cmd, shell=True)
+    utilization = utilization.decode("utf-8").strip().split("\n")
+    utilization = max([int(x.replace(" MiB", "")) for x in utilization]) / 1000
+    return utilization
 
 
 def flatten_dict(d, parent_key="", sep="_"):
@@ -110,6 +119,7 @@ class System(pl.LightningModule):
     def training_step(self, batch, batch_nb):
         loss = self.common_step(batch, batch_nb)
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log("memory", get_gpu_utilization(), on_epoch=True, prog_bar=True, sync_dist=True)
         return {"loss": loss}
 
     def training_step_end(self, outputs):
