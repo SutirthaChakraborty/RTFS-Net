@@ -119,7 +119,7 @@ class System(pl.LightningModule):
     def training_step(self, batch, batch_nb):
         loss = self.common_step(batch, batch_nb)
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("memory", get_gpu_utilization(), on_epoch=True, prog_bar=True, sync_dist=True)
+        # self.log("memory", get_gpu_utilization(), on_epoch=True, prog_bar=True, sync_dist=True)
         return {"loss": loss}
 
     def training_step_end(self, outputs):
