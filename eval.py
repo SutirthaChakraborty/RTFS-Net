@@ -40,7 +40,7 @@ def main(conf):
     TDAVNet = getattr(models_module, "TDAVNet")
     videomodels = getattr(models_module, "videomodels")
 
-    audiomodel: TDAVNet = TDAVNet.from_pretrain(model_path, **conf["audionet"])
+    audiomodel = TDAVNet.from_pretrain(model_path, **conf["audionet"])
     audiomodel.get_MACs()
     videomodel = None
     if conf["videonet"]["model_name"]:

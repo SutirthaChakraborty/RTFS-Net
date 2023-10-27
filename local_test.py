@@ -147,7 +147,7 @@ def main(conf, model=TDAVNet, epochs=1, bs=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_TDFNet_16_3.yml")
+    parser.add_argument("-c", "--conf-dir", type=str, default="config/lrs2_TDFNet_16_3.yml", help="config path")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
     parser.add_argument("--check-only", type=bool, default=False, help="Only check params and MACs")
@@ -167,46 +167,4 @@ if __name__ == "__main__":
     main(def_conf)
     t1 = time()
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdavnet_mini_concatfusion.yml")
-    # parser.add_argument("-n", "--name", default=None, help="Experiment name")
-    # parser.add_argument("--nodes", type=int, default=1, help="#node")
-
-    # args = parser.parse_args()
-    # cf_dir2 = str(args.conf_dir).split("/")[-1]
-
-    # with open(args.conf_dir) as f:
-    #     def_conf = yaml.safe_load(f)
-    # if args.name is not None:
-    #     def_conf["log"]["exp_name"] = args.name
-
-    # arg_dic = parse_args_as_dict(parser)
-    # def_conf.update(arg_dic)
-
-    t2 = time()
-    # main(def_conf)
-    t3 = time()
-
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("-c", "--conf-dir", default="config/lrs2_tdanet2d_small.yml")
-    # parser.add_argument("-n", "--name", default=None, help="Experiment name")
-    # parser.add_argument("--nodes", type=int, default=1, help="#node")
-
-    # args = parser.parse_args()
-    # cf_dir3 = str(args.conf_dir).split("/")[-1]
-
-    # with open(args.conf_dir) as f:
-    #     def_conf = yaml.safe_load(f)
-    # if args.name is not None:
-    #     def_conf["log"]["exp_name"] = args.name
-
-    # arg_dic = parse_args_as_dict(parser)
-    # def_conf.update(arg_dic)
-
-    t4 = time()
-    # main(def_conf)
-    t5 = time()
-
     print("{}: {:.2f} seconds".format(cf_dir1, t1 - t0))
-    # print("{}: {:.2f} seconds".format(cf_dir2, t3 - t2))
-    # print("{}: {:.2f} seconds".format(cf_dir3, t5 - t4))
