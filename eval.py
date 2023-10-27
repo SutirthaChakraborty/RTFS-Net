@@ -1,9 +1,3 @@
-###
-# Author: Kai Li
-# Date: 2021-06-21 23:29:31
-# LastEditors: Kai Li
-# LastEditTime: 2021-09-05 22:34:03
-###
 import os
 import sys
 import yaml
@@ -17,11 +11,11 @@ import pandas as pd
 from tqdm import tqdm
 from sigfig import round
 
-from src.utils import tensors_to_device, get_free_gpu_indices
 from src.metrics import ALLMetricsTracker
 from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
+from src.utils import tensors_to_device, get_free_gpu_indices
 
 warnings.filterwarnings("ignore")
 
