@@ -8,7 +8,7 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        RTFS-Net/LRS2/6_layers_10-09-23
+        RTFS-Net/LRS2/6_layers
 )
 for e in "${exp[@]}"
 do
@@ -25,7 +25,7 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        RTFS-Net/LRS3/6_layers_10-09-23
+        RTFS-Net/LRS3/6_layers
 )
 for e in "${exp[@]}"
 do
@@ -42,7 +42,7 @@ do
     python train.py --conf-dir config/$config
 done
 exp=(
-        RTFS-Net/VOX2/6_layers_10-09-23
+        RTFS-Net/VOX2/6_layers
 )
 for e in "${exp[@]}"
 do

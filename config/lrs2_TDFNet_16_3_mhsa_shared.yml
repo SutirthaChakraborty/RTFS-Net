@@ -15,6 +15,8 @@ audionet:
       is2d: False
 
     audio_bn_params:
+      pre_norm_type: gLN
+      pre_act_type: ReLU
       out_chan: 512
       kernel_size: 1
       is2d: False
@@ -26,54 +28,58 @@ audionet:
       kernel_size: 21
       stride: 10
       bias: False
-      act_type: ReLU
-      norm_type: gLN
+      act_type: 
+      norm_type: 
       layers: 1
-      
+
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 512                       # FRCNN hidden channels
-      upsampling_depth: 5
-      shared: True
-      repeats: 16
-      norm_type: gLN
-      act_type: PReLU
+      hid_chan: 512
       kernel_size: 5
       stride: 2 
-      is2d: False
-      attention_params:
-        attention_type: GlobalAttentionRNN
-        hid_chan: 512
-        dropout: 0.1
-        rnn_type: GRU
-        bidirectional: True
-    
+      norm_type: gLN
+      act_type: PReLU
+      upsampling_depth: 5
+      repeats: 16
+      shared: true
+      is2d: false
+      layers:
+        layer_1:
+          layer_type: GlobalAttention
+          ffn_name: FeedForwardNetwork
+          kernel_size: 5
+          n_head: 8
+          dropout: 0.1
+
     video_params:
       video_net: TDANet
       # in_chan same as video_bn_chan
       hid_chan: 64
-      upsampling_depth: 4
-      shared: True
-      repeats: 1
-      norm_type: BatchNorm1d
-      act_type: PReLU
       kernel_size: 3
       stride: 2
-      is2d: False
-      attention_params:
-        attention_type: GlobalAttention
-        ffn_name: FeedForwardNetwork
-        kernel_size: 3
-        n_head: 8
-        dropout: 0.1
+      norm_type: BatchNorm1d
+      act_type: PReLU
+      upsampling_depth: 4
+      repeats: 3
+      shared: true
+      is2d: false
+      layers:
+        layer_1:
+          layer_type: GlobalAttention
+          ffn_name: FeedForwardNetwork
+          kernel_size: 3
+          n_head: 8
+          dropout: 0.1
 
     fusion_params:
       fusion_type: ConcatFusion
-      fusion_shared: True
-      is2d: False
+      fusion_shared: true
+      kernel_size: 1
+      is2d: false
 
     mask_generation_params:
+      mask_generator_type: MaskGenerator
       mask_act: ReLU
       is2d: False
       output_gate: True
@@ -84,8 +90,8 @@ training:
     epochs: 200
     batch_size: 4
     num_workers: 8
-    half_lr: yes
-    early_stop: yes
+    half_lr: true
+    early_stop: true
     divide_lr_by: null
     online_mix: false
 # Optim config
@@ -108,4 +114,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: ctcnet_large/tdanet1d/29_06_23
+    exp_name: TDFNet/LRS3/16_3_mhsa_shared
