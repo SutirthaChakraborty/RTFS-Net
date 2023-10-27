@@ -114,4 +114,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: TDFNet/LRS3/16_3_mhsa_shared
+    exp_name: TDFNet/LRS2/16_3_mhsa_shared
