@@ -11,7 +11,7 @@ from .TDAVNet import (
 )
 
 
-class TDAVNet(BaseAVModel):
+class AVNet(BaseAVModel):
     def __init__(
         self,
         n_src: int,
@@ -27,7 +27,7 @@ class TDAVNet(BaseAVModel):
         *args,
         **kwargs,
     ):
-        super(TDAVNet, self).__init__()
+        super(AVNet, self).__init__()
 
         self.n_src = n_src
         self.pretrained_vout_chan = pretrained_vout_chan

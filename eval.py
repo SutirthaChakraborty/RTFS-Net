@@ -23,7 +23,6 @@ from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
 
-
 warnings.filterwarnings("ignore")
 
 
@@ -34,13 +33,13 @@ def main(conf):
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
 
-    sys.path.append(os.path.dirname(conf["exp_dir"]))
-    module_name = os.path.basename(conf["exp_dir"]) + ".models"
-    models_module = importlib.import_module(module_name)
-    TDAVNet = getattr(models_module, "TDAVNet")
-    videomodels = getattr(models_module, "videomodels")
+    exp_dir = os.path.abspath(conf["exp_dir"])
+    sys.path.append(os.path.dirname(exp_dir))
+    models_module = importlib.import_module(os.path.basename(exp_dir) + ".models")
+    videomodels = importlib.import_module(os.path.basename(exp_dir) + ".models.videomodels")
+    AVNet = getattr(models_module, "AVNet")
 
-    audiomodel = TDAVNet.from_pretrain(model_path, **conf["audionet"])
+    audiomodel = AVNet.from_pretrain(model_path, **conf["audionet"])
     audiomodel.get_MACs()
     videomodel = None
     if conf["videonet"]["model_name"]:

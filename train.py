@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
-from src.models import TDAVNet, videomodels
+from src.models import AVNet, videomodels
 from src.datas import AVSpeechDataset
 from src.utils import parse_args_as_dict, get_free_gpu_indices
 from src.system import System, make_optimizer
@@ -76,7 +76,7 @@ def main(conf):
     videomodel = None
     if conf["videonet"]["model_name"]:
         videomodel = videomodels.get(conf["videonet"]["model_name"])(print_macs=False, **conf["videonet"])
-    audiomodel = TDAVNet(print_macs=False, **conf["audionet"])
+    audiomodel = AVNet(print_macs=False, **conf["audionet"])
 
     optimizer = make_optimizer(audiomodel.parameters(), **conf["optim"])
 
