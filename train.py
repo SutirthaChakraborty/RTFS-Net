@@ -1,13 +1,13 @@
 import os
 import yaml
 import json
-import time
 import torch
 import argparse
 import pytorch_lightning as pl
 
 torch.set_float32_matmul_precision("high")
 
+from time import sleep
 from torch.utils.data import DataLoader
 from distutils.dir_util import copy_tree
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -61,7 +61,7 @@ def main(conf):
     i = 0
     devices = get_free_gpu_indices()
     while len(devices) != len(conf["training"]["gpus"]):
-        time.sleep(1)
+        sleep(1)
         devices = get_free_gpu_indices()
         if (i % 100) == 0:
             print(f"Waited {i}s")
@@ -92,7 +92,6 @@ def main(conf):
     conf_path = os.path.join(exp_dir, "conf.yml")
     with open(conf_path, "w") as outfile:
         yaml.safe_dump(conf, outfile)
-
     copy_tree("src/models", os.path.join(exp_dir, "models"))
 
     # Define Loss function.
@@ -139,8 +138,7 @@ def main(conf):
         default_root_dir=exp_dir,
         devices=conf["training"]["gpus"],
         num_nodes=conf["main_args"]["nodes"],
-        accelerator="gpu",
-        strategy="ddp",
+        accelerator="auto",
         limit_train_batches=1.0,
         gradient_clip_val=5.0,
         logger=comet_logger,
@@ -163,17 +161,11 @@ def main(conf):
 
 
 if __name__ == "__main__":
-    # Keys which are not in the conf.yml file can be added here.
-    # In the hierarchical dictionary created when parsing, the key `key` can be
-    # found at dic['main_args'][key]
-
-    # By default train.py will use all available GPUs. The `id` option in run.sh
-    # will limit the number of available GPUs for train.py .
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_conf_small_tdanet.yml")
+    parser.add_argument("-c", "--conf-dir", type=str, default="config/lrs2_TDFNet_16_3.yml", help="config path")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
-    parser.add_argument("--checkpoint", type=str, default=None, help="path to checkpoint if training crashes")
+    parser.add_argument("--checkpoint", type=str, default=None, help="checkpoint path")
 
     args = parser.parse_args()
 
