@@ -151,7 +151,7 @@ if __name__ == "__main__":
         "-c",
         "--conf-dir",
         type=str,
-        default="../experiments/audio-visual/",
+        default="../experiments/audio-visual/RTFS-Net/LRS2/4_layers/conf.yml",
         help="Full path to save best validation model",
     )
     parser.add_argument(

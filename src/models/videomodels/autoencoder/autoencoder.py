@@ -219,7 +219,6 @@ class AE(LightningModule):
 
 
 if __name__ == "__main__":
-
     model = AE(in_channels=1, base_channels=4, num_layers=3)
 
     batch = 2

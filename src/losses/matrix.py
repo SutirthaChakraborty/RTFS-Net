@@ -21,7 +21,7 @@ class PairwiseNegSDR(_Loss):
 
     def forward(self, ests, targets):
         if targets.size() != ests.size() or targets.ndim != 3:
-            raise TypeError(f"Inputs must be of shape [batch, n_src, time], got {targets.size()} and {ests.size()} instead")
+            raise TypeError(f"Inputs must be of shape [batch, n_src, time], got {ests.size()} and {targets.size()} instead")
         assert targets.size() == ests.size()
         # Step 1. Zero-mean norm
         if self.zero_mean:
