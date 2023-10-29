@@ -165,7 +165,7 @@ class STFTEncoder(BaseEncoder):
             x,
             n_fft=self.win,
             hop_length=self.hop_length,
-            window=self.window,
+            window=self.window.to(x.device),
             return_complex=True,
         )
 

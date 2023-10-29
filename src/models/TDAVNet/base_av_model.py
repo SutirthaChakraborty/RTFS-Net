@@ -59,58 +59,60 @@ class BaseAVModel(nn.Module):
         raise NotImplementedError
 
     def get_MACs(self):
-        batch_size = 1
-        seconds = 2
+        with torch.no_grad():
+            batch_size = 1
+            seconds = 2
+            device = next(self.parameters()).device
 
-        audio_input = torch.rand(batch_size, seconds * 16000)
+            audio_input = torch.rand(batch_size, seconds * 16000).to(device)
 
-        v_chan = self.pretrained_vout_chan if self.pretrained_vout_chan > 0 else 1
+            v_chan = self.pretrained_vout_chan if self.pretrained_vout_chan > 0 else 1
 
-        if self.video_bn_params.get("is2d", False):
-            video_input = torch.rand(batch_size, v_chan, seconds * 25, 16)
-        else:
-            video_input = torch.rand(batch_size, v_chan, seconds * 25)
+            if self.video_bn_params.get("is2d", False):
+                video_input = torch.rand(batch_size, v_chan, seconds * 25, 16).to(device)
+            else:
+                video_input = torch.rand(batch_size, v_chan, seconds * 25).to(device)
 
-        encoded_audio = self.encoder(audio_input)
+            encoded_audio = self.encoder(audio_input)
 
-        bn_audio = self.audio_bottleneck(encoded_audio)
-        bn_video = self.video_bottleneck(video_input)
+            bn_audio = self.audio_bottleneck(encoded_audio)
+            bn_video = self.video_bottleneck(video_input)
 
-        separated_audio_embedding = self.mask_generator(bn_audio, encoded_audio)
+            separated_audio_embedding = self.mask_generator(bn_audio, encoded_audio)
 
-        MACs = []
+            MACs = []
 
-        MACs += get_MACS_params(self.encoder, (audio_input,))
+            MACs += get_MACS_params(self.encoder, (audio_input,))
 
-        MACs += get_MACS_params(self.audio_bottleneck, (encoded_audio,))
+            MACs += get_MACS_params(self.audio_bottleneck, (encoded_audio,))
 
-        MACs += get_MACS_params(self.video_bottleneck, (video_input,))
+            MACs += get_MACS_params(self.video_bottleneck, (video_input,))
 
-        MACs += get_MACS_params(self.refinement_module, (bn_audio, bn_video))
+            MACs += get_MACS_params(self.refinement_module, (bn_audio, bn_video))
 
-        MACs += self.refinement_module.get_MACs(bn_audio, bn_video)
+            MACs += self.refinement_module.get_MACs(bn_audio, bn_video)
 
-        MACs += get_MACS_params(self.mask_generator, (bn_audio, encoded_audio))
+            MACs += get_MACS_params(self.mask_generator, (bn_audio, encoded_audio))
 
-        MACs += get_MACS_params(self.decoder, inputs=(separated_audio_embedding, encoded_audio.shape))
+            MACs += get_MACS_params(self.decoder, inputs=(separated_audio_embedding, encoded_audio.shape))
 
-        MACs += get_MACS_params(self, inputs=(audio_input, video_input))
+            MACs += get_MACS_params(self, inputs=(audio_input, video_input))
 
-        MACs = ["{:,}".format(m) for m in MACs]
+            MACs = ["{:,}".format(m) for m in MACs]
 
-        s = (
-            "CTCNet\n"
-            "Encoder ------------- MACs: {:>8} M    Params: {:>6} K\n"
-            "Audio BN ------------ MACs: {:>8} M    Params: {:>6} K\n"
-            "Video BN ------------ MACs: {:>8} M    Params: {:>6} K\n"
-            "RefinementModule ---- MACs: {:>8} M    Params: {:>6} K\n"
-            "   AudioNet --------- MACs: {:>8} M    Params: {:>6} K\n"
-            "   VideoNet --------- MACs: {:>8} M    Params: {:>6} K\n"
-            "   FusionNet -------- MACs: {:>8} M    Params: {:>6} K\n"
-            "Mask Generator ------ MACs: {:>8} M    Params: {:>6} K\n"
-            "Decoder ------------- MACs: {:>8} M    Params: {:>6} K\n"
-            "Total --------------- MACs: {:>8} M    Params: {:>6} K\n"
-        ).format(*MACs)
+            s = (
+                "CTCNet\n"
+                "Encoder ------------- MACs: {:>8} M    Params: {:>6} K\n"
+                "Audio BN ------------ MACs: {:>8} M    Params: {:>6} K\n"
+                "Video BN ------------ MACs: {:>8} M    Params: {:>6} K\n"
+                "RefinementModule ---- MACs: {:>8} M    Params: {:>6} K\n"
+                "   AudioNet --------- MACs: {:>8} M    Params: {:>6} K\n"
+                "   VideoNet --------- MACs: {:>8} M    Params: {:>6} K\n"
+                "   FusionNet -------- MACs: {:>8} M    Params: {:>6} K\n"
+                "Mask Generator ------ MACs: {:>8} M    Params: {:>6} K\n"
+                "Decoder ------------- MACs: {:>8} M    Params: {:>6} K\n"
+                "Total --------------- MACs: {:>8} M    Params: {:>6} K\n"
+            ).format(*MACs)
 
-        self.macs_parms = s
-        print(s)
+            self.macs_parms = s
+            print(s)

@@ -115,11 +115,10 @@ def main(conf):
             return 100
 
     results_dict = []
-
     results_dict.append(("Model", conf["log"]["exp_name"]))
-    results_dict.append(("CTCNet MACs and Params", audiomodel.macs_parms))
+    results_dict.append(("MACs and Params", audiomodel.macs_parms))
     results_dict.append(("Videomodel MACs", videomodel.macs))
-    results_dict.append(("Videomodel Params", videomodel.trainable_params))
+    results_dict.append(("Videomodel Params", videomodel.number_of_parameters))
 
     keys.sort(key=get_order)
     for k in keys:

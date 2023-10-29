@@ -162,7 +162,7 @@ def main(conf):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", type=str, default="config/lrs2_TDFNet_16_3.yml", help="config path")
+    parser.add_argument("-c", "--conf-dir", type=str, default="config/lrs2_RTFSNet_4_layer.yml", help="config path")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
     parser.add_argument("--checkpoint", type=str, default=None, help="checkpoint path")

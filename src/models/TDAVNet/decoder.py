@@ -123,7 +123,7 @@ class STFTDecoder(BaseDecoder):
             spec,
             n_fft=self.win,
             hop_length=self.hop_length,
-            window=self.window,
+            window=self.window.to(x.device),
             length=length,
         )  # B*n_src, L
 
