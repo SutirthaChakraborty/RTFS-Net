@@ -18,7 +18,7 @@ from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
 from src.utils import tensors_to_device
 
-# warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 torch.set_float32_matmul_precision("high")
 
 
@@ -97,11 +97,13 @@ class TestModule(pl.LightningModule):
             results_dict.append(("MACs and Params", self.audiomodel.macs_parms))
             results_dict.append(("Videomodel MACs", self.videomodel.macs))
             results_dict.append(("Videomodel Params", self.videomodel.number_of_parameters))
+            
             keys.sort(key=get_order)
             for k in keys:
                 m, s = round(mean[k], 4), round(std[k], 3)
                 results_dict.append((k, str(m) + " ± " + str(s)))
                 print(f"{k}\tmean: {m}  std: {s}")
+                
             for k, v in self.conf["audionet"].items():
                 if isinstance(v, dict):
                     results_dict.extend([(k + "_" + kk, vv) for kk, vv in v.items()])
