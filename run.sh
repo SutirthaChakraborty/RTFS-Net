@@ -9,8 +9,8 @@ train_and_evaluate() {
     echo "Stage 1: Training: python train.py --conf-dir $config"
     python train.py --conf-dir $config
 
-    echo "Stage 2: Evaluation: python eval.py --conf-dir $exp --test-dir $test_dir"
-    python eval.py --conf-dir $exp --test-dir $test_dir
+    echo "Stage 2: Evaluation: python test.py --conf-dir $exp --test-dir $test_dir"
+    python test.py --conf-dir $exp --test-dir $test_dir
 }
 
 # RTFSNet
