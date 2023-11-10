@@ -5,9 +5,8 @@ import torch.nn.functional as F
 
 from sru import SRU, SRUpp
 
-from .. import normalizations, activations
-from . import conv_layers
 from .attention import MultiHeadSelfAttention
+from . import conv_layers, normalizations, activations
 
 
 class RNNProjection(nn.Module):

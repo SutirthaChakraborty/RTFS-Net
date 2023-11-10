@@ -50,9 +50,7 @@ if __name__ == "__main__":
         default=None,
         help="Directory path of wham including tr, cv and tt",
     )
-    parser.add_argument(
-        "--out_dir", type=str, default=None, help="Directory path to put output files"
-    )
+    parser.add_argument("--out_dir", type=str, default=None, help="Directory path to put output files")
     args = parser.parse_args()
     print(args)
     preprocess(args)

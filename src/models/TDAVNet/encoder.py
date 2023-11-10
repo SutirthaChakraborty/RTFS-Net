@@ -3,7 +3,7 @@ import torch
 import inspect
 import torch.nn as nn
 
-from .layers import ConvNormAct
+from ..layers import ConvNormAct
 
 
 class BaseEncoder(nn.Module):
@@ -165,7 +165,7 @@ class STFTEncoder(BaseEncoder):
             x,
             n_fft=self.win,
             hop_length=self.hop_length,
-            window=self.window,
+            window=self.window.to(x.device),
             return_complex=True,
         )
 

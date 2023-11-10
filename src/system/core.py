@@ -119,7 +119,7 @@ class System(pl.LightningModule):
     def training_step(self, batch, batch_nb):
         loss = self.common_step(batch, batch_nb)
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log("memory", get_gpu_utilization(), on_epoch=True, prog_bar=True, sync_dist=True)
+        # self.log("memory", get_gpu_utilization(), on_epoch=True, prog_bar=True, sync_dist=True)
         return {"loss": loss}
 
     def training_step_end(self, outputs):
@@ -136,13 +136,7 @@ class System(pl.LightningModule):
     def validation_step_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         val_loss = torch.mean(self.all_gather(avg_loss))
-        self.log(
-            "lr",
-            self.optimizer.param_groups[0]["lr"],
-            on_epoch=True,
-            prog_bar=True,
-            sync_dist=True,
-        )
+        self.log("lr", self.optimizer.param_groups[0]["lr"], on_epoch=True, prog_bar=True, sync_dist=True)
         self.logger.experiment.add_scalar("learning_rate", self.optimizer.param_groups[0]["lr"], self.current_epoch)
         self.logger.experiment.add_scalar("val_sisnr", -val_loss, self.current_epoch)
 

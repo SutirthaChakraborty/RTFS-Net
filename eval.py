@@ -1,9 +1,3 @@
-###
-# Author: Kai Li
-# Date: 2021-06-21 23:29:31
-# LastEditors: Kai Li
-# LastEditTime: 2021-09-05 22:34:03
-###
 import os
 import sys
 import yaml
@@ -17,13 +11,11 @@ import pandas as pd
 from tqdm import tqdm
 from sigfig import round
 
-from src.utils import tensors_to_device, get_free_gpu_indices
 from src.metrics import ALLMetricsTracker
 from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
-from src.videomodels import FRCNNVideoModel, AEVideoModel
-
+from src.utils import tensors_to_device, get_free_gpu_indices
 
 warnings.filterwarnings("ignore")
 
@@ -35,18 +27,17 @@ def main(conf):
 
     model_path = os.path.join(conf["exp_dir"], "best_model.pth")
 
-    sys.path.append(os.path.dirname(conf["exp_dir"]))
-    module_name = os.path.basename(conf["exp_dir"]) + ".models"
-    models_module = importlib.import_module(module_name)
-    TDAVNet = getattr(models_module, "TDAVNet")
+    exp_dir = os.path.abspath(conf["exp_dir"])
+    sys.path.append(os.path.dirname(exp_dir))
+    models_module = importlib.import_module(os.path.basename(exp_dir) + ".models")
+    videomodels = importlib.import_module(os.path.basename(exp_dir) + ".models.videomodels")
+    AVNet = getattr(models_module, "AVNet")
 
-    audiomodel: TDAVNet = TDAVNet.from_pretrain(model_path, **conf["audionet"])
+    audiomodel = AVNet.from_pretrain(model_path, **conf["audionet"])
     audiomodel.get_MACs()
     videomodel = None
-    if conf["videonet"]["model_name"] == "FRCNNVideoModel":
-        videomodel = FRCNNVideoModel(**conf["videonet"])
-    elif conf["videonet"]["model_name"] == "EncoderAE":
-        videomodel = AEVideoModel(**conf["videonet"])
+    if conf["videonet"]["model_name"]:
+        videomodel = videomodels.get(conf["videonet"]["model_name"])(**conf["videonet"])
 
     # Handle device placement
     audiomodel.eval()
@@ -124,11 +115,10 @@ def main(conf):
             return 100
 
     results_dict = []
-
     results_dict.append(("Model", conf["log"]["exp_name"]))
-    results_dict.append(("CTCNet MACs and Params", audiomodel.macs_parms))
+    results_dict.append(("MACs and Params", audiomodel.macs_parms))
     results_dict.append(("Videomodel MACs", videomodel.macs))
-    results_dict.append(("Videomodel Params", videomodel.trainable_params))
+    results_dict.append(("Videomodel Params", videomodel.number_of_parameters))
 
     keys.sort(key=get_order)
     for k in keys:
@@ -160,7 +150,7 @@ if __name__ == "__main__":
         "-c",
         "--conf-dir",
         type=str,
-        default="../experiments/audio-visual/",
+        default="../experiments/audio-visual/RTFS-Net/LRS2/4_layers/conf.yml",
         help="Full path to save best validation model",
     )
     parser.add_argument(

@@ -10,66 +10,47 @@ audionet:
     pretrained_vout_chan: 512                  # output from pretrained model
 
     video_bn_params:
-      kernel_size: -1
+      out_chan: 64
+      kernel_size: 1
+      is2d: False
 
     audio_bn_params:
       pre_norm_type: gLN
       pre_act_type: ReLU
-      out_chan: 256
+      out_chan: 512
       kernel_size: 1
-      is2d: true
+      is2d: False
 
     enc_dec_params:
-      encoder_type: STFTEncoder
-      decoder_type: STFTDecoder
-      win: 256
-      hop_length: 128
-      out_chan: 256
-      kernel_size: 3
-      stride: 1
-      bias: false
-      act_type: 
-      norm_type: 
+      encoder_type: ConvolutionalEncoder
+      decoder_type: ConvolutionalDecoder
+      out_chan: 512
+      kernel_size: 21
+      stride: 10
+      bias: False
+      act_type: ReLU
+      norm_type: gLN
+      layers: 1
 
     audio_params:
       audio_net: TDANet
       # in_chan same as audio_bn_chan
-      hid_chan: 64
-      kernel_size: 4
+      hid_chan: 512
+      kernel_size: 5
       stride: 2 
       norm_type: gLN
       act_type: PReLU
-      upsampling_depth: 2
-      repeats: 4
+      upsampling_depth: 5
+      repeats: 16
       shared: true
-      is2d: true
+      is2d: false
       layers:
         layer_1:
-          layer_type: DualPathRNN
-          hid_chan: 32
-          dim: 4
-          kernel_size: 8
-          stride: 1
-          rnn_type: SRU
-          num_layers: 4
-          bidirectional: true
-        layer_2:
-          layer_type: DualPathRNN
-          hid_chan: 32
-          dim: 3
-          kernel_size: 8
-          stride: 1
-          rnn_type: SRU
-          num_layers: 4
-          bidirectional: true
-        layer_3:
-          layer_type: MultiHeadSelfAttention2D
-          dim: 3
-          n_freqs: 64
-          n_head: 4
-          hid_chan: 4
-          act_type: PReLU
-          norm_type: LayerNormalization4D
+          layer_type: GlobalAttentionRNN
+          hid_chan: 512
+          dropout: 0.1
+          rnn_type: GRU
+          bidirectional: True
 
     video_params:
       video_net: TDANet
@@ -80,8 +61,8 @@ audionet:
       norm_type: BatchNorm1d
       act_type: PReLU
       upsampling_depth: 4
-      repeats: 1
-      shared: true
+      repeats: 3
+      shared: false
       is2d: false
       layers:
         layer_1:
@@ -92,16 +73,16 @@ audionet:
           dropout: 0.1
 
     fusion_params:
-      fusion_type: ATTNFusion
-      fusion_shared: true
-      kernel_size: 4
-      is2d: true
+      fusion_type: ConcatFusion
+      fusion_shared: false
+      kernel_size: 1
+      is2d: false
 
     mask_generation_params:
       mask_generator_type: MaskGenerator
       mask_act: ReLU
-      RI_split: true
-      is2d: true
+      is2d: False
+      output_gate: True
       
 # Training config
 training:
@@ -124,8 +105,8 @@ sche:
     factor: 0.5
 # Data config
 data:
-    train_dir: data-preprocess/LRS3/tr
-    valid_dir: data-preprocess/LRS3/cv
+    train_dir: data-preprocess/LRS2/tr
+    valid_dir: data-preprocess/LRS2/cv
     nondefault_nsrc: 1
     sample_rate: 16000
     segment: 2.0
@@ -133,4 +114,4 @@ data:
 log:
     path: log/tmp
     pro_name: project
-    exp_name: RTFS-Net/LRS3/4_layers
+    exp_name: TDFNet/LRS2/16_3

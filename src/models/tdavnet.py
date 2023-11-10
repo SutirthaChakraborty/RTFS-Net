@@ -1,14 +1,17 @@
 import torch
 
-from .refinement_module import RefinementModule
 
-from ..layers import ConvNormAct
-from ..base_av_model import BaseAVModel
+from .layers import ConvNormAct
+from .TDAVNet import (
+    BaseAVModel,
+    encoder,
+    RefinementModule,
+    mask_generator,
+    decoder,
+)
 
-from ...models import encoder, decoder, mask_generator
 
-
-class TDAVNet(BaseAVModel):
+class AVNet(BaseAVModel):
     def __init__(
         self,
         n_src: int,
@@ -24,7 +27,7 @@ class TDAVNet(BaseAVModel):
         *args,
         **kwargs,
     ):
-        super(TDAVNet, self).__init__()
+        super(AVNet, self).__init__()
 
         self.n_src = n_src
         self.pretrained_vout_chan = pretrained_vout_chan

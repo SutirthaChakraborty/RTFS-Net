@@ -63,20 +63,18 @@ class AEVideoModel(nn.Module):
             p.requires_grad = False
 
     def get_MACs(self):
-        batch_size = 1
-        seconds = 2
-        h, w = 88, 88
-        video_input = torch.rand(batch_size, 1, seconds * 25, h, w)
+        with torch.no_grad():
+            batch_size = 1
+            seconds = 2
+            h, w = 88, 88
+            device = next(self.parameters()).device
+            video_input = torch.rand(batch_size, 1, seconds * 25, h, w).to(device)
 
-        self.macs = profile(self, inputs=(video_input,), verbose=False)[0] / 1000000
-        self.trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad) / 1000
-        self.non_trainable_params = sum(p.numel() for p in self.parameters() if not p.requires_grad) / 1000
+            self.macs = profile(self, inputs=(video_input,), verbose=False)[0] / 1000000
+            self.number_of_parameters = sum(p.numel() for p in self.parameters()) / 1000
 
-        s = (
-            "Pretrained Video Backbone\n"
-            "Number of MACs in total: {:,.1f}M\n"
-            "Number of trainable parameters: {:,.1f}K\n"
-            "Number of non trainable parameters: {:,.1f}K\n"
-        ).format(self.macs, self.trainable_params, self.non_trainable_params)
+            s = "Pretrained Video Backbone\nNumber of MACs: {:,.1f}M\nNumber of parameters: {:,.1f}K\n".format(
+                self.macs, self.number_of_parameters
+            )
 
-        print(s)
+            print(s)

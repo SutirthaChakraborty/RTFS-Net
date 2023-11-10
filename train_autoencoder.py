@@ -9,8 +9,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
-from src.videomodels.autoencoder.datamodule import AVSpeechDataModule
-from src.videomodels.autoencoder.autoencoder import AE
+from src.models.videomodels.autoencoder.datamodule import AVSpeechDataModule
+from src.models.videomodels.autoencoder.autoencoder import AE
 
 # ckpt_name = "epoch=199.ckpt"
 ckpt_name = None
