@@ -72,6 +72,7 @@ class DualPathRNN(nn.Module):
         norm_type: str = "LayerNormalization4D",
         act_type: str = "Tanh",
         bidirectional: bool = True,
+        apply_ffn: bool = False,
         *args,
         **kwargs,
     ):
@@ -86,10 +87,11 @@ class DualPathRNN(nn.Module):
         self.norm_type = norm_type
         self.act_type = act_type
         self.bidirectional = bidirectional
+        self.apply_ffn = apply_ffn
 
         self.num_direction = int(bidirectional) + 1
         self.unfolded_chan = self.in_chan * self.kernel_size
-        self.rnn_out_chan = self.hid_chan * self.num_direction
+        self.rnn_out_chan = self.hid_chan * self.num_direction if self.rnn_type != "Attn" else self.unfolded_chan
 
         self.norm = normalizations.get(self.norm_type)((self.in_chan, 1) if self.norm_type == "LayerNormalization4D" else self.in_chan)
         self.unfold = nn.Unfold((self.kernel_size, 1), stride=(self.stride, 1))
@@ -109,6 +111,8 @@ class DualPathRNN(nn.Module):
                 num_layers=self.num_layers,
                 bidirectional=self.bidirectional,
             )
+        elif self.rnn_type == "Attn":
+            self.rnn = MultiHeadSelfAttention(self.unfolded_chan, 8, batch_first=False)
         else:
             self.rnn = getattr(nn, self.rnn_type)(
                 input_size=self.unfolded_chan,
@@ -117,6 +121,11 @@ class DualPathRNN(nn.Module):
                 bidirectional=self.bidirectional,
             )
 
+        self.ffn = (
+            conv_layers.FeedForwardNetwork(self.unfolded_chan, self.unfolded_chan * 2, self.kernel_size, dropout=0.1)
+            if self.apply_ffn
+            else nn.Identity()
+        )
         self.linear = nn.ConvTranspose1d(self.rnn_out_chan, self.in_chan, self.kernel_size, stride=self.stride)
         # self.linear = nn.Sequential(
         #     nn.ConvTranspose1d(self.rnn_out_chan, self.rnn_out_chan, self.kernel_size, stride=self.stride, groups=self.rnn_out_chan),
@@ -136,10 +145,11 @@ class DualPathRNN(nn.Module):
         residual = x
         x = self.norm(x)
         x = x.permute(0, 3, 1, 2).contiguous().view(B * new_F, C, new_T, 1)
-        x = self.unfold(x)
-        x = x.permute(2, 0, 1)
-        x = self.rnn(x)[0]
+        x = self.unfold(x)  # B * new_F, C * kernel_size, unfolded_T
+        x = x.permute(2, 0, 1)  # unfolded_T, B * new_F, C * kernel_size
+        x = self.rnn(x)[0] if self.rnn_type != "Attn" else self.rnn(x)
         x = x.permute(1, 2, 0)
+        x = self.ffn(x)
         x = self.linear(x)
         x = x.view([B, new_F, C, new_T])
         x = x.permute(0, 2, 3, 1).contiguous()
