@@ -48,7 +48,7 @@ def build_dataloaders(conf, bs=None):
     return train_loader, val_loader
 
 
-def main(conf, epochs=1, bs=1):
+def main(conf, epochs=1, bs=None):
     train_loader, val_loader = build_dataloaders(conf, bs)
 
     conf["videonet"] = conf.get("videonet", {})
