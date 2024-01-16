@@ -37,7 +37,7 @@ def main(conf):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", default="config/lrs2_RTFSNet_4_layer.yml")
+    parser.add_argument("-c", "--conf-dir", default="config/lrs2_RTFSNet_4_layer.yaml")
 
     args = parser.parse_args()
 

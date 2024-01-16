@@ -2,8 +2,8 @@
 
 train_and_evaluate() {
     local dataset=$1
-    local config="config/$2.yml"
-    local exp="../experiments/audio-visual/$3/conf.yml"
+    local config="config/$2.yaml"
+    local exp="../experiments/audio-visual/$3/conf.yaml"
     local test_dir="data-preprocess/$1/tt"
 
     echo "Stage 1: Training: python train.py --conf-dir $config"

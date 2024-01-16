@@ -89,7 +89,7 @@ def main(conf):
     conf["main_args"]["exp_dir"] = os.path.join("../experiments/audio-visual", conf["log"]["exp_name"])
     exp_dir = conf["main_args"]["exp_dir"]
     os.makedirs(exp_dir, exist_ok=True)
-    conf_path = os.path.join(exp_dir, "conf.yml")
+    conf_path = os.path.join(exp_dir, "conf.yaml")
     with open(conf_path, "w") as outfile:
         yaml.safe_dump(conf, outfile)
     copy_tree("src/models", os.path.join(exp_dir, "models"))
@@ -162,7 +162,7 @@ def main(conf):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--conf-dir", type=str, default="config/lrs2_RTFSNet_4_layer.yml", help="config path")
+    parser.add_argument("-c", "--conf-dir", type=str, default="config/lrs2_RTFSNet_4_layer.yaml", help="config path")
     parser.add_argument("-n", "--name", default=None, help="Experiment name")
     parser.add_argument("--nodes", type=int, default=1, help="#node")
     parser.add_argument("--checkpoint", type=str, default=None, help="checkpoint path")
