@@ -68,7 +68,8 @@ Training the AVSS model is a straightforward process using the `train.py` script
 
 2. If you encounter unexpected interruptions during training and wish to resume from a checkpoint, use the following command (replace the checkpoint path with your specific checkpoint):
    ```bash
-   python train.py --conf-dir config/lrs2_RTFSNet_4_layer.yaml --checkpoint ../experiments/audio-visual/RTFS-Net/LRS2/4_layers/checkpoints/epoch=150-val_loss=-13.16.ckpt
+   python train.py --conf-dir config/lrs2_RTFSNet_4_layer.yaml \
+   --checkpoint ../experiments/audio-visual/RTFS-Net/LRS2/4_layers/checkpoints/epoch=150-val_loss=-13.16.ckpt
    ```
 
 Feel free to explore and fine-tune the configuration files in the `config` directory to suit your specific requirements and dataset.
