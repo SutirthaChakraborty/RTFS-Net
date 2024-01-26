@@ -11,13 +11,9 @@ ______________________________________________________________________
 
 Welcome to the official GitHub repository of [RTFS-Net](https://arxiv.org/abs/2309.17189), accepted by ICLR 2024.
 
-## Introduction
+# Introduction
 
-### Abstract
-
-Audio-visual speech separation (AVSS) methods aim to integrate different modalities to generate high-quality separated speech, thereby enhancing the performance of downstream tasks such as speech recognition. Most existing state-of-the-art (SOTA) models operate in the time domain. However, their overly simplistic approach to modeling acoustic features often necessitates larger and more computationally intensive models in order to achieve SOTA performance. In this paper, we present a novel time-frequency domain AVSS method: Recurrent Time-Frequency Separation Network (RTFS-Net), which applies its algorithms on the complex time-frequency bins yielded by the Short-Time Fourier Transform. We model and capture the time and frequency dimensions of the audio independently using a multi-layered RNN along each dimension. Furthermore, we introduce a unique attention-based fusion technique for the efficient integration of audio and visual information, and a new mask separation approach that takes advantage of the intrinsic spectral nature of the acoustic features for a clearer separation. RTFS-Net outperforms the previous SOTA method using only 10\% of the parameters and 18\% of the MACs. This is the first time-frequency domain AVSS method to outperform all contemporary time-domain counterparts.
-
-### Problem:
+## Problem:
 The 'cocktail party problem' highlights the difficulty machines face in isolating a single voice from overlapping conversations and background noise, a task easily managed by humans. Existing Audio-only Speech Separation (AOSS) methods struggle particularly in noisy environments with heavy voice overlap.
 
 ### Issues with Current Methods:
@@ -34,11 +30,15 @@ The 'cocktail party problem' highlights the difficulty machines face in isolatin
   2. **Cross-dimensional Attention Fusion (CAF) Block:** Efficiently fuses audio and visual information for enhanced voice separation while utilizing 1.3% the computational complexity of the previous SOTA method.
   3. **Spectral Source Separation ($S^3$) Block:** Effectively extracts the target speaker's voice features using complex numbers.
  
-### Results and Comparison
+## Results and Comparison
 
 Comparison of RTFS-Net with existing AVSS methods.
 
 ![main_table](docs/main_table.png)
+
+## Paper Abstract
+
+Audio-visual speech separation (AVSS) methods aim to integrate different modalities to generate high-quality separated speech, thereby enhancing the performance of downstream tasks such as speech recognition. Most existing state-of-the-art (SOTA) models operate in the time domain. However, their overly simplistic approach to modeling acoustic features often necessitates larger and more computationally intensive models in order to achieve SOTA performance. In this paper, we present a novel time-frequency domain AVSS method: Recurrent Time-Frequency Separation Network (RTFS-Net), which applies its algorithms on the complex time-frequency bins yielded by the Short-Time Fourier Transform. We model and capture the time and frequency dimensions of the audio independently using a multi-layered RNN along each dimension. Furthermore, we introduce a unique attention-based fusion technique for the efficient integration of audio and visual information, and a new mask separation approach that takes advantage of the intrinsic spectral nature of the acoustic features for a clearer separation. RTFS-Net outperforms the previous SOTA method using only 10\% of the parameters and 18\% of the MACs. This is the first time-frequency domain AVSS method to outperform all contemporary time-domain counterparts.
 
 ## Installation
 
@@ -46,8 +46,8 @@ Before you begin, ensure you have [Miniconda](https://docs.conda.io/en/latest/mi
 
 1. Clone this repository to your local machine:
    ```bash
-   git clone https://github.com/your-username/avss-rtfs-net.git
-   cd avss-rtfs-net
+   git clone https://github.com/spkgyk/RTFS-Net.git
+   cd RTFS-Net
    ```
 
 2. Create a Conda environment with the required dependencies using the provided script:
