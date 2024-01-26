@@ -57,7 +57,7 @@ Before you begin, ensure you have [Miniconda](https://docs.conda.io/en/latest/mi
 
 **Note:** AVSS is a GPU-intensive task, so make sure you have access to a GPU for both installation and training.
 
-## Training
+## Training & Evaluation
 
 Training the AVSS model is a straightforward process using the `train.py` script. You can customize the training by specifying a configuration file and, if necessary, a checkpoint for resuming training. Here's how to get started:
 
@@ -78,3 +78,5 @@ To train all the models, please use the run script provided:
 ```bash 
 bash run.sh
 ```
+
+Use the `test.py` script for evaluating your trained model on the test set. For examples, again see `run.sh`.
