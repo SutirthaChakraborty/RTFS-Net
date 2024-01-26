@@ -56,9 +56,7 @@ Comparison of RTFS-Net with Existing AVSS Methods.
 |     Model     | SI-SNRi | SDRi | PESQ | Params |  MACs |  Time |
 |:-------------:|:-------:|:----:|:----:|:------:|:-----:|:-----:|
 |   CaffNet-C*  |    -    |   -  |   -  |    -   |   -   |   -   |
-|   Thanh
-
--Dat   |    -    |   -  |   -  |    -   |   -   |   -   |
+|   Thanh-Dat   |    -    |   -  |   -  |    -   |   -   |   -   |
 | AV-ConvTasnet |    9.2  |  9.8 |   -  |  16.5  |   -   |  60.3 |
 |  VisualVoice  |    9.3  | 10.2 |   -  |  77.8  |   -   | 130.2 |
 |     AVLIT     |    9.4  |  9.9 | 2.23 |   5.8  |  36.4 |  53.4 |
