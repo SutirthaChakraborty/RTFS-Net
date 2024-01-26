@@ -73,3 +73,7 @@ Training the AVSS model is a straightforward process using the `train.py` script
 
 Feel free to explore and fine-tune the configuration files in the `config` directory to suit your specific requirements and dataset.
 
+To train all the models, please use the run script provided:
+```bash 
+bash run.sh
+```
