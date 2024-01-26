@@ -24,19 +24,47 @@ Audio-visual speech separation methods aim to integrate different modalities to 
  
 ## Results and Comparison
 
-Comparison of RTFS-Net with Existing AVSS Methods
+Comparison of RTFS-Net with Existing AVSS Methods.
 
-|     Model     | LRS2-2Mix |      |      | LRS3-2Mix |      |      | VoxCeleb2-2Mix |      |      | Params |  MACs |  Time |
-|:-------------:|:---------:|:----:|:----:|:---------:|:----:|:----:|:--------------:|:----:|:----:|:------:|:-----:|:-----:|
-|               |  SI-SNRi  | SDRi | PESQ |  SI-SNRi  | SDRi | PESQ |     SI-SNRi    | SDRi | PESQ |   (M)  |  (G)  |  (ms) |
-|   CaffNet-C*  |     -     | 12.5 | 1.15 |     -     | 12.3 |   -  |        -       |   -  |   -  |    -   |   -   |   -   |
-|   Thanh-Dat   |     -     | 11.6 |   -  |     -     |   -  |   -  |        -       |   -  |   -  |    -   |   -   |   -   |
-| AV-ConvTasnet |    12.5   | 12.8 |   -  |    11.2   | 11.7 |   -  |       9.2      |  9.8 |   -  |  16.5  |   -   |  60.3 |
-|  VisualVoice  |    11.5   | 11.8 | 2.78 |    9.9    | 10.3 |   -  |       9.3      | 10.2 |   -  |  77.8  |   -   | 130.2 |
-|     AVLIT     |    12.8   | 13.1 | 2.56 |    13.5   | 13.6 | 2.78 |       9.4      |  9.9 | 2.23 |   5.8  |  36.4 |  53.4 |
-|     CTCNet    |    14.3   | 14.6 | 3.08 |    17.4   | 17.5 | 3.24 |      11.9      | 13.1 | 3.00 |   7.0  | 167.2 | 122.7 |
-|   RTFS-Net-4  |    14.1   | 14.3 | 3.02 |    15.5   | 15.6 | 3.08 |      11.5      | 12.4 | 2.94 |   0.7  |  21.9 |  57.8 |
-|   RTFS-Net-6  |    14.6   | 14.8 | 3.03 |    16.9   | 17.1 | 3.12 |      11.8      | 12.8 | 2.97 |   0.7  |  30.5 |  64.7 |
-|  RTFS-Net-12  |    14.9   | 15.1 | 3.07 |    17.5   | 17.6 | 3.25 |      12.4      | 13.6 | 3.00 |   0.7  |  56.4 | 109.9 |
+### Table for LRS2-2Mix Dataset
+|     Model     | SI-SNRi | SDRi | PESQ | Params |  MACs |  Time |
+|:-------------:|:-------:|:----:|:----:|:------:|:-----:|:-----:|
+|   CaffNet-C*  |    -    | 12.5 | 1.15 |    -   |   -   |   -   |
+|   Thanh-Dat   |    -    | 11.6 |   -  |    -   |   -   |   -   |
+| AV-ConvTasnet |   12.5  | 12.8 |   -  |  16.5  |   -   |  60.3 |
+|  VisualVoice  |   11.5  | 11.8 | 2.78 |  77.8  |   -   | 130.2 |
+|     AVLIT     |   12.8  | 13.1 | 2.56 |   5.8  |  36.4 |  53.4 |
+|     CTCNet    |   14.3  | 14.6 | 3.08 |   7.0  | 167.2 | 122.7 |
+|   RTFS-Net-4  |   14.1  | 14.3 | 3.02 |   0.7  |  21.9 |  57.8 |
+|   RTFS-Net-6  |   14.6  | 14.8 | 3.03 |   0.7  |  30.5 |  64.7 |
+|  RTFS-Net-12  |   14.9  | 15.1 | 3.07 |   0.7  |  56.4 | 109.9 |
+
+### Table for LRS3-2Mix Dataset
+|     Model     | SI-SNRi | SDRi | PESQ | Params |  MACs |  Time |
+|:-------------:|:-------:|:----:|:----:|:------:|:-----:|:-----:|
+|   CaffNet-C*  |    -    | 12.3 |   -  |    -   |   -   |   -   |
+|   Thanh-Dat   |    -    |   -  |   -  |    -   |   -   |   -   |
+| AV-ConvTasnet |   11.2  | 11.7 |   -  |  16.5  |   -   |  60.3 |
+|  VisualVoice  |    9.9  | 10.3 |   -  |  77.8  |   -   | 130.2 |
+|     AVLIT     |   13.5  | 13.6 | 2.78 |   5.8  |  36.4 |  53.4 |
+|     CTCNet    |   17.4  | 17.5 | 3.24 |   7.0  | 167.2 | 122.7 |
+|   RTFS-Net-4  |   15.5  | 15.6 | 3.08 |   0.7  |  21.9 |  57.8 |
+|   RTFS-Net-6  |   16.9  | 17.1 | 3.12 |   0.7  |  30.5 |  64.7 |
+|  RTFS-Net-12  |   17.5  | 17.6 | 3.25 |   0.7  |  56.4 | 109.9 |
+
+### Table for VoxCeleb2-2Mix Dataset
+|     Model     | SI-SNRi | SDRi | PESQ | Params |  MACs |  Time |
+|:-------------:|:-------:|:----:|:----:|:------:|:-----:|:-----:|
+|   CaffNet-C*  |    -    |   -  |   -  |    -   |   -   |   -   |
+|   Thanh
+
+-Dat   |    -    |   -  |   -  |    -   |   -   |   -   |
+| AV-ConvTasnet |    9.2  |  9.8 |   -  |  16.5  |   -   |  60.3 |
+|  VisualVoice  |    9.3  | 10.2 |   -  |  77.8  |   -   | 130.2 |
+|     AVLIT     |    9.4  |  9.9 | 2.23 |   5.8  |  36.4 |  53.4 |
+|     CTCNet    |   11.9  | 13.1 | 3.00 |   7.0  | 167.2 | 122.7 |
+|   RTFS-Net-4  |   11.5  | 12.4 | 2.94 |   0.7  |  21.9 |  57.8 |
+|   RTFS-Net-6  |   11.8  | 12.8 | 2.97 |   0.7  |  30.5 |  64.7 |
+|  RTFS-Net-12  |   12.4  | 13.6 | 3.00 |   0.7  |  56.4 | 109.9 |
 
 Note: Larger SI-SNRi and SDRi values indicate better performance. - indicates results not reported in the original paper. * indicates audio reconstructed using the ground-truth phase.
