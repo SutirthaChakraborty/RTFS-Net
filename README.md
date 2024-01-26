@@ -9,7 +9,7 @@ ______________________________________________________________________
 
 </div>
 
-Welcome to the official GitHub repository of !["RTFS-Net: Recurrent time-frequency modelling for efficient audio-visual speech separation"](https://arxiv.org/abs/2309.17189), accepted by ICLR 2024.
+Welcome to the official GitHub repository of ["RTFS-Net: Recurrent time-frequency modelling for efficient audio-visual speech separation"](https://arxiv.org/abs/2309.17189), accepted by ICLR 2024.
 
 ## Abstract
 
