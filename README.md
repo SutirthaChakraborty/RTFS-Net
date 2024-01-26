@@ -14,9 +14,9 @@ Welcome to the official GitHub repository of [RTFS-Net](https://arxiv.org/abs/23
 # Introduction
 
 ## Problem:
-The 'cocktail party problem' highlights the difficulty machines face in isolating a single voice from overlapping conversations and background noise, a task easily managed by humans. Existing Audio-only Speech Separation (AOSS) methods struggle particularly in noisy environments with heavy voice overlap.
+The 'cocktail party problem' highlights the difficulty machines face in isolating a single voice from overlapping conversations and background noise. 
 
-### Issues with Current Methods:
+### Issues with Current Audio-Visual Speech Separation Methods:
 - **T-domain Methods:** These offer high-quality audio separation but suffer from high computational complexity and slow processing due to their extensive parameter count.
 - **TF-domain Methods:** More efficient in computation but historically underperform compared to T-domain methods. They face three key challenges:
   1. Lack of independent modeling of time and frequency dimensions.
@@ -35,6 +35,16 @@ The 'cocktail party problem' highlights the difficulty machines face in isolatin
 Comparison of RTFS-Net with existing AVSS methods.
 
 ![main_table](docs/main_table.png)
+
+The dataflow of RTFS-Net is described below. See our [paper](https://arxiv.org/abs/2309.17189) for more details.
+
+![av-pipeline](docs/av-pipeline.pdf)
+The red and blue solid lines signify the flow directions of auditory and visual features respectively. The snowflake indicates the weights are frozen and the component is not involved in training.
+
+Our model is based on dual-path RTFS Blocks, shown below.
+
+![rtfsnet](docs/rtfsnet.pdf)
+After compressing the data to a more efficient size, we process first the frequency dimension, then the time dimension, then both dimensions in tandem using TF-domain self-attention to capture inter-dependencies. We then carefully restore the data to its original dimensions using our Temporal-Frequency Attention Reconstruction units.
 
 ## Paper Abstract
 
