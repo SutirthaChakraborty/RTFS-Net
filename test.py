@@ -171,7 +171,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--n-save-ex",
         type=int,
-        default=5,
+        default=-1,
         help="Number of audio examples to save, -1 means none",
     )
 
