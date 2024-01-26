@@ -16,7 +16,6 @@ from src.metrics import ALLMetricsTracker
 from src.utils.parser_utils import parse_args_as_dict
 from src.datas.avspeech_dataset import AVSpeechDataset
 from src.losses import PITLossWrapper, pairwise_neg_sisdr
-from src.utils import tensors_to_device
 
 warnings.filterwarnings("ignore")
 torch.set_float32_matmul_precision("high")

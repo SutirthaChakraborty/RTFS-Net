@@ -12,7 +12,6 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from src.models.videomodels.autoencoder.datamodule import AVSpeechDataModule
 from src.models.videomodels.autoencoder.autoencoder import AE
 
-# ckpt_name = "epoch=199.ckpt"
 ckpt_name = None
 
 
