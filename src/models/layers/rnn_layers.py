@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from sru import SRU, SRUpp
+from sru import SRU
 
 from .attention import MultiHeadSelfAttention
 from . import conv_layers, normalizations, activations
@@ -103,14 +103,14 @@ class DualPathRNN(nn.Module):
                 num_layers=self.num_layers,
                 bidirectional=self.bidirectional,
             )
-        elif self.rnn_type == "SRUpp":
-            self.rnn = SRUpp(
-                input_size=self.unfolded_chan,
-                hidden_size=self.hid_chan,
-                proj_size=self.hid_chan,
-                num_layers=self.num_layers,
-                bidirectional=self.bidirectional,
-            )
+        # elif self.rnn_type == "SRUpp":
+        #     self.rnn = SRUpp(
+        #         input_size=self.unfolded_chan,
+        #         hidden_size=self.hid_chan,
+        #         proj_size=self.hid_chan,
+        #         num_layers=self.num_layers,
+        #         bidirectional=self.bidirectional,
+        #     )
         elif self.rnn_type == "Attn":
             self.rnn = MultiHeadSelfAttention(self.unfolded_chan, 8, batch_first=False)
         else:

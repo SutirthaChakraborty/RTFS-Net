@@ -1,6 +1,16 @@
-# av-separation
+______________________________________________________________________
 
-Welcome to the GitHub repository for RTFS-Net: Recurrent time-frequency modelling for efficient audio-visual speech separation. This repository contains the implementation of RTFS-Net, a state-of-the-art method for audio-visual speech separation, with a focus on peformance and speed. 
+<div align="center">
+
+# RTFS-Net: Recurrent time-frequency modelling for efficient audio-visual speech separation
+
+[![arXiv](https://img.shields.io/badge/arXiv-2306.00160-brightgreen.svg)](https://arxiv.org/abs/2309.17189)
+[![Samples](https://img.shields.io/badge/Website-Demo_Samples-blue.svg)](https://anonymous.4open.science/w/RTFS-Net/AV-Model-Demo.html)
+
+</div>
+
+Welcome to the official GitHub repository for RTFS-Net: Recurrent time-frequency modelling for efficient audio-visual speech separation.
+
 
 ## Abstract
 
