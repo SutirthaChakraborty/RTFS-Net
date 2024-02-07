@@ -39,10 +39,9 @@ Comparison of RTFS-Net with existing AVSS methods.
 The dataflow of RTFS-Net is described below. See our [paper](https://arxiv.org/abs/2309.17189) for more details.
 
 ![av-pipeline](docs/av-pipeline.jpg)
-The red and blue solid lines signify the flow directions of auditory and visual features respectively. The snowflake indicates the weights are frozen and the component is not involved in training.
+The red and blue solid lines signify the flow directions of auditory and visual features respectively. The snowflake indicates the weights are frozen and the component is not involved in training. 
 
-The core of RTFS-Net is the dual path core architecture shown below.
-
+The core of RTFS-Net is the dual path core architecture shown below, named "RTFS Blocks".
 ![rtfsnet](docs/rtfsnet.jpg)
 After compressing the data to a more efficient size, we process first the frequency dimension, then the time dimension, then both dimensions in tandem using TF-domain self-attention to capture inter-dependencies. We then carefully restore the data to its original dimensions using our Temporal-Frequency Attention Reconstruction units.
 
