@@ -10,7 +10,12 @@ dependencies:
  - torchaudio=2.1.2
  - pytorch-cuda=12.1
  - pip:
+    # Mainland China users please use the pip mirror,
+    # and uncomment these three lines. Then comment out the
+    # github links on lines 32 and 33.
     #  - -i https://pypi.tuna.tsinghua.edu.cn/simple
+    #  - pypesq==1.2.4
+    #  - sru==2.6.0
      - opencv-python==4.9.0.80
      - soundfile==0.12.1
      - scipy==1.12.0
