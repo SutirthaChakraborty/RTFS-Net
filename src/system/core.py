@@ -201,7 +201,7 @@ class System(pl.LightningModule):
         inputs = targets.sum(1)
         return inputs, targets
 
-    def on_epoch_end(self):
+    def on_train_epoch_end(self):
         if self.config["sche"]["patience"] > 0 and self.config["training"]["divide_lr_by"] != None:
             if self.current_epoch % self.config["sche"]["patience"] == 0 and self.current_epoch != 0:
                 new_lr = self.config["optim"]["lr"] / (
